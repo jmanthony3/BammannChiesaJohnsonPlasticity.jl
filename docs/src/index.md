@@ -1,8 +1,8 @@
-# BammannChiesaJohnsons
-Documentation for [BammannChiesaJohnsons](https://github.com/jmanthony3/BammannChiesaJohnsons.jl).
+# BammannChiesaJohnsonPlasticity
+Documentation for [BammannChiesaJohnsonPlasticity](https://github.com/jmanthony3/BammannChiesaJohnsonPlasticity.jl).
 
 ```@contents
-Modules = [BammannChiesaJohnsons]
+Modules = [BammannChiesaJohnsonPlasticity]
 Pages   = [
 ]
 Depth   = 1
@@ -11,7 +11,7 @@ Depth   = 1
 ## Index
 ```@index
 Modules = [
-    BammannChiesaJohnsons]
+    BammannChiesaJohnsonPlasticity]
 Pages   = [
 ]
 ```

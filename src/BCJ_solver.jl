@@ -1,4 +1,5 @@
-abstract type BCJMetal end
+abstract type BCJ end
+abstract type BCJMetal              <: BCJ end
 abstract type Bammann1990Modeling   <: BCJMetal end
 abstract type DK                    <: BCJMetal end
 abstract type ISVMetal{T<:BCJMetal} end

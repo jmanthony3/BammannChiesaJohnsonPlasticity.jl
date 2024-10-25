@@ -1,4 +1,4 @@
-using BammannChiesaJohnsons
+using BammannChiesaJohnsonPlasticity
 using CSV
 using DataFrames
 using Plots

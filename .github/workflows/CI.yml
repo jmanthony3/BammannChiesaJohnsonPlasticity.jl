@@ -92,6 +92,6 @@ jobs:
   #       shell: julia --project=docs --color=yes {0}
   #       run: |
   #         using Documenter: DocMeta, doctest
-  #         using BammannChiesaJohnsons
-  #         DocMeta.setdocmeta!(BammannChiesaJohnsons, :DocTestSetup, :(using BammannChiesaJohnsons); recursive=true)
-  #         doctest(BammannChiesaJohnsons)
+  #         using BammannChiesaJohnsonPlasticity
+  #         DocMeta.setdocmeta!(BammannChiesaJohnsonPlasticity, :DocTestSetup, :(using BammannChiesaJohnsonPlasticity); recursive=true)
+  #         doctest(BammannChiesaJohnsonPlasticity)
