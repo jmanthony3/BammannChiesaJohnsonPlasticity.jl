@@ -1,4 +1,4 @@
-module BammannChiesaJohnsons
+module BammannChiesaJohnsonPlasticity
 
 include("BCJ_solver.jl")
 export BCJMetal

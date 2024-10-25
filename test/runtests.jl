@@ -1,10 +1,10 @@
-using BammannChiesaJohnsons
+using BammannChiesaJohnsonPlasticity
 using CSV
 using DataFrames
 using Plots
 using Test
 
-@testset verbose=true "BammannChiesaJohnsons.jl" begin
+@testset verbose=true "BammannChiesaJohnsonPlasticity.jl" begin
     params      = begin
         df          = CSV.read("Props_BCJ_4340_fit.csv", DataFrame; header=true, delim=',', types=[String, Float64])
         rowsofconstants = findall(occursin.(r"C\d{2}", df[!, "Comment"]))
