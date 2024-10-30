@@ -18,4 +18,13 @@ export record!
 export bcjmetalreferenceconfiguration
 export solve!
 
+include("BCJCalibratinatorJohnsonCookExt.jl")
+export JC
+export JCStrainControl
+export JCCurrentConfiguration
+export JCConfigurationHistory
+export record!
+export jcreferenceconfiguration
+export solve!
+
 end
