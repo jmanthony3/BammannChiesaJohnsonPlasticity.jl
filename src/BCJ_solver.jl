@@ -134,8 +134,6 @@ function bcjmetalreferenceconfiguration(::Type{Bammann1990Modeling}, bcj::BCJMet
     C16     = params["C16"]
     C17     = params["C17"]
     C18     = params["C18"]
-    C19     = params["C19"]
-    C20     = params["C20"]
 
 
     # array declarations
