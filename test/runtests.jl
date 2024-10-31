@@ -40,7 +40,7 @@ using Test
         header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
     bcj_loading_Tension_e002_295 = BCJMetalStrainControl(295., 2e-3, 1., 200, 1, params)
     # bcj_loading = BCJ_metal(295., 570., 0.15, 200, 1, params)
-    bcj_conf_Tension_e002_295 = bcjmetalreferenceconfiguration(DK, bcj_loading_Tension_e002_295)
+    bcj_conf_Tension_e002_295 = referenceconfiguration(DK, bcj_loading_Tension_e002_295)
     bcj_ref_Tension_e002_295        = bcj_conf_Tension_e002_295[1]
     bcj_current_Tension_e002_295    = bcj_conf_Tension_e002_295[2]
     bcj_history_Tension_e002_295    = bcj_conf_Tension_e002_295[3]
@@ -73,7 +73,7 @@ using Test
         header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
     # bcj_loading = BCJMetalStrainControl(295., 2e-3, 1., 200, 1, params)
     bcj_loading_Tension_e570_295 = BCJMetalStrainControl(295., 570., 0.15, 200, 1, params)
-    bcj_conf_Tension_e570_295 = bcjmetalreferenceconfiguration(DK, bcj_loading_Tension_e570_295)
+    bcj_conf_Tension_e570_295 = referenceconfiguration(DK, bcj_loading_Tension_e570_295)
     bcj_ref_Tension_e570_295        = bcj_conf_Tension_e570_295[1]
     bcj_current_Tension_e570_295    = bcj_conf_Tension_e570_295[2]
     bcj_history_Tension_e570_295    = bcj_conf_Tension_e570_295[3]
@@ -98,7 +98,7 @@ using Test
     end
     @test isapprox(err, 0.0003468752570447703; atol=1e-6)
 
-    bcj_conf_comb           = bcjmetalreferenceconfiguration(DK, bcj_loading_Tension_e570_295)
+    bcj_conf_comb           = referenceconfiguration(DK, bcj_loading_Tension_e570_295)
     bcj_ref_comb            = bcj_conf_comb[1]
     copyto!(bcj_ref_comb, bcj_history_Tension_e002_295)
     bcj_current_comb        = bcj_ref_comb
@@ -151,7 +151,7 @@ using Test
     else
         1.
     end
-    println(err)
+    # println(err)
     plot!(p, bcj_history_combined.ϵ__[1, :], σvM, label="Model")
     display(p)
     @test isapprox(err, 3.666486610497823e13; atol=1e6)
