@@ -15,7 +15,7 @@ function symmetricvonMises(tensor::Matrix{<:Real})::Vector{AbstractFloat}
     return map(symmetricvonMises, eachcol(tensor))
 end
 
-struct BCJMetalStrainControl{T1<:Integer, T2<:AbstractFloat} <: BCJMetal
+struct BCJMetalStrainControl{T1<:Integer, T2<:AbstractFloat}
     θ       ::T2                # applied temperature
     ϵ_dot   ::T2                # applied strain rate
     ϵₙ      ::T2                # final strain
@@ -24,7 +24,7 @@ struct BCJMetalStrainControl{T1<:Integer, T2<:AbstractFloat} <: BCJMetal
     params  ::Dict{String, T2}  # material constants
 end
 
-mutable struct BCJMetalCurrentConfiguration{Version<:BCJMetal, T<:AbstractFloat} <: BCJMetal
+mutable struct BCJMetalCurrentConfiguration{Version<:BCJMetal, T<:AbstractFloat}
     N               ::Integer   # number of strain increments
     θ               ::T         # applied temperature
     μ               ::T         # shear modulus at temperature, θ
@@ -53,7 +53,7 @@ mutable struct BCJMetalCurrentConfiguration{Version<:BCJMetal, T<:AbstractFloat}
     κₜᵣ             ::T         # isotropic hardening (trial)
 end
 
-mutable struct BCJMetalConfigurationHistory{T<:AbstractFloat} <: BCJMetal
+mutable struct BCJMetalConfigurationHistory{T<:AbstractFloat}
     σ__             ::Matrix{T} # deviatoric stress tensor
     ϵₚ__            ::Matrix{T} # plastic strain tensor
     ϵ_dot_plastic__ ::Matrix{T} # plastic strain rate
@@ -89,7 +89,7 @@ function Base.copyto!(reference::BCJMetalCurrentConfiguration, history::BCJMetal
     return nothing
 end
 
-function record!(history::BCJMetalConfigurationHistory, i::Integer, current::BCJMetalCurrentConfiguration)
+function PlasticityBase.record!(history::BCJMetalConfigurationHistory, i::Integer, current::BCJMetalCurrentConfiguration)
     history.σ__[:, i]              .= current.σ__
     history.ϵₚ__[:, i]             .= current.ϵₚ__
     history.ϵ_dot_plastic__[:, i]  .= current.ϵ_dot_plastic__

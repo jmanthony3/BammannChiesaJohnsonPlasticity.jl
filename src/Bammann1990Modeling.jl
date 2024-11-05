@@ -2,7 +2,7 @@ using PlasticityBase
 
 abstract type Bammann1990Modeling <: BCJMetal end
 
-function referenceconfiguration(::Type{Bammann1990Modeling}, bcj::BCJMetalStrainControl)::Tuple{BCJMetalCurrentConfiguration, BCJMetalCurrentConfiguration, BCJMetalConfigurationHistory}
+function PlasticityBase.referenceconfiguration(::Type{Bammann1990Modeling}, bcj::BCJMetalStrainControl)::Tuple{BCJMetalCurrentConfiguration, BCJMetalCurrentConfiguration, BCJMetalConfigurationHistory}
     θ       = bcj.θ
     ϵ_dot   = bcj.ϵ_dot
     ϵₙ      = bcj.ϵₙ
@@ -12,8 +12,8 @@ function referenceconfiguration(::Type{Bammann1990Modeling}, bcj::BCJMetalStrain
     M       = N + 1
     T       = typeof(float(θ))
     # breakout params into easy variables
-    G       = params["bulk_mod"]
-    μ       = params["shear_mod"]
+    G       = params["Bulk Mod"]
+    μ       = params["Shear Mod"]
     # params_keys = keys(params)
     # C = params[params_keys[findall(r"C\d+", params_keys)]]
     C1      = params["C01"]
@@ -112,7 +112,7 @@ istate: 1 = tension, 2 = torsion
 
 **no damage in this model**
 """
-function solve!(bcj::BCJMetalCurrentConfiguration{Bammann1990Modeling, <:AbstractFloat},
+function PlasticityBase.solve!(bcj::BCJMetalCurrentConfiguration{Bammann1990Modeling, <:AbstractFloat},
         history::BCJMetalConfigurationHistory)
     μ, Δϵ, Δt       = bcj.μ, bcj.Δϵ, bcj.Δt
     ϵ_dot_effective = bcj.ϵ_dot_effective
