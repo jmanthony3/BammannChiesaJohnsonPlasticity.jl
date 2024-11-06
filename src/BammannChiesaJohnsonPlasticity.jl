@@ -4,6 +4,8 @@ using PlasticityBase
 
 abstract type BCJ <: Plasticity end
 
+export BCJ
+
 include("BCJMetal.jl")
 export BCJMetal
 export ISVMetal
