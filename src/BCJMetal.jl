@@ -1,30 +1,21 @@
+using PlasticityBase
+
 abstract type BCJMetal              <: BCJ end
 abstract type ISVMetal{T<:BCJMetal} end
-abstract type KinematicHardening{T} <: ISVMetal{T} end # α__
-abstract type IsotropicHardening{T} <: ISVMetal{T} end # κ
-abstract type Damage{T}             <: ISVMetal{T} end # ϕ
+abstract type ISVMetalKinematicHardening{T} <: ISVMetal{T} end # α__
+abstract type ISVMetalIsotropicHardening{T} <: ISVMetal{T} end # κ
+abstract type ISVMetalDamage{T}             <: ISVMetal{T} end # ϕ
 
-symmetricmagnitude(tensor::Vector{<:Real}) = √( sum(tensor[1:3] .^ 2.) + 2sum(tensor[4:6] .^ 2.) )
-
-function symmetricvonMises(tensor::Union{Vector{<:Real}, SubArray{<:Real}})::AbstractFloat
-    σvM = sum(map(x->x^2., [tensor[1] - tensor[2], tensor[2] - tensor[3], tensor[3] - tensor[1]])) + (
-        6sum(map(x->x^2., [tensor[4], tensor[5], tensor[6]])))
-    return √(σvM / 2.)
-end
-function symmetricvonMises(tensor::Matrix{<:Real})::Vector{AbstractFloat}
-    return map(symmetricvonMises, eachcol(tensor))
-end
-
-struct BCJMetalStrainControl{T1<:Integer, T2<:AbstractFloat}
+struct BCJMetalStrainControl{T1<:Integer, T2<:AbstractFloat} <: AbstractLoading
     θ       ::T2                # applied temperature
     ϵ_dot   ::T2                # applied strain rate
     ϵₙ      ::T2                # final strain
     N       ::T1                # number of strain increments
-    istate  ::T1                # load type (1: uniaxial tension; 2: torsion)
+    loadtype::Symbol            # load type (:tension, :compression, :torsion)
     params  ::Dict{String, T2}  # material constants
 end
 
-mutable struct BCJMetalCurrentConfiguration{Version<:BCJMetal, T<:AbstractFloat}
+mutable struct BCJMetalConfigurationCurrent{Version<:BCJMetal, T<:AbstractFloat} <: AbstractConfigurationCurrent
     N               ::Integer   # number of strain increments
     θ               ::T         # applied temperature
     μ               ::T         # shear modulus at temperature, θ
@@ -53,7 +44,7 @@ mutable struct BCJMetalCurrentConfiguration{Version<:BCJMetal, T<:AbstractFloat}
     κₜᵣ             ::T         # isotropic hardening (trial)
 end
 
-mutable struct BCJMetalConfigurationHistory{T<:AbstractFloat}
+mutable struct BCJMetalConfigurationHistory{T<:AbstractFloat} <: AbstractConfigurationHistory
     σ__             ::Matrix{T} # deviatoric stress tensor
     ϵₚ__            ::Matrix{T} # plastic strain tensor
     ϵ_dot_plastic__ ::Matrix{T} # plastic strain rate
@@ -75,7 +66,7 @@ function Base.:+(x::T, y::T) where {T<:BCJMetalConfigurationHistory}
     )
 end
 
-function Base.copyto!(reference::BCJMetalCurrentConfiguration, history::BCJMetalConfigurationHistory)
+function Base.copyto!(reference::BCJMetalConfigurationCurrent, history::BCJMetalConfigurationHistory)
     # for attr ∈ (:θ, :V, :Y, :f, :h, :r_d, :r_s, :H, :R_d, :R_s, :α__, :κ, :β, :ξ__)
     #     setfield!(reference, attr, getfield(current, attr))
     # end
@@ -89,7 +80,7 @@ function Base.copyto!(reference::BCJMetalCurrentConfiguration, history::BCJMetal
     return nothing
 end
 
-function PlasticityBase.record!(history::BCJMetalConfigurationHistory, i::Integer, current::BCJMetalCurrentConfiguration)
+function PlasticityBase.record!(history::BCJMetalConfigurationHistory, i::Integer, current::BCJMetalConfigurationCurrent)
     history.σ__[:, i]              .= current.σ__
     history.ϵₚ__[:, i]             .= current.ϵₚ__
     history.ϵ_dot_plastic__[:, i]  .= current.ϵ_dot_plastic__
@@ -99,3 +90,13 @@ function PlasticityBase.record!(history::BCJMetalConfigurationHistory, i::Intege
     history.ξ__[:, i]              .= current.ξ__
     return nothing
 end
+
+symmetricmagnitude(tensor::Vector{<:Real}) = √( sum(tensor[1:3] .^ 2.) + 2sum(tensor[4:6] .^ 2.) )
+
+function symmetricvonMises(tensor::Union{Vector{<:Real}, SubArray{<:Real}})::AbstractFloat
+    σvM = sum(map(x->x^2., [tensor[1] - tensor[2], tensor[2] - tensor[3], tensor[3] - tensor[1]])) + (
+        6sum(map(x->x^2., [tensor[4], tensor[5], tensor[6]])))
+    return √(σvM / 2.)
+end
+
+symmetricvonMises(tensor::Matrix{<:Real})::Vector{AbstractFloat} = map(symmetricvonMises, eachcol(tensor))

@@ -33,18 +33,17 @@ using Test
             "C18"       => C_0[18],
             "C19"       => C_0[19],
             "C20"       => C_0[20],
-            "bulk_mod"  => bulk_mod,
-            "shear_mod" => shear_mod)
+            "Bulk Mod"  => bulk_mod,
+            "Shear Mod" => shear_mod)
     end
     df_Tension_e002_295 = CSV.read("Data_Tension_e0002_T295.csv", DataFrame;
         header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
-    bcj_loading_Tension_e002_295 = BCJMetalStrainControl(295., 2e-3, 1., 200, 1, params)
+    bcj_loading_Tension_e002_295    = BCJMetalStrainControl(295., 2e-3, 1., 200, :tension, params)
     # bcj_loading = BCJ_metal(295., 570., 0.15, 200, 1, params)
-    bcj_conf_Tension_e002_295 = referenceconfiguration(DK, bcj_loading_Tension_e002_295)
+    bcj_conf_Tension_e002_295       = kernel(DK, bcj_loading_Tension_e002_295)
     bcj_ref_Tension_e002_295        = bcj_conf_Tension_e002_295[1]
     bcj_current_Tension_e002_295    = bcj_conf_Tension_e002_295[2]
     bcj_history_Tension_e002_295    = bcj_conf_Tension_e002_295[3]
-    solve!(bcj_current_Tension_e002_295, bcj_history_Tension_e002_295)
     σvM = symmetricvonMises(bcj_history_Tension_e002_295.σ__)
     idx = []
     for t in df_Tension_e002_295[!, "Strain"]
@@ -72,7 +71,7 @@ using Test
     df_Tension_e570_295 = CSV.read("Data_Tension_e570_T295.csv", DataFrame;
         header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
     # bcj_loading = BCJMetalStrainControl(295., 2e-3, 1., 200, 1, params)
-    bcj_loading_Tension_e570_295 = BCJMetalStrainControl(295., 570., 0.15, 200, 1, params)
+    bcj_loading_Tension_e570_295 = BCJMetalStrainControl(295., 570., 0.15, 200, :tension, params)
     bcj_conf_Tension_e570_295 = referenceconfiguration(DK, bcj_loading_Tension_e570_295)
     bcj_ref_Tension_e570_295        = bcj_conf_Tension_e570_295[1]
     bcj_current_Tension_e570_295    = bcj_conf_Tension_e570_295[2]
@@ -98,12 +97,17 @@ using Test
     end
     @test isapprox(err, 0.0003468752570447703; atol=1e-6)
 
-    bcj_conf_comb           = referenceconfiguration(DK, bcj_loading_Tension_e570_295)
-    bcj_ref_comb            = bcj_conf_comb[1]
-    copyto!(bcj_ref_comb, bcj_history_Tension_e002_295)
-    bcj_current_comb        = bcj_ref_comb
-    bcj_history_comb        = bcj_conf_comb[3]
-    record!(bcj_history_comb, 1, bcj_current_comb)
+    bcj_conf_comb           = nextloadingphase(
+        referenceconfiguration(DK, bcj_loading_Tension_e570_295),
+        bcj_history_Tension_e002_295)
+    # bcj_ref_comb            = bcj_conf_comb[1]
+    # copyto!(bcj_ref_comb, bcj_history_Tension_e002_295)
+    # bcj_current_comb        = bcj_ref_comb
+    # bcj_history_comb        = bcj_conf_comb[3]
+    # record!(bcj_history_comb, 1, bcj_current_comb)
+    bcj_ref_comb        = bcj_conf_comb[1]
+    bcj_current_comb    = bcj_conf_comb[2]
+    bcj_history_comb    = bcj_conf_comb[3]
     solve!(bcj_current_comb, bcj_history_comb)
     σvM = symmetricvonMises(bcj_history_comb.σ__)
     idx = []

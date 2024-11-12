@@ -2,12 +2,12 @@ using PlasticityBase
 
 abstract type Bammann1990Modeling <: BCJMetal end
 
-function PlasticityBase.referenceconfiguration(::Type{Bammann1990Modeling}, bcj::BCJMetalStrainControl)::Tuple{BCJMetalCurrentConfiguration, BCJMetalCurrentConfiguration, BCJMetalConfigurationHistory}
+function PlasticityBase.referenceconfiguration(::Type{Bammann1990Modeling}, bcj::BCJMetalStrainControl)::ConfigurationTuple
     θ       = bcj.θ
     ϵ_dot   = bcj.ϵ_dot
     ϵₙ      = bcj.ϵₙ
     N       = bcj.N
-    istate  = bcj.istate
+    loadtype= bcj.loadtype
     params  = bcj.params
     M       = N + 1
     T       = typeof(float(θ))
@@ -54,12 +54,12 @@ function PlasticityBase.referenceconfiguration(::Type{Bammann1990Modeling}, bcj:
     ξ__             = zeros(T, 6)   # overstress (S - 2/3*alpha)
 
     # state evaluation - loading type
-    ϵ_dot_effective = if istate == 1    # uniaxial tension
+    ϵ_dot_effective = if loadtype ∈ (:tension, :compression)    # uniaxial tension/compression
         δϵ  = ϵₙ / N
         Δϵ .= [δϵ, -0.499δϵ, -0.499δϵ, 0., 0., 0.]
         Δt  = δϵ / ϵ_dot # timestep
         ϵ_dot
-    elseif istate == 2                  # torsion
+    elseif loadtype == :torsion                                 # torsion
         # convert equivalent strain to true shear strain
         ϵₙ *= 0.5 * √(3.)
         Δϵ .= [0., 0., 0., ϵₙ / N, 0., 0.]
@@ -83,7 +83,7 @@ function PlasticityBase.referenceconfiguration(::Type{Bammann1990Modeling}, bcj:
     R_d = C13   * exp( -C14 / θ )
     H   = C15   * exp(  C16 * θ )
     R_s = C17   * exp( -C18 / θ )
-    current = BCJMetalCurrentConfiguration{Bammann1990Modeling, T}(N, θ, μ,
+    current = BCJMetalConfigurationCurrent{Bammann1990Modeling, T}(N, θ, μ,
         σ__, ϵₚ__, ϵ_dot_plastic__, ϵ__, ϵ_dot_effective, Δϵ, Δt,
         V, Y, f, h, r_d, r_s, H, R_d, R_s, α__, κ, β, ξ__, σₜᵣ__, αₜᵣ__, κₜᵣ)
     history = BCJMetalConfigurationHistory{T}(
@@ -112,7 +112,7 @@ istate: 1 = tension, 2 = torsion
 
 **no damage in this model**
 """
-function PlasticityBase.solve!(bcj::BCJMetalCurrentConfiguration{Bammann1990Modeling, <:AbstractFloat},
+function PlasticityBase.solve!(bcj::BCJMetalConfigurationCurrent{Bammann1990Modeling, <:AbstractFloat},
         history::BCJMetalConfigurationHistory)
     μ, Δϵ, Δt       = bcj.μ, bcj.Δϵ, bcj.Δt
     ϵ_dot_effective = bcj.ϵ_dot_effective
@@ -143,22 +143,23 @@ function PlasticityBase.solve!(bcj::BCJMetalCurrentConfiguration{Bammann1990Mode
         # Crit = Xi_mag - (Katr + β) #changed to FIT
         if flow_rule <= 0.      # elastic
             # trial guesses are correct
-            bcj.σ__    .= σₜᵣ__
-            bcj.α__    .= αₜᵣ__
-            bcj.κ       = κₜᵣ
-            bcj.ϵ__   .+= Δϵ
+            bcj.σ__                .= σₜᵣ__
+            bcj.α__                .= αₜᵣ__
+            bcj.κ                   = κₜᵣ
+            bcj.ϵ__               .+= Δϵ
+            bcj.ϵ_dot_plastic__    .= 0.
         else                    # plastic
             # Radial Return
-            Δγ          = flow_rule / (2μ + 2(h + H) / 3)     # original
-            n           = bcj.ξ__ ./ ξ_mag
-            σ__prev     = bcj.σ__
-            bcj.σ__    .= σₜᵣ__ - (2μ * Δγ) .* n
-            bcj.α__    .= αₜᵣ__ + ( h * Δγ) .* n
-            bcj.κ       = κₜᵣ   + (H * Δγ)  # original
-            bcj.ϵₚ__  .+= (Δϵ - ((bcj.σ__ - σ__prev) ./ 2μ))
-            bcj.ϵ__   .+= Δϵ
+            Δγ                      = flow_rule / (2μ + 2(h + H) / 3)     # original
+            n                       = bcj.ξ__ ./ ξ_mag
+            σ__prev                 = bcj.σ__
+            bcj.σ__                .= σₜᵣ__ - (2μ * Δγ) .* n
+            bcj.α__                .= αₜᵣ__ + ( h * Δγ) .* n
+            bcj.κ                   = κₜᵣ   + (H * Δγ)  # original
+            bcj.ϵₚ__              .+= (Δϵ - ((bcj.σ__ - σ__prev) ./ 2μ))
+            bcj.ϵ__               .+= Δϵ
+            bcj.ϵ_dot_plastic__    .= (f * sinh(V \ (ξ_mag - bcj.κ - Y)) / ξ_mag) .* bcj.ξ__
         end
-        bcj.ϵ_dot_plastic__ .= (f * sinh(V \ (ξ_mag - bcj.κ - Y)) / ξ_mag) .* bcj.ξ__
         record!(history, i, bcj)
     end
     return nothing
