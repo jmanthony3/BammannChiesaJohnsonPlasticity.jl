@@ -2,22 +2,28 @@ module BammannChiesaJohnsonPlasticity
 
 using PlasticityBase
 
-abstract type BCJ <: Plasticity end
+export kernel
+export nextloadingphase
+
+abstract type BCJ <: AbstractPlasticity end
 
 export BCJ
 
 include("BCJMetal.jl")
 export BCJMetal
 export ISVMetal
-export KinematicHardening
-export IsotropicHardening
-export Damage
+export ISVMetalKinematicHardening
+export ISVMetalIsotropicHardening
+export ISVMetalDamage
+export BCJMetalStrainControl
+export BCJMetalConfigurationCurrent
+export BCJMetalConfigurationHistory
+export BCJMetalConfigurationTuple
+export +
+export copyto!
+export record!
 export symmetricmagnitude
 export symmetricvonMises
-export BCJMetalStrainControl
-export BCJMetalCurrentConfiguration
-export BCJMetalConfigurationHistory
-export record!
 
 include("Bammann1990Modeling.jl")
 export Bammann1990Modeling
