@@ -155,7 +155,7 @@ function PlasticityBase.solve!(bcj::BCJMetalConfigurationCurrent{DK, <:AbstractF
             bcj.α__                .= αₜᵣ__
             bcj.κ                   = κₜᵣ
             bcj.ϵ__               .+= Δϵ
-            bcj.ϵ_dot_plastic__    .= 0.
+            # bcj.ϵ_dot_plastic__    .= 0.
         else                    # plastic
             # Radial Return
             Δγ                      = flow_rule / (2μ + 2(h + H) / 3)     # original
@@ -166,8 +166,8 @@ function PlasticityBase.solve!(bcj::BCJMetalConfigurationCurrent{DK, <:AbstractF
             bcj.κ                   = κₜᵣ   + (H * sqrt23 * Δγ)  # original
             bcj.ϵₚ__              .+= (Δϵ - ((bcj.σ__ - σ__prev) ./ 2μ))
             bcj.ϵ__               .+= Δϵ
-            bcj.ϵ_dot_plastic__    .= (f * sinh(V \ (ξ_mag - bcj.κ - Y)) / ξ_mag) .* bcj.ξ__
         end
+        bcj.ϵ_dot_plastic__    .= (f * sinh(V \ (ξ_mag - bcj.κ - Y)) / ξ_mag) .* bcj.ξ__
         record!(history, i, bcj)
     end
     return nothing
