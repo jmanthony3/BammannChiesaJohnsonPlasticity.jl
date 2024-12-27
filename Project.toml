@@ -9,10 +9,9 @@ PlasticityBase = "4061fbf7-9440-4a1d-9a5e-b99f9d96b3d3"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-julia = "1.11"
 Documenter = "1"
-PlasticityBase = "0"
 Test = "1.11.0"
+julia = "1.11"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
