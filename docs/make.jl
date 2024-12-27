@@ -2,7 +2,7 @@ using Pkg; Pkg.precompile()
 using Documenter
 using BammannChiesaJohnsonPlasticity
 
-DocMeta.setdocmeta!(BammannChiesaJohnsonPlasticity, :DocTestSetup, :(using BammannChiesaJohnsons); recursive=true)
+DocMeta.setdocmeta!(BammannChiesaJohnsonPlasticity, :DocTestSetup, :(using BammannChiesaJohnsonPlasticity); recursive=true)
 
 makedocs(;
     modules=[BammannChiesaJohnsonPlasticity],
