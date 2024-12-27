@@ -11,6 +11,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 [compat]
 Documenter = "1"
 Test = "1.11.0"
+PlasticityBase = "=0.0.0-dev"
 julia = "1.11"
 
 [extras]
