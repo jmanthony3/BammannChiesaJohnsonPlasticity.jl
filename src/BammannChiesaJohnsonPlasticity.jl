@@ -1,6 +1,6 @@
 module BammannChiesaJohnsonPlasticity
 
-using PlasticityBase
+using PlasticityBase # scrap this and switch to [`ContinuumMechanicsBase.jl`](https://github.com/TRACER-LULab/ContinuumMechanicsBase.jl)
 
 export kernel
 export nextloadingphase
