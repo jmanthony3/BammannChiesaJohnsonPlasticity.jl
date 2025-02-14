@@ -3,10 +3,11 @@ using DataFrames
 using Distributed
 using GLMakie
 using LaTeXStrings
+using OrderedCollections
 
 set_theme!(theme_latexfonts())
 
-materialprops_DK = Dict(
+materialprops_DK = OrderedDict(
     # Comment,For Calibration with vumat
     "C01"       => 35016459.896579415,
     "C02"       => 323.93342698083165,
