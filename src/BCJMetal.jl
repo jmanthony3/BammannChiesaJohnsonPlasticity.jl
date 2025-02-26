@@ -1,4 +1,5 @@
 using PlasticityBase
+using OrderedCollections
 
 abstract type BCJMetal              <: BCJ end
 abstract type ISVMetal{T<:BCJMetal} end
@@ -12,7 +13,7 @@ struct BCJMetalStrainControl{T1<:Integer, T2<:AbstractFloat} <: AbstractLoading
     ϵₙ      ::T2                # final strain
     N       ::T1                # number of strain increments
     loadtype::Symbol            # load type (:tension, :compression, :torsion)
-    params  ::Dict{String, T2}  # material constants
+    params  ::OrderedDict{String, T2}  # material constants
 end
 
 mutable struct BCJMetalConfigurationCurrent{Version<:BCJMetal, T<:AbstractFloat} <: AbstractConfigurationCurrent
