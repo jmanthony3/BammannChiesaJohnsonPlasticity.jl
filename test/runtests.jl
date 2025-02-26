@@ -1,6 +1,7 @@
 using BammannChiesaJohnsonPlasticity
 using CSV
 using DataFrames
+using OrderedCollections
 using Plots
 using Test
 
@@ -12,7 +13,7 @@ using Test
         C_0[rowsofconstants] .= df[!, "For Calibration with vumat"][rowsofconstants]
         bulk_mod    = df[!, "For Calibration with vumat"][findfirst(occursin("Bulk Mod"), df[!, "Comment"])]
         shear_mod   = df[!, "For Calibration with vumat"][findfirst(occursin("Shear Mod"), df[!, "Comment"])]
-        Dict( # collect as dictionary
+        OrderedDict( # collect as dictionary
             "C01"       => C_0[ 1],
             "C02"       => C_0[ 2],
             "C03"       => C_0[ 3],
