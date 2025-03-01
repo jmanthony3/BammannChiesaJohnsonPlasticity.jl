@@ -6,7 +6,7 @@ DocMeta.setdocmeta!(BammannChiesaJohnsonPlasticity, :DocTestSetup, :(using Bamma
 
 makedocs(;
     modules=[BammannChiesaJohnsonPlasticity],
-    authors="Joby M. Anthony III, Julian Tse Lop Kun",
+    authors="Joby M. Anthony III, Daniel S. Kenney, Julian Tse Lop Kun",
     repo="https://github.com/jmanthony3/BammannChiesaJohnsonPlasticity.jl/blob/{commit}{path}#{line}",
     sitename="BammannChiesaJohnsonPlasticity.jl",
     doctest=false,
