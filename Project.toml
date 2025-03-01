@@ -5,25 +5,31 @@ version = "0.0.0-dev"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
+ContinuumMechanicsBase = "3a778109-d974-46c8-ac54-09f30d605bdf"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
-OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
-PlasticityBase = "4061fbf7-9440-4a1d-9a5e-b99f9d96b3d3"
+Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
+Tensors = "48a634ad-e948-5137-8d70-aa71f2a747f4"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
-[weakdeps]
-PlasticityCalibratinator = "a89bb55e-884e-48c3-ba05-e3917bd289c9"
+# [weakdeps]
+# PlasticityCalibratinator = "a89bb55e-884e-48c3-ba05-e3917bd289c9"
 
-[extensions]
-PlasticityCalibratinatorExt = "PlasticityCalibratinator"
+# [extensions]
+# PlasticityCalibratinatorExt = "PlasticityCalibratinator"
 
 [compat]
+ComponentArrays = "0.15.24"
+ContinuumMechanicsBase = "0.1.1"
 Documenter = "1"
-OrderedCollections = "1.8.0"
-PlasticityBase = "0"
+ForwardDiff = "0.10.38"
+Optimization = "4.1.1"
+Reexport = "1.2.2"
+Tensors = "1.16.1"
 Test = "1.11.0"
 julia = "1.11"
 
