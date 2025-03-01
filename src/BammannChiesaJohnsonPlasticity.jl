@@ -1,38 +1,23 @@
 module BammannChiesaJohnsonPlasticity
 
-using PlasticityBase # scrap this and switch to [`ContinuumMechanicsBase.jl`](https://github.com/TRACER-LULab/ContinuumMechanicsBase.jl)
 
-export kernel
-export nextloadingphase
+using Reexport
+@reexport using ContinuumMechanicsBase
 
-abstract type BCJ <: AbstractPlasticity end
 
-export BCJ
+using Tensors # : *, ⊡, sqrt, dev
+export δ, vonMises
+δ(i, j) = i == j ? 1.0 : 0.0 # helper function
+vonMises(x) = (s = dev(x); sqrt(3.0/2.0 * s ⊡ s))
+
+
+export AbstractBCJ
+abstract type AbstractBCJ <: ContinuumMechanicsBase.AbstractMaterialModel end
+
 
 include("BCJMetal.jl")
-export BCJMetal
-export ISVMetal
-export ISVMetalKinematicHardening
-export ISVMetalIsotropicHardening
-export ISVMetalDamage
-export BCJMetalStrainControl
-export BCJMetalConfigurationCurrent
-export BCJMetalConfigurationHistory
-export BCJMetalConfigurationTuple
-export +
-export copyto!
-export record!
-export symmetricmagnitude
-export symmetricvonMises
-
 include("Bammann1990Modeling.jl")
-export Bammann1990Modeling
-export referenceconfiguration
-export solve!
-
 include("DK.jl")
-export DK
-export referenceconfiguration
-export solve!
+
 
 end

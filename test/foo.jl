@@ -39,9 +39,9 @@ params      = begin
 end
 df_Tension_e002_295 = CSV.read("Data_Tension_e0002_T295.csv", DataFrame;
     header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
-bcj_loading_Tension_e002_295 = BCJMetalStrainControl(295., 2e-3, 1., 200, 1, params)
+bcj_loading_Tension_e002_295 = BCJMetalStrainControl(295., 2e-3, 1., 200, :tension)
 # bcj_loading = BCJ_metal(295., 570., 0.15, 200, 1, params)
-bcj_conf_Tension_e002_295 = bcjmetalreferenceconfiguration(DK, bcj_loading_Tension_e002_295)
+bcj_conf_Tension_e002_295 = BammannChiesaJohnsonPlasticity.setup(DK, bcj_loading_Tension_e002_295)
 bcj_ref_Tension_e002_295        = bcj_conf_Tension_e002_295[1]
 bcj_current_Tension_e002_295    = bcj_conf_Tension_e002_295[2]
 bcj_history_Tension_e002_295    = bcj_conf_Tension_e002_295[3]
