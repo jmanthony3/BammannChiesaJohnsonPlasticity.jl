@@ -1,14 +1,16 @@
 # using PlasticityBase
-using ComponentArrays: ComponentVector
+using ComponentArrays
 using ContinuumMechanicsBase
 import ForwardDiff
 using LossFunctions
 using Optimization
+using StructArrays
 using Tensors
 
-export Bammann1990Modeling, update!, predict, parameters, parameter_bounds, BCJProblem
+export Bammann1990Modeling, update!, AbstractBCJMetalTest, predict, BCJMetalDataEntry, BCJMetalUniaxialTest, parameters, parameter_bounds, BCJProblem
 
 mutable struct Bammann1990Modeling{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: BCJMetal
+    N               ::Integer   # number of strain increments
     θ               ::T         # applied temperature
     μ               ::T         # shear modulus at temperature, θ
     σ__             ::S         # deviatoric stress tensor
@@ -59,7 +61,7 @@ function Bammann1990Modeling(bcj::BCJMetalStrainControl, μ::AbstractFloat)
         Δt  = Δϵ[1, 2] / ϵ_dot      # timestep
         2ϵ_dot / √3.
     end
-    return Bammann1990Modeling{T, S}(θ, μ,
+    return Bammann1990Modeling{T, S}(N, θ, μ,
         σ__, ϵₚ__, ϵ_dot_plastic__, ϵ__, ϵ_dot_effective, Δϵ, Δt, α__, κ, ξ__)
 end
 
@@ -84,6 +86,7 @@ function update!(state::Bammann1990Modeling, (;
             C₁₅,    C₁₆,    # H
             C₁₇,    C₁₈     # R_s
         ))
+    T = typeof(state.θ)
     # temperature dependent constants
     V   = C₁    * exp( -C₂ / state.θ )
     Y   = C₃    * exp(  C₄ / state.θ )
@@ -142,21 +145,67 @@ end
     # - I suspect, that for the below to work, the above must just take the current material state
     #       and applied strain increment to return the deviatoric stress for the below to work.
 
+abstract type AbstractBCJMetalTest{T, S} <: ContinuumMechanicsBase.AbstractMaterialTest end
+
 ## Predict overloads
 function ContinuumMechanicsBase.predict(
-    ψ   ::Bammann1990Modeling{T, S},
-    test::BCJMetalStrainControl{<:Integer, T},
-    p;
-    kwargs...,
-) where {T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}}
-    ϵ⃗ = zeros(S, test.N + 1) # ψ.ϵ__ .+ [ψ.Δϵ * i for i ∈ range(0, test.N)]
-    σ⃗ = zeros(S, test.N + 1)
+            ψ   ::Bammann1990Modeling{T, S},
+            test::AbstractBCJMetalTest{T, T},
+            p;
+            kwargs...,
+        ) where {T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}}
+    ϵ⃗ = zeros(S, ψ.N + 1) # ψ.ϵ__ .+ [ψ.Δϵ * i for i ∈ range(0, test.N)]
+    σ⃗ = zeros(S, ψ.N + 1)
     ϵ⃗[1], σ⃗[1] = ψ.ϵ__, ψ.σ__
-    for i ∈ range(2, test.N + 1)
+    for i ∈ range(2, ψ.N + 1)
         update!(ψ, p)
         ϵ⃗[i], σ⃗[i] = ψ.ϵ__, ψ.σ__
     end
     return (data=(λ=ϵ⃗, s=σ⃗),)
+end
+
+struct BCJMetalDataEntry{T, S}
+    λ::Vector{T}
+    s::Vector{S}
+end
+
+struct BCJMetalUniaxialTest{T, S} <: AbstractBCJMetalTest{T, S}
+    data::StructVector
+    name::String
+    """
+    $(SIGNATURES)
+
+    Creates an object storing results from a uniaxial test of a hyperelatic  material.
+
+    # Arguments:
+    - `λ₁`: Vector of uniaxial stretches
+    - `s₁`: Vector of experiemntal stresses (optional)
+    - `name`: string for the name of the test
+    - `incompressible`: `true` if the material can be assumed to be incompressible.
+    """
+    function BCJMetalUniaxialTest(λ₁, s₁; name, incompressible = true)
+        @assert length(λ₁) == length(s₁) "Inputs must be the same length"
+        if incompressible
+            λ₂ = λ₃ = @. sqrt(1 / λ₁)
+        else
+            λ₂ = λ₃ = Vector{eltype(λ₁)}(undef, length(λ₁))
+        end
+        λ = collect.(zip(λ₁, λ₂, λ₃))
+        s = collect.(zip(s₁))
+        data = StructArray{BCJMetalDataEntry}((λ, s))
+        new{eltype(eltype(λ)),eltype(eltype(s))}(data, name)
+    end
+    function BCJMetalUniaxialTest(λ₁; name, incompressible = true)
+        if incompressible
+            λ₂ = λ₃ = @. sqrt(1 / λ₁)
+        else
+            λ₂ = λ₃ = Vector{eltype(λ₁)}(undef, length(λ₁))
+        end
+        λ = collect.(zip(λ₁, λ₂, λ₃))
+        s = collect.(zip(Vector{eltype(λ₁)}(undef, length(λ₁))))
+        data = StructArray{BCJMetalDataEntry}((λ, s))
+        new{eltype(eltype(λ)),eltype(eltype(s))}(data, name)
+    end
 end
 
 parameters(::Bammann1990Modeling) = (
@@ -201,7 +250,7 @@ end
 
 function BCJProblem(
     ψ   ::Bammann1990Modeling{T, S},
-    test::Any,
+    test::BCJMetalUniaxialTest{T, T},
     u0;
     ad_type,
     loss    = L2DistLoss(),

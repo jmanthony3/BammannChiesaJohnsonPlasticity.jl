@@ -9,7 +9,7 @@ using Plots
 using Test
 
 params      = begin
-    df          = CSV.read("Props_BCJ_4340_fit.csv", DataFrame; header=true, delim=',', types=[String, Float64])
+    df          = CSV.read("Props_BCJ_4340-Bammann1990Modeling.csv", DataFrame; header=true, delim=',', types=[String, Float64])
     rowsofconstants = findall(occursin.(r"C\d{2}", df[!, "Comment"]))
     C_0         = Vector{Float64}(undef, 20)
     C_0[rowsofconstants] .= df[!, "For Calibration with vumat"][rowsofconstants]
@@ -41,7 +41,7 @@ params      = begin
 end
 df_Tension_e002_295 = CSV.read("Data_Tension_e0002_T295.csv", DataFrame;
     header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
-test = (data=(λ=df_Tension_e002_295[!, "Strain"], s=df_Tension_e002_295[!, "Stress"] .* 1e6), )
+test = BCJMetalUniaxialTest(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, name="exp")
 bcj_loading = BCJMetalStrainControl(295.0, 2e-3, 1.0, 200, :tension)
 ψ = Bammann1990Modeling(bcj_loading, params.μ)
 p = ComponentVector(
@@ -56,8 +56,9 @@ p = ComponentVector(
     C₁₇ = params.C₁₇,    C₁₈    = params.C₁₈    # R_s
 )
 # update!(ψ, p)
-res = ContinuumMechanicsBase.predict(ψ, bcj_loading, p)
+res = ContinuumMechanicsBase.predict(ψ, test, p)
+# [x[1, 1] for x in res.data.λ]
+plot([vonMises(x) for x in res.data.λ], [vonMises(x) for x in res.data.s])
+
 # prob = BCJProblem(Bammann1990Modeling(bcj_loading, params.μ), test, p, ad_type=AutoForwardDiff())
 # solve(prob, NelderMead())
-
-plot([x[1, 1] for x in res.data.λ], [x[1, 1] for x in res.data.s])
