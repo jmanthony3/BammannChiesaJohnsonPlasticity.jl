@@ -1,7 +1,10 @@
 using BammannChiesaJohnsonPlasticity
+using ContinuumMechanicsBase
 using ComponentArrays
 using CSV
 using DataFrames
+import ForwardDiff
+using Optimization, OptimizationOptimJL
 using Plots
 using Test
 
@@ -39,9 +42,10 @@ using Test
     end
     df_Tension_e002_295 = CSV.read("Data_Tension_e0002_T295.csv", DataFrame;
         header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
+    test = (data=(λ=df_Tension_e002_295[!, "Strain"], s=df_Tension_e002_295[!, "Stress"] .* 1e6), )
     bcj_loading = BCJMetalStrainControl(295.0, 2e-3, 1.0, 200, :tension)
     ψ = Bammann1990Modeling(bcj_loading, params.μ)
-    p = (
+    p = ComponentVector(
         C₁  = params.C₁,     C₂     = params.C₂,    # V
         C₃  = params.C₃,     C₄     = params.C₄,    # Y
         C₅  = params.C₅,     C₆     = params.C₆,    # f
@@ -52,8 +56,11 @@ using Test
         C₁₅ = params.C₁₅,    C₁₆    = params.C₁₆,   # H
         C₁₇ = params.C₁₇,    C₁₈    = params.C₁₈    # R_s
     )
-    update!(ψ, bcj_loading, p)
-    
+    # update!(ψ, p)
+    ContinuumMechanicsBase.predict(ψ, bcj_loading, p)
+    # prob = BCJProblem(Bammann1990Modeling(bcj_loading, params.μ), test, p, ad_type=AutoForwardDiff())
+    # solve(prob, NelderMead())
+
     # # bcj_loading = BCJ_metal(295., 570., 0.15, 200, 1, params)
     # bcj_conf_Tension_e002_295       = kernel(DK, bcj_loading_Tension_e002_295)
     # bcj_ref_Tension_e002_295        = bcj_conf_Tension_e002_295[1]

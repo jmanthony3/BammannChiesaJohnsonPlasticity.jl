@@ -9,7 +9,7 @@ abstract type BCJMetal                      <: AbstractBCJ end
 # abstract type ISVMetalIsotropicHardening{T} <: ISVMetal{T} end # κ
 # abstract type ISVMetalDamage{T}             <: ISVMetal{T} end # ϕ
 
-struct BCJMetalStrainControl{T1<:Integer, T2<:AbstractFloat} <: BCJMetal
+struct BCJMetalStrainControl{T1<:Integer, T2<:AbstractFloat} <: ContinuumMechanicsBase.AbstractMaterialTest
     θ           ::T2                # applied temperature
     ϵ_dot       ::T2                # applied strain rate
     ϵₙ          ::T2                # final strain
