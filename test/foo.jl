@@ -62,8 +62,8 @@ res = ContinuumMechanicsBase.predict(ψ, test, p)
 q = plot(df_Tension_e002_295[!, "Strain"][1:3], df_Tension_e002_295[!, "Stress"][1:3] .* 1e6, label="exp")
 plot!(q, [symmetricvonMises(x) for x in eachcol(res.data.λ)], [symmetricvonMises(x) for x in eachcol(res.data.s)], label="Bammann1990Modeling")
 
-prob = BCJProblem(Bammann1990Modeling(bcj_loading, params.μ), test, p, ad_type=AutoFiniteDiff())
-sol = solve(prob, LBFGS())
+prob = BCJProblem(ψ, test, p, ad_type=AutoFiniteDiff())
+sol = solve(prob, NelderMead())
 
 
-grad=ForwardDiff.gradient(x->sum(ContinuumMechanicsBase.predict(ψ, test, x).data.s[:,50]), p)
+# grad=ForwardDiff.gradient(x->sum(ContinuumMechanicsBase.predict(ψ, test, x).data.s[:,50]), p)
