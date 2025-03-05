@@ -158,18 +158,18 @@ function ContinuumMechanicsBase.predict(
             p;
             kwargs...,
         ) where {T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}}
+    ϕ = deepcopy(ψ)
     ϵ⃗ = []#zeros(T, (6, ψ.N + 1)) # zeros(S, ψ.N + 1) # ψ.ϵ__ .+ [ψ.Δϵ * i for i ∈ range(0, test.N)]
     σ⃗ = []#zeros(T, (6, ψ.N + 1)) # zeros(S, ψ.N + 1)
     push!(ϵ⃗,ψ.ϵ__)
     push!(σ⃗, ψ.σ__)
     # ϵ⃗[:, 1], σ⃗[:, 1] = ψ.ϵ__, ψ.σ__
     for i ∈ range(2, ψ.N + 1)
-        update!(ψ, p)
-        push!(ϵ⃗,ψ.ϵ__)
-        push!(σ⃗, ψ.σ__)
+        update!(ϕ, p)
+        push!(ϵ⃗,ϕ.ϵ__)
+        push!(σ⃗, ϕ.σ__)
         # ϵ⃗[:, i], σ⃗[:, i] = ψ.ϵ__, ψ.σ__
     end
-    
     return (data=(λ=hcat(ϵ⃗...), s=hcat(σ⃗...)),)
 end
 
@@ -274,7 +274,7 @@ function BCJProblem(
 
     function f(ps, p)
         ψ, test, loss, ad_type, kwargs = p
-        pred = predict(copy(ψ), test, ps; ad_type, kwargs...)
+        pred = predict(ψ, test, ps; ad_type, kwargs...)
         res = map(i -> loss.(i[1], i[2]), zip(pred.data.s, test.data.s)) |> mean
         @show res
         return res[1]
