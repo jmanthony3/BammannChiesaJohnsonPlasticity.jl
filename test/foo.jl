@@ -4,6 +4,7 @@ using ComponentArrays
 using CSV
 using DataFrames
 import ForwardDiff
+using FiniteDiff
 using Optimization, OptimizationOptimJL
 using Plots
 using Test
@@ -41,8 +42,8 @@ params      = begin
 end
 df_Tension_e002_295 = CSV.read("Data_Tension_e0002_T295.csv", DataFrame;
     header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
-test = BCJMetalUniaxialTest(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, name="exp")
-bcj_loading = BCJMetalStrainControl(295.0, 2e-3, 1.0, 200, :tension)
+test = BCJMetalUniaxialTest(df_Tension_e002_295[!, "Strain"][1:3], df_Tension_e002_295[!, "Stress"][1:3] .* 1e6, name="exp")
+bcj_loading = BCJMetalStrainControl(295.0, 2e-3, last(df_Tension_e002_295[!, "Strain"][1:3]), 200, :tension)
 ψ = Bammann1990Modeling(bcj_loading, params.μ)
 p = ComponentVector(
     C₁  = params.C₁,     C₂     = params.C₂,    # V
@@ -58,7 +59,11 @@ p = ComponentVector(
 # update!(ψ, p)
 res = ContinuumMechanicsBase.predict(ψ, test, p)
 # [x[1, 1] for x in res.data.λ]
-plot([vonMises(x) for x in res.data.λ], [vonMises(x) for x in res.data.s])
+q = plot(df_Tension_e002_295[!, "Strain"][1:3], df_Tension_e002_295[!, "Stress"][1:3] .* 1e6, label="exp")
+plot!(q, [symmetricvonMises(x) for x in eachcol(res.data.λ)], [symmetricvonMises(x) for x in eachcol(res.data.s)], label="Bammann1990Modeling")
 
-# prob = BCJProblem(Bammann1990Modeling(bcj_loading, params.μ), test, p, ad_type=AutoForwardDiff())
-# solve(prob, NelderMead())
+prob = BCJProblem(Bammann1990Modeling(bcj_loading, params.μ), test, p, ad_type=AutoFiniteDiff())
+sol = solve(prob, LBFGS())
+
+
+grad=ForwardDiff.gradient(x->sum(ContinuumMechanicsBase.predict(ψ, test, x).data.s[:,50]), p)
