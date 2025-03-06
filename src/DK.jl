@@ -2,7 +2,7 @@
 using ContinuumMechanicsBase
 using Tensors
 
-export DK, update!
+export DK, update
 
 mutable struct DK{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: ContinuumMechanicsBase.AbstractMaterialModel
     θ               ::T         # applied temperature

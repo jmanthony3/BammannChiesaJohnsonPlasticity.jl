@@ -8,7 +8,7 @@ using Reexport
 using Tensors # : *, ⊡, sqrt, dev
 export δ, vonMises, symmetricmagnitude, symmetricvonMises
 δ(i, j) = i == j ? 1.0 : 0.0 # helper function
-# vonMises(x) = (s = dev(x); sqrt(3.0/2.0 * s ⊡ s))
+symmetricvonMises(x) = (s = dev(x); sqrt(3.0/2.0 * s ⊡ s))
 symmetricmagnitude(tensor::Vector{<:Real}) = √( sum(tensor[1:3] .^ 2.) + 2sum(tensor[4:6] .^ 2.) )
 
 function symmetricvonMises(tensor::Union{Vector{<:Real}, SubArray{<:Real}})::AbstractFloat

@@ -43,7 +43,7 @@ end
 df_Tension_e002_295 = CSV.read("Data_Tension_e0002_T295.csv", DataFrame;
     header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
 test = BCJMetalUniaxialTest(df_Tension_e002_295[!, "Strain"][1:3], df_Tension_e002_295[!, "Stress"][1:3] .* 1e6, name="exp")
-bcj_loading = BCJMetalStrainControl(295.0, 2e-3, last(df_Tension_e002_295[!, "Strain"][1:3]), 200, :tension)
+bcj_loading = BCJMetalStrainControl(295.0, 2e-3, last(df_Tension_e002_295[!, "Strain"][1:3]), 3, :tension)
 ψ = Bammann1990Modeling(bcj_loading, params.μ)
 p = ComponentVector(
     C₁  = params.C₁,     C₂     = params.C₂,    # V
@@ -56,13 +56,26 @@ p = ComponentVector(
     C₁₅ = params.C₁₅,    C₁₆    = params.C₁₆,   # H
     C₁₇ = params.C₁₇,    C₁₈    = params.C₁₈    # R_s
 )
+
 # update!(ψ, p)
 res = ContinuumMechanicsBase.predict(ψ, test, p)
 # [x[1, 1] for x in res.data.λ]
-q = plot(df_Tension_e002_295[!, "Strain"][1:3], df_Tension_e002_295[!, "Stress"][1:3] .* 1e6, label="exp")
-plot!(q, [symmetricvonMises(x) for x in eachcol(res.data.λ)], [symmetricvonMises(x) for x in eachcol(res.data.s)], label="Bammann1990Modeling")
+plt = scatter(df_Tension_e002_295[!, "Strain"][1:3], df_Tension_e002_295[!, "Stress"][1:3] .* 1e6, label="exp")
+scatter!(plt, [x[1, 1] for x in res.data.λ], [symmetricvonMises(x) for x in res.data.s], label="Bammann1990Modeling")
+display(plt)
 
-prob = BCJProblem(ψ, test, p, ad_type=AutoFiniteDiff())
+q = ComponentVector(
+    C₁  = params.C₁,     C₂     = 0.0,    # V
+    C₃  = 0.0,           C₄     = 0.0,    # Y
+    C₅  = 0.0,           C₆     = 0.0,    # f
+    C₇  = 0.0,           C₈     = 0.0,    # r_d
+    C₉  = 0.0,           C₁₀    = 0.0,   # h
+    C₁₁ = 0.0,           C₁₂    = 0.0,   # r_s
+    C₁₃ = 0.0,           C₁₄    = 0.0,   # R_d
+    C₁₅ = 0.0,           C₁₆    = 0.0,   # H
+    C₁₇ = 0.0,           C₁₈    = 0.0    # R_s
+)
+prob = BCJProblem(ψ, test, p; ad_type=AutoFiniteDiff(), ui=q)
 sol = solve(prob, NelderMead())
 
 
