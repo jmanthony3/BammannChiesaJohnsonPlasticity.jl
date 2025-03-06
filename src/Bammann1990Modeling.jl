@@ -178,7 +178,6 @@ function ContinuumMechanicsBase.predict(
             ψ   ::Bammann1990Modeling,#{T, S},
             test::AbstractBCJMetalTest{T, T},
             p;
-            # ui=nothing,
             kwargs...,
         ) where {T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}}
     ϕ = ψ
@@ -338,11 +337,18 @@ function BCJProblem(
 ) where {T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}}
     function f(ps, p)
         ψ, test, qs, loss, ad_type, kwargs = p
-        for (name, value) in zip(keys(ps), ps)
-            qs[name] = value
+        function g(qs)
+            for (name, value) in zip(keys(qs), qs)
+                if !isnan(value)
+                    # @show value
+                    ps[name] = value
+                end
+            end
+            return ComponentVector(ps)
         end
         ϕ = deepcopy(ψ)
-        pred = predict(ϕ, test, qs; ad_type, kwargs...)
+        # @show g(qs)
+        pred = predict(ϕ, test, g(qs); ad_type, kwargs...)
         res = map(i -> loss.(symmetricvonMises(i[1]), only(i[2])), zip(pred.data.s[2:end], test.data.s)) |> mean
         @show res
         return res
@@ -383,6 +389,6 @@ function BCJProblem(
     # Check for Bounds
     # ϕ = ψ
     ϕ = deepcopy(ψ)
-    p = (ϕ, test, u0, loss, ad_type, kwargs)
-    return OptimizationProblem(func, ui, p; lb, ub, int, lcons, ucons, sense)
+    p = (ϕ, test, ui, loss, ad_type, kwargs)
+    return OptimizationProblem(func, u0, p; lb, ub, int, lcons, ucons, sense)
 end

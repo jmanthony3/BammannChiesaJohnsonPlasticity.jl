@@ -65,15 +65,15 @@ scatter!(plt, [x[1, 1] for x in res.data.λ], [symmetricvonMises(x) for x in res
 display(plt)
 
 q = ComponentVector(
-    C₁  = params.C₁,     C₂     = 0.0,    # V
-    C₃  = 0.0,           C₄     = 0.0,    # Y
-    C₅  = 0.0,           C₆     = 0.0,    # f
-    C₇  = 0.0,           C₈     = 0.0,    # r_d
-    C₉  = 0.0,           C₁₀    = 0.0,   # h
-    C₁₁ = 0.0,           C₁₂    = 0.0,   # r_s
-    C₁₃ = 0.0,           C₁₄    = 0.0,   # R_d
-    C₁₅ = 0.0,           C₁₆    = 0.0,   # H
-    C₁₇ = 0.0,           C₁₈    = 0.0    # R_s
+    C₁  = 0.99params.C₁,     C₂     = NaN,    # V
+    C₃  = NaN,           C₄     = NaN,    # Y
+    C₅  = NaN,           C₆     = NaN,    # f
+    C₇  = NaN,           C₈     = NaN,    # r_d
+    C₉  = NaN,           C₁₀    = NaN,   # h
+    C₁₁ = NaN,           C₁₂    = NaN,   # r_s
+    C₁₃ = NaN,           C₁₄    = NaN,   # R_d
+    C₁₅ = NaN,           C₁₆    = NaN,   # H
+    C₁₇ = NaN,           C₁₈    = NaN    # R_s
 )
 prob = BCJProblem(ψ, test, p; ad_type=AutoFiniteDiff(), ui=q)
 sol = solve(prob, NelderMead())
