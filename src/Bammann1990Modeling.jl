@@ -39,22 +39,22 @@ function Bammann1990Modeling(bcj::BCJMetalStrainControl, μ::AbstractFloat)
     # α__             = fill(1e-7, S) # fill(1e-7, 6) # alpha: kinematic hardening
     # κ               = 0.            # kappa: isotropic hardening
     # ## holding values
-    Δϵ              = zero(S) # zeros(T, 6)       # strain increment
+    Δϵ              = zeros(T, 6) # zero(S)       # strain increment
     # ξ__             = zero(S) # zeros(T, 6)       # overstress (S - 2/3*alpha)
     Δt              = (ϵₙ / N) / ϵ_dot
 
     # state evaluation - loading type
     ϵ_dot_effective = if loadtype ∈ (:tension, :compression)    # uniaxial tension/compression
         δϵ  = ϵₙ / N
-        # Δϵ .= [δϵ, -0.499δϵ, -0.499δϵ, 0., 0., 0.]
-        Δϵ  = S([δϵ, 0.0, 0.0, -0.499δϵ, 0.0, -0.499δϵ])
+        Δϵ .= [δϵ, -0.499δϵ, -0.499δϵ, 0., 0., 0.]
+        # Δϵ  = S([δϵ, 0.0, 0.0, -0.499δϵ, 0.0, -0.499δϵ])
         Δt  = δϵ / ϵ_dot            # timestep
         ϵ_dot
     elseif loadtype == :torsion                                 # torsion
         # convert equivalent strain to true shear strain
         ϵₙ *= 0.5 * √(3.)
-        # Δϵ .= [0., 0., 0., ϵₙ / N, 0., 0.]
-        Δϵ  = S([0.0, ϵₙ / N, 0.0, 0.0, 0.0, 0.0])
+        Δϵ .= [0., 0., 0., ϵₙ / N, 0., 0.]
+        # Δϵ  = S([0.0, ϵₙ / N, 0.0, 0.0, 0.0, 0.0])
         # equivalent strain rate to true shear strain rate
         Δt  = Δϵ[1, 2] / ϵ_dot      # timestep
         2ϵ_dot / √3.
@@ -123,18 +123,20 @@ function update(model::Bammann1990Modeling, σ__, α__, κ, ϵ__, ϵₚ__, (;
     # for i ∈ range(2, M)
     # end
     # trial guesses
-    α_mag       = norm(α__)
+    α_mag       = symmetricmagnitude(α__)
+    # α_mag       = norm(α__)
     # trial guesses: ISVs (from recovery) and stress
     recovery    = Δt * (r_d * ϵ_dot_effective + r_s) * α_mag    # recovery for alpha (kinematic hardening)
     Recovery    = Δt * (R_d * ϵ_dot_effective + R_s) * κ  # recovery for kappa (isotropic hardening)
-    # αₜᵣ__       = state.α__  .* (1 - recovery)
-    αₜᵣ__       = α__   * (1 - recovery)
+    αₜᵣ__       = α__  .* (1 - recovery)
+    # αₜᵣ__       = α__   * (1 - recovery)
     κₜᵣ         = κ     * (1 - Recovery)
     σₜᵣ__       = σ__ + (2μ * Δϵ)                         # trial stress
     ξ__   = @. σₜᵣ__ - αₜᵣ__                                             # trial overstress original
     # ξ__         = σₜᵣ__ - αₜᵣ__                                             # trial overstress original
     # ξ__          .= σₜᵣ__ - sqrt23 .* αₜᵣ__                                 # trial overstress FIT
-    ξ_mag       = norm(ξ__)
+    ξ_mag       = symmetricmagnitude(ξ__)
+    # ξ_mag       = norm(ξ__)
 
     # yield criterion
     flow_rule = ξ_mag - κₜᵣ - β                                             # same as vumat20
@@ -149,17 +151,17 @@ function update(model::Bammann1990Modeling, σ__, α__, κ, ϵ__, ϵₚ__, (;
     else                    # plastic
         # Radial Return
         Δγ                      = flow_rule / (2μ + 2(h + H) / 3)     # original
-        # n̂                       = state.ξ__ ./ ξ_mag
-        n̂                       = ξ__ / ξ_mag
+        n̂                       = ξ__ ./ ξ_mag
+        # n̂                       = ξ__ / ξ_mag
         σ__prev                 = σ__
-        # state.σ__               = @. σₜᵣ__ - (2state.μ * Δγ) .* n̂
-        # state.α__               = @. αₜᵣ__ + ( h * Δγ) .* n̂
-        σ__               = @. σₜᵣ__ - (2μ * Δγ) * n̂
-        α__               = @. αₜᵣ__ + ( h * Δγ) * n̂
+        σ__               = @. σₜᵣ__ - (2μ * Δγ) .* n̂
+        α__               = @. αₜᵣ__ + ( h * Δγ) .* n̂
+        # σ__               = @. σₜᵣ__ - (2μ * Δγ) * n̂
+        # α__               = @. αₜᵣ__ + ( h * Δγ) * n̂
         # state.ξ__               = state.σ__ - state.α__
         κ                 = κₜᵣ   + (H * Δγ)  # original
-        # state.ϵₚ__             += @. (state.Δϵ - ((state.σ__ - σ__prev) ./ 2state.μ))
-        ϵₚ__             += @. (Δϵ - ((σ__ - σ__prev) / μ))
+        ϵₚ__             += @. (Δϵ - ((σ__ - σ__prev) ./ 2μ))
+        # ϵₚ__             += @. (Δϵ - ((σ__ - σ__prev) / μ))
         ϵ__              += @. Δϵ
     end
     ϵ_dot_plastic__  = @. (f * sinh(V \ (ξ_mag - κ - Y)) / ξ_mag) * ξ__
@@ -188,13 +190,6 @@ function ContinuumMechanicsBase.predict(
     #         p[name] = value
     #     end
     # end
-    # ϵ⃗ = []
-    # σ⃗ = []
-    # push!(ϵ⃗,ψ.ϵ__)
-    # push!(σ⃗, ψ.σ__)
-    # ϵ⃗ = zeros(T, (6, ψ.N + 1)) # zeros(S, ψ.N + 1) # ψ.ϵ__ .+ [ψ.Δϵ * i for i ∈ range(0, test.N)]
-    # σ⃗ = zeros(T, (6, ψ.N + 1)) # zeros(S, ψ.N + 1)
-    # ϵ⃗[:, 1], σ⃗[:, 1] = ϕ.ϵ__, ϕ.σ__
     θ       = ϕ.θ
     ϵ_dot_effective   = ϕ.ϵ_dot_effective
     μ       = ϕ.μ
@@ -208,32 +203,40 @@ function ContinuumMechanicsBase.predict(
     # S       = SymmetricTensor{2, 3, T}
     # array declarations
     ## OSVs
-    σ__             = zero(s) # zeros(T, 6)       # deviatoric stress
-    ϵₚ__            = zero(s) # zeros(T, 6)       # plastic strain
-    ϵ_dot_plastic__ = zero(s) # zeros(T, 6)       # plastic strain rate
-    ϵ__             = zero(s) # zeros(T, 6)       # total strain
+    σ__             = zeros(T, 6) # zeros(s)       # deviatoric stress
+    ϵₚ__            = zeros(T, 6) # zeros(s)       # plastic strain
+    ϵ_dot_plastic__ = zeros(T, 6) # zeros(s)       # plastic strain rate
+    ϵ__             = zeros(T, 6) # zeros(s)       # total strain
     ## ISVs
-    α__             = fill(1e-7, s) # fill(1e-7, 6) # alpha: kinematic hardening
+    α__             = fill(1e-7, 6) # fill(1e-7, s) # alpha: kinematic hardening
     κ               = 0.            # kappa: isotropic hardening
     ## holding values
-    Δϵ              = zero(s) # zeros(T, 6)       # strain increment
-    ξ__             = zero(s) # zeros(T, 6)       # overstress (S - 2/3*alpha)
-    ϵ⃗ = zeros(s, M) # ψ.ϵ__ .+ [ψ.Δϵ * i for i ∈ range(0, test.N)]
-    σ⃗ = zeros(s, M)
-    ϵ⃗[1], σ⃗[1] = s(ϵ__), s(σ__)
+    Δϵ              = zeros(T, 6) # zeros(s)       # strain increment
+    ξ__             = zeros(T, 6) # zeros(s)       # overstress (S - 2/3*alpha)
+    # ϵ⃗ = zeros(s, M) # ψ.ϵ__ .+ [ψ.Δϵ * i for i ∈ range(0, test.N)]
+    # σ⃗ = zeros(s, M)
+    # ϵ⃗[1], σ⃗[1] = s(ϵ__), s(σ__)
+    ϵ⃗ = []
+    σ⃗ = []
+    push!(ϵ⃗, ϵ__)
+    push!(σ⃗, σ__)
+    # ϵ⃗ = zeros(T, (6, M)) # zeros(S, ψ.N + 1) # ψ.ϵ__ .+ [ψ.Δϵ * i for i ∈ range(0, test.N)]
+    # σ⃗ = zeros(T, (6, M)) # zeros(S, ψ.N + 1)
+    # ϵ⃗[:, 1], σ⃗[:, 1] = ϵ__, σ__
     # @show α__, κ
     for i ∈ range(2, M)
         σ__, α__, κ, ϵ__, ϵₚ__ = update(ϕ, σ__, α__, κ, ϵ__, ϵₚ__, p)
         # @show α__, κ
-        # push!(ϵ⃗, ϕ.ϵ__)
-        # push!(σ⃗, ϕ.σ__)
-        # ϵ⃗[:, i], σ⃗[:, i] = ϕ.ϵ__, ϕ.σ__
-        # @show s(ϕ.ϵ__)
-        # @show s(ϕ.σ__)
-        ϵ⃗[i], σ⃗[i] = s(ϵ__), s(σ__)
+        # @show ϵ__, σ__
+        push!(ϵ⃗, ϵ__)
+        push!(σ⃗, σ__)
+        # ϵ⃗[:, i], σ⃗[:, i] = ϵ__, σ__
+        # # @show s(ϕ.ϵ__)
+        # # @show s(ϕ.σ__)
+        # # ϵ⃗[i], σ⃗[i] = s(ϵ__), s(σ__)
     end
-    return (data=(λ=ϵ⃗, s=σ⃗),)
-    # return (data=(λ=hcat(ϵ⃗...), s=hcat(σ⃗...)),)
+    # return (data=(λ=ϵ⃗, s=σ⃗),)
+    return (data=(λ=hcat(ϵ⃗...), s=hcat(σ⃗...)),)
 end
 
 struct BCJMetalDataEntry{T, S}
@@ -349,7 +352,8 @@ function BCJProblem(
         ϕ = deepcopy(ψ)
         # @show g(qs)
         pred = predict(ϕ, test, g(qs); ad_type, kwargs...)
-        res = map(i -> loss.(symmetricvonMises(i[1]), only(i[2])), zip(pred.data.s[2:end], test.data.s)) |> mean
+        res = map(i -> loss.(symmetricvonMises(i[1]), only(i[2])), zip(eachcol(pred.data.s[2:end]), test.data.s)) |> mean
+        # res = map(i -> loss.(vonMises(i[1]), only(i[2])), zip(pred.data.s[2:end], test.data.s)) |> mean
         @show res
         return res
     end

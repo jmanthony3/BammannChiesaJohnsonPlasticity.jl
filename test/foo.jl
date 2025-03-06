@@ -61,7 +61,8 @@ p = ComponentVector(
 res = ContinuumMechanicsBase.predict(ψ, test, p)
 # [x[1, 1] for x in res.data.λ]
 plt = scatter(df_Tension_e002_295[!, "Strain"][1:3], df_Tension_e002_295[!, "Stress"][1:3] .* 1e6, label="exp")
-scatter!(plt, [x[1, 1] for x in res.data.λ], [symmetricvonMises(x) for x in res.data.s], label="Bammann1990Modeling")
+scatter!(plt, [x[1] for x in eachcol(res.data.λ)], [symmetricvonMises(x) for x in eachcol(res.data.s)], label="Bammann1990Modeling")
+# scatter!(plt, [x[1, 1] for x in res.data.λ], [vonMises(x) for x in res.data.s], label="Bammann1990Modeling")
 display(plt)
 
 q = ComponentVector(
@@ -75,8 +76,8 @@ q = ComponentVector(
     C₁₅ = NaN,           C₁₆    = NaN,   # H
     C₁₇ = NaN,           C₁₈    = NaN    # R_s
 )
-prob = BCJProblem(ψ, test, p; ad_type=AutoFiniteDiff(), ui=q)
-sol = solve(prob, NelderMead())
+prob = BCJProblem(ψ, test, p; ad_type=AutoForwardDiff(), ui=q)
+sol = solve(prob, LBFGS())
 
 
 # grad=ForwardDiff.gradient(x->sum(ContinuumMechanicsBase.predict(ψ, test, x).data.s[:,50]), p)
