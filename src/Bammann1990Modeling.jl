@@ -190,14 +190,14 @@ function ContinuumMechanicsBase.predict(
     #         p[name] = value
     #     end
     # end
-    θ       = ϕ.θ
-    ϵ_dot_effective   = ϕ.ϵ_dot_effective
-    μ       = ϕ.μ
-    ϵₙ      = ϕ.ϵₙ
+    # θ       = ϕ.θ
+    # ϵ_dot_effective   = ϕ.ϵ_dot_effective
+    # μ       = ϕ.μ
+    # ϵₙ      = ϕ.ϵₙ
     N       = ϕ.N
-    Δϵ      = ϕ.Δϵ
-    Δt      = ϕ.Δt
-    # loadtype= ϕ.loadtype
+    # Δϵ      = ϕ.Δϵ
+    # Δt      = ϕ.Δt
+    # # loadtype= ϕ.loadtype
     M       = N + 1
     # T       = typeof(float(θ))
     # S       = SymmetricTensor{2, 3, T}
@@ -205,26 +205,32 @@ function ContinuumMechanicsBase.predict(
     ## OSVs
     σ__             = zeros(T, 6) # zeros(s)       # deviatoric stress
     ϵₚ__            = zeros(T, 6) # zeros(s)       # plastic strain
-    ϵ_dot_plastic__ = zeros(T, 6) # zeros(s)       # plastic strain rate
+    # ϵ_dot_plastic__ = zeros(T, 6) # zeros(s)       # plastic strain rate
     ϵ__             = zeros(T, 6) # zeros(s)       # total strain
     ## ISVs
     α__             = fill(1e-7, 6) # fill(1e-7, s) # alpha: kinematic hardening
     κ               = 0.            # kappa: isotropic hardening
     ## holding values
-    Δϵ              = zeros(T, 6) # zeros(s)       # strain increment
+    # Δϵ              = zeros(T, 6) # zeros(s)       # strain increment
     ξ__             = zeros(T, 6) # zeros(s)       # overstress (S - 2/3*alpha)
     # ϵ⃗ = zeros(s, M) # ψ.ϵ__ .+ [ψ.Δϵ * i for i ∈ range(0, test.N)]
     # σ⃗ = zeros(s, M)
     # ϵ⃗[1], σ⃗[1] = s(ϵ__), s(σ__)
+    # ϵ⃗ = []
+    # σ⃗ = []
+    # ϵ__ = [first(test.data.λ[1]), -0.499first(test.data.λ[1]), -0.499first(test.data.λ[1]), 0.0, 0.0, 0.0]
+    # σ__ = [first(test.data.s[1]), 0.0, 0.0, 0.0, 0.0, 0.0]
     ϵ⃗ = []
     σ⃗ = []
+    # @show ϵ__, σ__
     push!(ϵ⃗, ϵ__)
     push!(σ⃗, σ__)
     # ϵ⃗ = zeros(T, (6, M)) # zeros(S, ψ.N + 1) # ψ.ϵ__ .+ [ψ.Δϵ * i for i ∈ range(0, test.N)]
     # σ⃗ = zeros(T, (6, M)) # zeros(S, ψ.N + 1)
     # ϵ⃗[:, 1], σ⃗[:, 1] = ϵ__, σ__
     # @show α__, κ
-    for i ∈ range(2, M)
+    # for i ∈ range(2, N)
+    for i ∈ range(2, M + 1)
         σ__, α__, κ, ϵ__, ϵₚ__ = update(ϕ, σ__, α__, κ, ϵ__, ϵₚ__, p)
         # @show α__, κ
         # @show ϵ__, σ__
@@ -261,7 +267,8 @@ struct BCJMetalUniaxialTest{T, S} <: AbstractBCJMetalTest{T, S}
     function BCJMetalUniaxialTest(λ₁, s₁; name, incompressible = true)
         @assert length(λ₁) == length(s₁) "Inputs must be the same length"
         if incompressible
-            λ₂ = λ₃ = @. sqrt(1 / λ₁)
+            # λ₂ = λ₃ = @. sqrt(1 / λ₁)
+            λ₂ = λ₃ = @. -0.499λ₁
         else
             λ₂ = λ₃ = Vector{eltype(λ₁)}(undef, length(λ₁))
         end
@@ -272,7 +279,8 @@ struct BCJMetalUniaxialTest{T, S} <: AbstractBCJMetalTest{T, S}
     end
     function BCJMetalUniaxialTest(λ₁; name, incompressible = true)
         if incompressible
-            λ₂ = λ₃ = @. sqrt(1 / λ₁)
+            # λ₂ = λ₃ = @. sqrt(1 / λ₁)
+            λ₂ = λ₃ = @. -0.499λ₁
         else
             λ₂ = λ₃ = Vector{eltype(λ₁)}(undef, length(λ₁))
         end
@@ -340,19 +348,25 @@ function BCJProblem(
 ) where {T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}}
     function f(ps, p)
         ψ, test, qs, loss, ad_type, kwargs = p
-        function g(qs)
-            for (name, value) in zip(keys(qs), qs)
-                if !isnan(value)
-                    # @show value
-                    ps[name] = value
+        function g(ps, qs)
+            if any(!isnan, qs)
+                for (name, value) in zip(keys(qs), qs)
+                    if !isnan(value)
+                        # @show value
+                        ps[name] = value
+                    end
                 end
             end
             return ComponentVector(ps)
         end
         ϕ = deepcopy(ψ)
         # @show g(qs)
-        pred = predict(ϕ, test, g(qs); ad_type, kwargs...)
-        res = map(i -> loss.(symmetricvonMises(i[1]), only(i[2])), zip(eachcol(pred.data.s[2:end]), test.data.s)) |> mean
+        pred = predict(ϕ, test, g(ps, qs); ad_type, kwargs...)
+        resλ = [first(x) for x in eachcol(pred.data.λ)]
+        testλ = [first(x) for x in test.data.λ]
+        s = collect([[x...] for x in eachcol(pred.data.s)[[findlast(x .>= resλ) for x in testλ]]])
+        @show symmetricvonMises.(s) - [only(x) for x in test.data.s]
+        res = map(i -> loss.(symmetricvonMises(i[1]), only(i[2])), zip(s, test.data.s)) |> mean
         # res = map(i -> loss.(vonMises(i[1]), only(i[2])), zip(pred.data.s[2:end], test.data.s)) |> mean
         @show res
         return res

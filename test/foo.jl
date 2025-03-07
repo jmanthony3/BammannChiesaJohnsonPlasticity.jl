@@ -42,8 +42,8 @@ params      = begin
 end
 df_Tension_e002_295 = CSV.read("Data_Tension_e0002_T295.csv", DataFrame;
     header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
-test = BCJMetalUniaxialTest(df_Tension_e002_295[!, "Strain"][1:3], df_Tension_e002_295[!, "Stress"][1:3] .* 1e6, name="exp")
-bcj_loading = BCJMetalStrainControl(295.0, 2e-3, last(df_Tension_e002_295[!, "Strain"][1:3]), 3, :tension)
+test = BCJMetalUniaxialTest(df_Tension_e002_295[!, "Strain"][1:4], df_Tension_e002_295[!, "Stress"][1:4] .* 1e6, name="exp")
+bcj_loading = BCJMetalStrainControl(295.0, 2e-3, last(df_Tension_e002_295[!, "Strain"][1:4]), 200, :tension)
 ψ = Bammann1990Modeling(bcj_loading, params.μ)
 p = ComponentVector(
     C₁  = params.C₁,     C₂     = params.C₂,    # V
@@ -60,24 +60,24 @@ p = ComponentVector(
 # update!(ψ, p)
 res = ContinuumMechanicsBase.predict(ψ, test, p)
 # [x[1, 1] for x in res.data.λ]
-plt = scatter(df_Tension_e002_295[!, "Strain"][1:3], df_Tension_e002_295[!, "Stress"][1:3] .* 1e6, label="exp")
+plt = scatter(df_Tension_e002_295[!, "Strain"][1:4], df_Tension_e002_295[!, "Stress"][1:4] .* 1e6, label="exp")
 scatter!(plt, [x[1] for x in eachcol(res.data.λ)], [symmetricvonMises(x) for x in eachcol(res.data.s)], label="Bammann1990Modeling")
 # scatter!(plt, [x[1, 1] for x in res.data.λ], [vonMises(x) for x in res.data.s], label="Bammann1990Modeling")
 display(plt)
 
-q = ComponentVector(
-    C₁  = 0.99params.C₁,     C₂     = NaN,    # V
-    C₃  = NaN,           C₄     = NaN,    # Y
-    C₅  = NaN,           C₆     = NaN,    # f
-    C₇  = NaN,           C₈     = NaN,    # r_d
-    C₉  = NaN,           C₁₀    = NaN,   # h
-    C₁₁ = NaN,           C₁₂    = NaN,   # r_s
-    C₁₃ = NaN,           C₁₄    = NaN,   # R_d
-    C₁₅ = NaN,           C₁₆    = NaN,   # H
-    C₁₇ = NaN,           C₁₈    = NaN    # R_s
-)
-prob = BCJProblem(ψ, test, p; ad_type=AutoForwardDiff(), ui=q)
-sol = solve(prob, LBFGS())
+# q = ComponentVector(
+#     C₁  = NaN,          C₂     = 0.99params.C₂,    # V
+#     C₃  = NaN,          C₄     = NaN,    # Y
+#     C₅  = NaN,          C₆     = NaN,    # f
+#     C₇  = NaN,          C₈     = NaN,    # r_d
+#     C₉  = NaN,          C₁₀    = NaN,   # h
+#     C₁₁ = NaN,          C₁₂    = NaN,   # r_s
+#     C₁₃ = NaN,          C₁₄    = NaN,   # R_d
+#     C₁₅ = NaN,          C₁₆    = NaN,   # H
+#     C₁₇ = NaN,          C₁₈    = NaN    # R_s
+# )
+# prob = BCJProblem(ψ, test, p; ad_type=AutoFiniteDiff(), ui=q)
+# sol = solve(prob, NelderMead())
 
 
-# grad=ForwardDiff.gradient(x->sum(ContinuumMechanicsBase.predict(ψ, test, x).data.s[:,50]), p)
+# # grad=ForwardDiff.gradient(x->sum(ContinuumMechanicsBase.predict(ψ, test, x).data.s[:,50]), p)
