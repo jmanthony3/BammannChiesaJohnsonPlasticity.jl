@@ -66,7 +66,7 @@ else
 end
 println(err)
 p = scatter(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, label="Data", ylims=(0., 2e9))
-plot!(p, bcj_history_Tension_e002_295.ϵ__[1, :], σvM, label="Model")
+plot!(p, bcj_history_Tension_e002_295.ϵ__[1, :], σvM, label="DK")
 display(p)
 
 # df_Tension_e570_295 = CSV.read("Data_Tension_e570_T295.csv", DataFrame;
