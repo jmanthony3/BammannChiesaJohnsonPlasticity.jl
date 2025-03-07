@@ -1,7 +1,24 @@
 using ContinuumMechanicsBase
-using Tensors
 
-export BCJMetal, BCJMetalStrainControl
+using Tensors # : *, ⊡, sqrt, dev
+export δ, vonMises, symmetricmagnitude, symmetricvonMises
+δ(i, j) = i == j ? 1.0 : 0.0 # helper function
+vonMises(x::SecondOrderTensor) = (s = dev(x); sqrt(3.0/2.0 * s ⊡ s))
+symmetricmagnitude(tensor::Vector{<:Real}) = √( sum(tensor[1:3] .^ 2.) + 2sum(tensor[4:6] .^ 2.) )
+
+function symmetricvonMises(tensor::Union{Vector{<:Real}, SubArray{<:Real}}) # ::AbstractFloat
+    σvM = sum(map(x->x^2., [tensor[1] - tensor[2], tensor[2] - tensor[3], tensor[3] - tensor[1]])) + (
+        6sum(map(x->x^2., [tensor[4], tensor[5], tensor[6]])))
+    return √(σvM / 2.)
+end
+
+symmetricvonMises(tensor::Matrix{<:Real})::Vector{AbstractFloat} = map(symmetricvonMises, eachcol(tensor))
+symmetricvonMises(tensor) = map(symmetricvonMises, eachcol(tensor))
+
+
+
+export BCJMetal, BCJMetalStrainControl, AbstractBCJMetalTest, BCJMetalDataEntry, BCJMetalUniaxialTest
+export parameter_bounds
 
 abstract type BCJMetal                      <: AbstractBCJ end
 # abstract type ISVMetal{T<:BCJMetal} end
@@ -18,88 +35,79 @@ struct BCJMetalStrainControl{T1<:Integer, T2<:AbstractFloat} <: ContinuumMechani
     # constants   ::OrderedDict{String, T2}  # material constants
 end
 
-# mutable struct BCJMetalConfigurationCurrent{Version<:BCJMetal, T<:AbstractFloat} <: ContinuumMechanicsBase.AbstractMaterialState
-#     N               ::Integer   # number of strain increments
-#     θ               ::T         # applied temperature
-#     μ               ::T         # shear modulus at temperature, θ
-#     σ__             ::Vector{T} # deviatoric stress tensor
-#     ϵₚ__            ::Vector{T} # plastic strain tensor
-#     ϵ_dot_plastic__ ::Vector{T} # plastic strain rate
-#     ϵ__             ::Vector{T} # total strain tensor
-#     ϵ_dot_effective ::T         # strain rate (effective)
-#     Δϵ              ::Vector{T} # total strain tensor step
-#     Δt              ::T         # time step
-#     V               ::T         # strain rate sensitivity of yield stress at temperature, θ
-#     Y               ::T         # rate independent yield stress at temperature, θ
-#     f               ::T         # strain rate at which yield becomes strain rate dependent at temperature, θ
-#     h               ::T         # kinematic hardening modulus at temperature, θ
-#     r_d             ::T         # dynamic recovery of kinematic hardening at temperature, θ
-#     r_s             ::T         # diffusion controlled static/thermal recovery of kinematic hardening at temperature, θ
-#     H               ::T         # isotropic hardening modulus at temperature, θ
-#     R_d             ::T         # dynamic recovery of isotropic hardening at temperature, θ
-#     R_s             ::T         # diffusion controlled static/thermal recovery of isotropic hardening at temperature, θ
-#     α__             ::Vector{T} # kinematic hardening tensor
-#     κ               ::T         # isotropic hardening scalar
-#     β               ::T         # yield function
-#     ξ__             ::Vector{T} # overstress tensor (S - 2/3*alpha)
-#     σₜᵣ__           ::Vector{T} # deviatoric stress tensor (trial)
-#     αₜᵣ__           ::Vector{T} # kinematic hardening tensor (trial)
-#     κₜᵣ             ::T         # isotropic hardening (trial)
-# end
+abstract type AbstractBCJMetalTest{T, S} <: ContinuumMechanicsBase.AbstractMaterialTest end
 
-# # mutable struct BCJMetalConfigurationHistory{T<:AbstractFloat} <: AbstractConfigurationHistory
-# #     σ__             ::Matrix{T} # deviatoric stress tensor
-# #     ϵₚ__            ::Matrix{T} # plastic strain tensor
-# #     ϵ_dot_plastic__ ::Matrix{T} # plastic strain rate
-# #     ϵ__             ::Matrix{T} # total strain tensor
-# #     α__             ::Matrix{T} # kinematic hardening tensor
-# #     κ               ::Vector{T} # isotropic hardening scalar
-# #     ξ__             ::Matrix{T} # overstress tensor (S - 2/3*alpha)
-# # end
+using ComponentArrays, StructArrays
+struct BCJMetalDataEntry{T, S}
+    λ::Vector{T}
+    s::Vector{S}
+end
 
-# # function Base.:+(x::T, y::T) where {T<:BCJMetalConfigurationHistory}
-# #     return BCJMetalConfigurationHistory{eltype(x.σ__)}(
-# #         hcat(x.σ__,                y.σ__),
-# #         hcat(x.ϵₚ__,               y.ϵₚ__),
-# #         hcat(x.ϵ_dot_plastic__,    y.ϵ_dot_plastic__),
-# #         hcat(x.ϵ__,                y.ϵ__ .+ x.ϵ__[:, end]),
-# #         hcat(x.α__,                y.α__),
-# #         vcat(x.κ,                  y.κ),
-# #         hcat(x.ξ__,                y.ξ__)
-# #     )
-# # end
+struct BCJMetalUniaxialTest{T, S} <: AbstractBCJMetalTest{T, S}
+    data::StructVector
+    name::String
+    """
+    $(SIGNATURES)
 
-# function Base.copyto!(reference::T, history::T) where {T<:BCJMetalConfigurationCurrent}
-#     # for attr ∈ (:θ, :V, :Y, :f, :h, :r_d, :r_s, :H, :R_d, :R_s, :α__, :κ, :β, :ξ__)
-#     #     setfield!(reference, attr, getfield(current, attr))
-#     # end
-#     reference.σ__               = history.σ__[:, end]
-#     # reference.ϵₚ__              = history.ϵₚ__[:, end]
-#     # reference.ϵ_dot_plastic__   = history.ϵ_dot_plastic__[:, end]
-#     # reference.ϵ__               = history.ϵ__[:, end]
-#     reference.α__               = history.α__[:, end]
-#     reference.κ                 = history.κ[end]
-#     reference.ξ__               = history.ξ__[:, end]
-#     return nothing
-# end
+    Creates an object storing results from a uniaxial test of a hyperelatic  material.
 
-# # function PlasticityBase.record!(history::BCJMetalConfigurationHistory, i::Integer, current::BCJMetalConfigurationCurrent)
-# #     history.σ__[:, i]              .= current.σ__
-# #     history.ϵₚ__[:, i]             .= current.ϵₚ__
-# #     history.ϵ_dot_plastic__[:, i]  .= current.ϵ_dot_plastic__
-# #     history.ϵ__[:, i]              .= current.ϵ__
-# #     history.α__[:, i]              .= current.α__
-# #     history.κ[i]                    = current.κ
-# #     history.ξ__[:, i]              .= current.ξ__
-# #     return nothing
-# # end
+    # Arguments:
+    - `λ₁`: Vector of uniaxial stretches
+    - `s₁`: Vector of experiemntal stresses (optional)
+    - `name`: string for the name of the test
+    - `incompressible`: `true` if the material can be assumed to be incompressible.
+    """
+    function BCJMetalUniaxialTest(λ₁, s₁; name, incompressible = true)
+        @assert length(λ₁) == length(s₁) "Inputs must be the same length"
+        if incompressible
+            # λ₂ = λ₃ = @. sqrt(1 / λ₁)
+            λ₂ = λ₃ = @. -0.499λ₁
+        else
+            λ₂ = λ₃ = Vector{eltype(λ₁)}(undef, length(λ₁))
+        end
+        λ = collect.(zip(λ₁, λ₂, λ₃))
+        s = collect.(zip(s₁))
+        data = StructArray{BCJMetalDataEntry}((λ, s))
+        new{eltype(eltype(λ)),eltype(eltype(s))}(data, name)
+    end
+    function BCJMetalUniaxialTest(λ₁; name, incompressible = true)
+        if incompressible
+            # λ₂ = λ₃ = @. sqrt(1 / λ₁)
+            λ₂ = λ₃ = @. -0.499λ₁
+        else
+            λ₂ = λ₃ = Vector{eltype(λ₁)}(undef, length(λ₁))
+        end
+        λ = collect.(zip(λ₁, λ₂, λ₃))
+        s = collect.(zip(Vector{eltype(λ₁)}(undef, length(λ₁))))
+        data = StructArray{BCJMetalDataEntry}((λ, s))
+        new{eltype(eltype(λ)),eltype(eltype(s))}(data, name)
+    end
+end
 
-# # symmetricmagnitude(tensor::Vector{<:Real}) = √( sum(tensor[1:3] .^ 2.) + 2sum(tensor[4:6] .^ 2.) )
+function parameter_bounds(::ContinuumMechanicsBase.AbstractMaterialModel, ::Any)
+    lb = nothing
+    ub = nothing
+    return (lb = lb, ub = ub)
+end
 
-# # function symmetricvonMises(tensor::Union{Vector{<:Real}, SubArray{<:Real}})::AbstractFloat
-# #     σvM = sum(map(x->x^2., [tensor[1] - tensor[2], tensor[2] - tensor[3], tensor[3] - tensor[1]])) + (
-# #         6sum(map(x->x^2., [tensor[4], tensor[5], tensor[6]])))
-# #     return √(σvM / 2.)
-# # end
-
-# # symmetricvonMises(tensor::Matrix{<:Real})::Vector{AbstractFloat} = map(symmetricvonMises, eachcol(tensor))
+function parameter_bounds(
+            ψ       ::ContinuumMechanicsBase.AbstractMaterialModel,
+            tests   ::Vector{Any},
+        )
+    bounds = map(Base.Fix1(parameter_bounds, ψ), tests)
+    lbs = getfield.(bounds, :lb)
+    ubs = getfield.(bounds, :ub)
+    if !(eltype(lbs) <: Nothing)
+        lb_ps = fieldnames(eltype(lbs))
+        lb = map(p -> p .=> maximum(getfield.(lbs, p)), lb_ps) |> NamedTuple
+    else
+        lb = nothing
+    end
+    if !(eltype(ubs) <: Nothing)
+        ub_ps = fieldnames(eltype(ubs))
+        ub = map(p -> p .=> minimum(getfield.(ubs, p)), ub_ps) |> NamedTuple
+    else
+        ub = nothing
+    end
+    return (lb = lb, ub = ub)
+end

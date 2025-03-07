@@ -10,7 +10,7 @@ using Plots
 using Test
 
 params      = begin
-    df          = CSV.read("Props_BCJ_4340-Bammann1990Modeling.csv", DataFrame; header=true, delim=',', types=[String, Float64])
+    df          = CSV.read("Props_BCJ_4340_fit.csv", DataFrame; header=true, delim=',', types=[String, Float64])
     rowsofconstants = findall(occursin.(r"C\d{2}", df[!, "Comment"]))
     C_0         = Vector{Float64}(undef, 20)
     C_0[rowsofconstants] .= df[!, "For Calibration with vumat"][rowsofconstants]
@@ -42,9 +42,9 @@ params      = begin
 end
 df_Tension_e002_295 = CSV.read("Data_Tension_e0002_T295.csv", DataFrame;
     header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
-test = BCJMetalUniaxialTest(df_Tension_e002_295[!, "Strain"][1:4], df_Tension_e002_295[!, "Stress"][1:4] .* 1e6, name="exp")
-bcj_loading = BCJMetalStrainControl(295.0, 2e-3, last(df_Tension_e002_295[!, "Strain"][1:4]), 200, :tension)
-ψ = Bammann1990Modeling(bcj_loading, params.μ)
+test = BCJMetalUniaxialTest(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, name="exp")
+bcj_loading = BCJMetalStrainControl(295.0, 2e-3, last(df_Tension_e002_295[!, "Strain"]), 200, :tension)
+ψ = DK(bcj_loading, params.μ)
 p = ComponentVector(
     C₁  = params.C₁,     C₂     = params.C₂,    # V
     C₃  = params.C₃,     C₄     = params.C₄,    # Y
@@ -54,15 +54,16 @@ p = ComponentVector(
     C₁₁ = params.C₁₁,    C₁₂    = params.C₁₂,   # r_s
     C₁₃ = params.C₁₃,    C₁₄    = params.C₁₄,   # R_d
     C₁₅ = params.C₁₅,    C₁₆    = params.C₁₆,   # H
-    C₁₇ = params.C₁₇,    C₁₈    = params.C₁₈    # R_s
+    C₁₇ = params.C₁₇,    C₁₈    = params.C₁₈,   # R_s
+    C₁₉ = params.C₁₉,    C₂₀    = params.C₂₀    # Y_adj
 )
 
 # update!(ψ, p)
 res = ContinuumMechanicsBase.predict(ψ, test, p)
 # [x[1, 1] for x in res.data.λ]
-plt = scatter(df_Tension_e002_295[!, "Strain"][1:4], df_Tension_e002_295[!, "Stress"][1:4] .* 1e6, label="exp")
-scatter!(plt, [x[1] for x in eachcol(res.data.λ)], [symmetricvonMises(x) for x in eachcol(res.data.s)], label="Bammann1990Modeling")
-# scatter!(plt, [x[1, 1] for x in res.data.λ], [vonMises(x) for x in res.data.s], label="Bammann1990Modeling")
+plt = scatter(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, label="exp")
+scatter!(plt, [x[1] for x in eachcol(res.data.λ)], [symmetricvonMises(x) for x in eachcol(res.data.s)], label="DK")
+# scatter!(plt, [x[1, 1] for x in res.data.λ], [vonMises(x) for x in res.data.s], label="DK")
 display(plt)
 
 # q = ComponentVector(

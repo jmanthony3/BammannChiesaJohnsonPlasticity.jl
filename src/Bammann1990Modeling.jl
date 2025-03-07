@@ -7,7 +7,7 @@ using Optimization
 using StructArrays
 using Tensors
 
-export Bammann1990Modeling, update, AbstractBCJMetalTest, predict, BCJMetalDataEntry, BCJMetalUniaxialTest, parameters, parameter_bounds, BCJProblem
+export Bammann1990Modeling, update, predict, parameters, BCJProblem
 
 # mutable struct Bammann1990Modeling{T, S<:SymmetricTensor{2, 3, T}} <: BCJMetal
 struct Bammann1990Modeling <: BCJMetal
@@ -173,8 +173,6 @@ end
     # - I suspect, that for the below to work, the above must just take the current material state
     #       and applied strain increment to return the deviatoric stress for the below to work.
 
-abstract type AbstractBCJMetalTest{T, S} <: ContinuumMechanicsBase.AbstractMaterialTest end
-
 ## Predict overloads
 function ContinuumMechanicsBase.predict(
             ψ   ::Bammann1990Modeling,#{T, S},
@@ -245,52 +243,6 @@ function ContinuumMechanicsBase.predict(
     return (data=(λ=hcat(ϵ⃗...), s=hcat(σ⃗...)),)
 end
 
-struct BCJMetalDataEntry{T, S}
-    λ::Vector{T}
-    s::Vector{S}
-end
-
-struct BCJMetalUniaxialTest{T, S} <: AbstractBCJMetalTest{T, S}
-    data::StructVector
-    name::String
-    """
-    $(SIGNATURES)
-
-    Creates an object storing results from a uniaxial test of a hyperelatic  material.
-
-    # Arguments:
-    - `λ₁`: Vector of uniaxial stretches
-    - `s₁`: Vector of experiemntal stresses (optional)
-    - `name`: string for the name of the test
-    - `incompressible`: `true` if the material can be assumed to be incompressible.
-    """
-    function BCJMetalUniaxialTest(λ₁, s₁; name, incompressible = true)
-        @assert length(λ₁) == length(s₁) "Inputs must be the same length"
-        if incompressible
-            # λ₂ = λ₃ = @. sqrt(1 / λ₁)
-            λ₂ = λ₃ = @. -0.499λ₁
-        else
-            λ₂ = λ₃ = Vector{eltype(λ₁)}(undef, length(λ₁))
-        end
-        λ = collect.(zip(λ₁, λ₂, λ₃))
-        s = collect.(zip(s₁))
-        data = StructArray{BCJMetalDataEntry}((λ, s))
-        new{eltype(eltype(λ)),eltype(eltype(s))}(data, name)
-    end
-    function BCJMetalUniaxialTest(λ₁; name, incompressible = true)
-        if incompressible
-            # λ₂ = λ₃ = @. sqrt(1 / λ₁)
-            λ₂ = λ₃ = @. -0.499λ₁
-        else
-            λ₂ = λ₃ = Vector{eltype(λ₁)}(undef, length(λ₁))
-        end
-        λ = collect.(zip(λ₁, λ₂, λ₃))
-        s = collect.(zip(Vector{eltype(λ₁)}(undef, length(λ₁))))
-        data = StructArray{BCJMetalDataEntry}((λ, s))
-        new{eltype(eltype(λ)),eltype(eltype(s))}(data, name)
-    end
-end
-
 parameters(::Bammann1990Modeling) = (
     :C₁,    :C₂,     # V
     :C₃,    :C₄,     # Y
@@ -302,34 +254,6 @@ parameters(::Bammann1990Modeling) = (
     :C₁₅,   :C₁₆,    # H
     :C₁₇,   :C₁₈     # R_s
 )
-
-function parameter_bounds(::ContinuumMechanicsBase.AbstractMaterialModel, ::Any)
-    lb = nothing
-    ub = nothing
-    return (lb = lb, ub = ub)
-end
-
-function parameter_bounds(
-            ψ       ::ContinuumMechanicsBase.AbstractMaterialModel,
-            tests   ::Vector{Any},
-        )
-    bounds = map(Base.Fix1(parameter_bounds, ψ), tests)
-    lbs = getfield.(bounds, :lb)
-    ubs = getfield.(bounds, :ub)
-    if !(eltype(lbs) <: Nothing)
-        lb_ps = fieldnames(eltype(lbs))
-        lb = map(p -> p .=> maximum(getfield.(lbs, p)), lb_ps) |> NamedTuple
-    else
-        lb = nothing
-    end
-    if !(eltype(ubs) <: Nothing)
-        ub_ps = fieldnames(eltype(ubs))
-        ub = map(p -> p .=> minimum(getfield.(ubs, p)), ub_ps) |> NamedTuple
-    else
-        ub = nothing
-    end
-    return (lb = lb, ub = ub)
-end
 
 function BCJProblem(
     ψ   ::Bammann1990Modeling,#{T, S},
