@@ -4,13 +4,14 @@ using ComponentArrays
 using CSV
 using DataFrames
 import ForwardDiff
+using FiniteDiff
 using Optimization, OptimizationOptimJL
 using Plots
 using Test
 
 @testset verbose=true "BammannChiesaJohnsonPlasticity.jl" begin
     params      = begin
-        df          = CSV.read("Props_BCJ_4340-Bammann1990Modeling.csv", DataFrame; header=true, delim=',', types=[String, Float64])
+        df          = CSV.read("Props_BCJ_4340_fit.csv", DataFrame; header=true, delim=',', types=[String, Float64])
         rowsofconstants = findall(occursin.(r"C\d{2}", df[!, "Comment"]))
         C_0         = Vector{Float64}(undef, 20)
         C_0[rowsofconstants] .= df[!, "For Calibration with vumat"][rowsofconstants]
@@ -43,23 +44,36 @@ using Test
     df_Tension_e002_295 = CSV.read("Data_Tension_e0002_T295.csv", DataFrame;
         header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
     test = BCJMetalUniaxialTest(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, name="exp")
-    bcj_loading = BCJMetalStrainControl(295.0, 2e-3, 1.0, 200, :tension)
-    ψ = Bammann1990Modeling(bcj_loading, params.μ)
+    bcj_loading = BCJMetalStrainControl(295.0, 2e-3, float(last(df_Tension_e002_295[!, "Strain"])), 200, :tension)
+    ψ = DK(bcj_loading, params.μ)
     p = ComponentVector(
-        C₁  = params.C₁,     C₂     = params.C₂,    # V
-        C₃  = params.C₃,     C₄     = params.C₄,    # Y
-        C₅  = params.C₅,     C₆     = params.C₆,    # f
-        C₇  = params.C₇,     C₈     = params.C₈,    # r_d
-        C₉  = params.C₉,     C₁₀    = params.C₁₀,   # h
-        C₁₁ = params.C₁₁,    C₁₂    = params.C₁₂,   # r_s
-        C₁₃ = params.C₁₃,    C₁₄    = params.C₁₄,   # R_d
-        C₁₅ = params.C₁₅,    C₁₆    = params.C₁₆,   # H
-        C₁₇ = params.C₁₇,    C₁₈    = params.C₁₈    # R_s
+        C₁  = params.C₁,    C₂  = params.C₂,    # V
+        C₃  = params.C₃,    C₄  = params.C₄,    # Y
+        C₅  = params.C₅,    C₆  = params.C₆,    # f
+        C₇  = params.C₇,    C₈  = params.C₈,    # r_d
+        C₉  = params.C₉,    C₁₀ = params.C₁₀,   # h
+        C₁₁ = params.C₁₁,   C₁₂ = params.C₁₂,   # r_s
+        C₁₃ = params.C₁₃,   C₁₄ = params.C₁₄,   # R_d
+        C₁₅ = params.C₁₅,   C₁₆ = params.C₁₆,   # H
+        C₁₇ = params.C₁₇,   C₁₈ = params.C₁₈,   # R_s
+        C₁₉ = params.C₁₉,   C₂₀ = params.C₂₀    # Y_adj
     )
-    # update!(ψ, p)
-    ContinuumMechanicsBase.predict(ψ, test, p)
-    # prob = BCJProblem(Bammann1990Modeling(bcj_loading, params.μ), test, p, ad_type=AutoForwardDiff())
-    # solve(prob, NelderMead())
+    res = ContinuumMechanicsBase.predict(ψ, test, p)
+    q = ComponentVector(
+        C₁  = NaN,          C₂  = params.C₂,    # V
+        C₃  = params.C₃,    C₄  = params.C₄,    # Y
+        C₅  = params.C₅,    C₆  = params.C₆,    # f
+        C₇  = params.C₇,    C₈  = params.C₈,    # r_d
+        C₉  = params.C₉,    C₁₀ = params.C₁₀,   # h
+        C₁₁ = params.C₁₁,   C₁₂ = params.C₁₂,   # r_s
+        C₁₃ = params.C₁₃,   C₁₄ = params.C₁₄,   # R_d
+        C₁₅ = params.C₁₅,   C₁₆ = params.C₁₆,   # H
+        C₁₇ = params.C₁₇,   C₁₈ = params.C₁₈,   # R_s
+        C₁₉ = params.C₁₉,   C₂₀ = params.C₂₀    # Y_adj
+    )
+    prob = BCJProblem(ψ, test, p; ad_type=AutoForwardDiff(), ui=q)
+    sol = solve(prob, LBFGS())
+    @test sol.retcode == SciMLBase.ReturnCode.Success
 
     # # bcj_loading = BCJ_metal(295., 570., 0.15, 200, 1, params)
     # bcj_conf_Tension_e002_295       = kernel(DK, bcj_loading_Tension_e002_295)

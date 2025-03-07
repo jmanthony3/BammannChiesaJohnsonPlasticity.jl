@@ -56,7 +56,8 @@ function Bammann1990Modeling(bcj::BCJMetalStrainControl, μ::AbstractFloat)
         Δϵ .= [0., 0., 0., ϵₙ / N, 0., 0.]
         # Δϵ  = S([0.0, ϵₙ / N, 0.0, 0.0, 0.0, 0.0])
         # equivalent strain rate to true shear strain rate
-        Δt  = Δϵ[1, 2] / ϵ_dot      # timestep
+        Δt  = Δϵ[4] / ϵ_dot      # timestep
+        # Δt  = Δϵ[1, 2] / ϵ_dot      # timestep
         2ϵ_dot / √3.
     end
     return Bammann1990Modeling(θ, ϵ_dot_effective, ϵₙ, μ, N, Δϵ, Δt)
@@ -273,7 +274,7 @@ function BCJProblem(
     function f(ps, p)
         ψ, test, qs, loss, ad_type, kwargs = p
         function g(ps, qs)
-            if any(!isnan, qs)
+            if !isnothing(qs) && any(!isnan, qs)
                 for (name, value) in zip(keys(qs), qs)
                     if !isnan(value)
                         # @show value
@@ -289,7 +290,7 @@ function BCJProblem(
         resλ = [first(x) for x in eachcol(pred.data.λ)]
         testλ = [first(x) for x in test.data.λ]
         s = collect([[x...] for x in eachcol(pred.data.s)[[findlast(x .>= resλ) for x in testλ]]])
-        @show symmetricvonMises.(s) - [only(x) for x in test.data.s]
+        # @show symmetricvonMises.(s) - [only(x) for x in test.data.s]
         res = map(i -> loss.(symmetricvonMises(i[1]), only(i[2])), zip(s, test.data.s)) |> mean
         # res = map(i -> loss.(vonMises(i[1]), only(i[2])), zip(pred.data.s[2:end], test.data.s)) |> mean
         @show res

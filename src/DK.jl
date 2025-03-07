@@ -7,7 +7,7 @@ using Optimization
 using StructArrays
 using Tensors
 
-export DK, update, predict, parameters, BCJProblem
+export DK, update, predict, parameters, parameter_bounds, BCJProblem
 
 # mutable struct DK{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: ContinuumMechanicsBase.AbstractMaterialModel
 struct DK <: ContinuumMechanicsBase.AbstractMaterialModel
@@ -56,7 +56,8 @@ function DK(bcj::BCJMetalStrainControl, μ::AbstractFloat)
         Δϵ .= [0., 0., 0., ϵₙ / N, 0., 0.]
         # Δϵ  = S([0.0, ϵₙ / N, 0.0, 0.0, 0.0, 0.0])
         # equivalent strain rate to true shear strain rate
-        Δt  = Δϵ[1, 2] / ϵ_dot      # timestep
+        Δt  = Δϵ[4] / ϵ_dot      # timestep
+        # Δt  = Δϵ[1, 2] / ϵ_dot      # timestep
         2ϵ_dot / √3.
     end
     return DK(θ, ϵ_dot_effective, ϵₙ, μ, N, Δϵ, Δt)
@@ -114,10 +115,10 @@ function update(model::DK, σ__, α__, κ, ϵ__, ϵₚ__, (;
     f   = C₅    * exp( -C₆ / θ )
     β   = Y + (V * asinh( ϵ_dot_effective / f ))
     r_d = C₇    * exp( -C₈  / θ )
-    h   = C₉    * exp(  C₁₀ * θ )
+    h   = C₉    -    (  C₁₀ * θ )
     r_s = C₁₁   * exp( -C₁₂ / θ )
     R_d = C₁₃   * exp( -C₁₄ / θ )
-    H   = C₁₅   * exp(  C₁₆ * θ )
+    H   = C₁₅   -    (  C₁₆ * θ )
     R_s = C₁₇   * exp( -C₁₈ / θ )
     Y  *= (C₁₉ < 0.) ? (1.) : (0.5 * ( 1.0 + tanh(max(0., C₁₉ * ( C₂₀ - θ )))))
 
@@ -226,7 +227,7 @@ function ContinuumMechanicsBase.predict(
     # ϵ⃗[:, 1], σ⃗[:, 1] = ϵ__, σ__
     # @show α__, κ
     # for i ∈ range(2, N)
-    for i ∈ range(2, M + 1)
+    for i ∈ range(2, M)
         σ__, α__, κ, ϵ__, ϵₚ__ = update(ϕ, σ__, α__, κ, ϵ__, ϵₚ__, p)
         # @show α__, κ
         # @show ϵ__, σ__
@@ -254,6 +255,23 @@ parameters(::DK) = (
     :C₁₉,   :C₂₀    # Y_adj
 )
 
+function parameter_bounds(::DK, ::Any)
+    lb = (
+            C₁  = 0.0,  C₂  = 0.0,  # V
+            C₃  = 0.0,  C₄  = 0.0,  # Y
+            C₅  = 0.0,  C₆  = 0.0,  # f
+            C₇  = 0.0,  C₈  = 0.0,  # r_d
+            C₉  = 0.0,  C₁₀ = 0.0,  # h
+            C₁₁ = 0.0,  C₁₂ = 0.0,  # r_s
+            C₁₃ = 0.0,  C₁₄ = 0.0,  # R_d
+            C₁₅ = 0.0,  C₁₆ = 0.0,  # H
+            C₁₇ = 0.0,  C₁₈ = 0.0,  # R_s
+            C₁₉ = 0.0,  C₂₀ = 0.0   # Y_adj
+        )
+    ub = nothing
+    return (lb = lb, ub = ub)
+end
+
 function BCJProblem(
     ψ   ::DK,#{T, S},
     test::BCJMetalUniaxialTest{T, T},
@@ -272,7 +290,7 @@ function BCJProblem(
     function f(ps, p)
         ψ, test, qs, loss, ad_type, kwargs = p
         function g(ps, qs)
-            if any(!isnan, qs)
+            if !isnothing(qs) && any(!isnan, qs)
                 for (name, value) in zip(keys(qs), qs)
                     if !isnan(value)
                         # @show value
@@ -288,7 +306,7 @@ function BCJProblem(
         resλ = [first(x) for x in eachcol(pred.data.λ)]
         testλ = [first(x) for x in test.data.λ]
         s = collect([[x...] for x in eachcol(pred.data.s)[[findlast(x .>= resλ) for x in testλ]]])
-        @show symmetricvonMises.(s) - [only(x) for x in test.data.s]
+        # @show symmetricvonMises.(s) - [only(x) for x in test.data.s]
         res = map(i -> loss.(symmetricvonMises(i[1]), only(i[2])), zip(s, test.data.s)) |> mean
         # res = map(i -> loss.(vonMises(i[1]), only(i[2])), zip(pred.data.s[2:end], test.data.s)) |> mean
         @show res
