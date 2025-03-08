@@ -1,13 +1,16 @@
 using BammannChiesaJohnsonPlasticity
+
 using ContinuumMechanicsBase
 using ComponentArrays
-using CSV
-using DataFrames
-import ForwardDiff
+using CSV, DataFrames
 using FiniteDiff
-using Optimization, OptimizationOptimJL
+import ForwardDiff
+using Optimization, OptimizationOptimJL, LossFunctions
 using Plots
+
 using Test
+
+
 
 params      = begin
     df          = CSV.read("Props_BCJ_4340_fit.csv", DataFrame; header=true, delim=',', types=[String, Float64])
@@ -58,33 +61,27 @@ p = ComponentVector(
     C₁₉ = params.C₁₉,   C₂₀ = params.C₂₀    # Y_adj
 )
 
-# update!(ψ, p)
 res = ContinuumMechanicsBase.predict(ψ, test, p)
-# [x[1, 1] for x in res.data.λ]
 plt = scatter(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, label="exp")
-scatter!(plt, [first(x) for x in eachcol(res.data.λ)], [symmetricvonMises(x) for x in eachcol(res.data.s)], label="DK")
-# scatter!(plt, [x[1, 1] for x in res.data.λ], [vonMises(x) for x in res.data.s], label="DK")
+scatter!(plt, [first(x) for x in eachcol(res.data.ϵ)], [symmetricvonMises(x) for x in eachcol(res.data.σ)], label="DK")
+# scatter!(plt, [x[1, 1] for x in res.data.ϵ], [vonMises(x) for x in res.data.σ], label="DK")
 display(plt)
 
-q = ComponentVector(
-    C₁  = NaN,          C₂  = params.C₂,    # V
-    C₃  = params.C₃,    C₄  = params.C₄,    # Y
-    C₅  = params.C₅,    C₆  = params.C₆,    # f
-    C₇  = params.C₇,    C₈  = params.C₈,    # r_d
-    C₉  = params.C₉,    C₁₀ = params.C₁₀,   # h
-    C₁₁ = params.C₁₁,   C₁₂ = params.C₁₂,   # r_s
-    C₁₃ = params.C₁₃,   C₁₄ = params.C₁₄,   # R_d
-    C₁₅ = params.C₁₅,   C₁₆ = params.C₁₆,   # H
-    C₁₇ = params.C₁₇,   C₁₈ = params.C₁₈,   # R_s
-    C₁₉ = params.C₁₉,   C₂₀ = params.C₂₀    # Y_adj
-)
-prob = BCJProblem(ψ, test, p; ad_type=AutoForwardDiff(), ui=q)
-sol = solve(prob, LBFGS())
-
-
-# # # grad=ForwardDiff.gradient(x->sum(ContinuumMechanicsBase.predict(ψ, test, x).data.s[:,50]), p)
-
-# calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
-# scatter!(plt, [first(x) for x in eachcol(calib.data.λ)], [symmetricvonMises(x) for x in eachcol(calib.data.s)], label="DK (Calib.)")
-# # scatter!(plt, [x[1, 1] for x in res.data.λ], [vonMises(x) for x in res.data.s], label="DK")
-# display(plt)
+# q = ComponentVector(
+#     C₁  = NaN,          C₂  = params.C₂,    # V
+#     C₃  = params.C₃,    C₄  = params.C₄,    # Y
+#     C₅  = params.C₅,    C₆  = params.C₆,    # f
+#     C₇  = params.C₇,    C₈  = params.C₈,    # r_d
+#     C₉  = params.C₉,    C₁₀ = params.C₁₀,   # h
+#     C₁₁ = params.C₁₁,   C₁₂ = params.C₁₂,   # r_s
+#     C₁₃ = params.C₁₃,   C₁₄ = params.C₁₄,   # R_d
+#     C₁₅ = params.C₁₅,   C₁₆ = params.C₁₆,   # H
+#     C₁₇ = params.C₁₇,   C₁₈ = params.C₁₈,   # R_s
+#     C₁₉ = params.C₁₉,   C₂₀ = params.C₂₀    # Y_adj
+# )
+# prob = BCJPlasticityProblem(ψ, test, p; ad_type=AutoForwardDiff(), ui=q)
+# sol = solve(prob, LBFGS())
+# # calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
+# # scatter!(plt, [first(x) for x in eachcol(calib.data.ϵ)], [symmetricvonMises(x) for x in eachcol(calib.data.σ)], label="DK (Calib.)")
+# # # scatter!(plt, [x[1, 1] for x in res.data.ϵ], [vonMises(x) for x in res.data.σ], label="DK")
+# # display(plt)

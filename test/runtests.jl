@@ -1,13 +1,15 @@
 using BammannChiesaJohnsonPlasticity
+
 using ContinuumMechanicsBase
 using ComponentArrays
-using CSV
-using DataFrames
-import ForwardDiff
+using CSV, DataFrames
 using FiniteDiff
-using Optimization, OptimizationOptimJL
-using Plots
+import ForwardDiff
+using Optimization, OptimizationOptimJL, LossFunctions
+
 using Test
+
+
 
 @testset verbose=true "BammannChiesaJohnsonPlasticity.jl" begin
     params      = begin
@@ -71,7 +73,7 @@ using Test
         C₁₇ = params.C₁₇,   C₁₈ = params.C₁₈,   # R_s
         C₁₉ = params.C₁₉,   C₂₀ = params.C₂₀    # Y_adj
     )
-    prob = BCJProblem(ψ, test, p; ad_type=AutoForwardDiff(), ui=q)
+    prob = BCJPlasticityProblem(ψ, test, p; ad_type=AutoForwardDiff(), ui=q)
     sol = solve(prob, LBFGS())
     @test sol.retcode == SciMLBase.ReturnCode.Success
 
