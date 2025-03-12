@@ -24,7 +24,7 @@ OptimizationBCJPlasticityExt = ["Optimization", "OptimizationOptimJL", "LossFunc
 
 [compat]
 ComponentArrays = "0.15.24"
-ContinuumMechanicsBase = "0.1.1"
+ContinuumMechanicsBase = "^0"
 DocStringExtensions = "0.9.3"
 Documenter = "1"
 LinearAlgebra = "1.11.0"
