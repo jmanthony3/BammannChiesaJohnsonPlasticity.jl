@@ -1,6 +1,4 @@
-using BammannChiesaJohnsonPlasticity
-
-BammannChiesaJohnsonPlasticity.parameters(::DK) = (
+ContinuumMechanicsBase.parameters(::DK) = (
     :C₁,    :C₂,    # V
     :C₃,    :C₄,    # Y
     :C₅,    :C₆,    # f
@@ -13,7 +11,7 @@ BammannChiesaJohnsonPlasticity.parameters(::DK) = (
     :C₁₉,   :C₂₀    # Y_adj
 )
 
-function BammannChiesaJohnsonPlasticity.parameter_bounds(::DK, ::Any)
+function ContinuumMechanicsBase.parameter_bounds(::DK, ::Any)
     lb = (
             C₁  = 0.0,  C₂  = 0.0,  # V
             C₃  = 0.0,  C₄  = 0.0,  # Y
@@ -30,15 +28,15 @@ function BammannChiesaJohnsonPlasticity.parameter_bounds(::DK, ::Any)
     return (lb = lb, ub = ub)
 end
 
-function BammannChiesaJohnsonPlasticity.BCJPlasticityProblem(
+function ContinuumMechanicsBase.MaterialOptimizationProblem(
     ψ   ::DK{T}, # , S},
     test::BCJMetalUniaxialTest{T},
     u0;
     ad_type,
     ui,
     loss    = L2DistLoss(),
-    lb      = parameter_bounds(ψ, test).lb,
-    ub      = parameter_bounds(ψ, test).ub,
+    lb      = ContinuumMechanicsBase.parameter_bounds(ψ, test).lb,
+    ub      = ContinuumMechanicsBase.parameter_bounds(ψ, test).ub,
     int     = nothing,
     lcons   = nothing,
     ucons   = nothing,
@@ -58,7 +56,7 @@ function BammannChiesaJohnsonPlasticity.BCJPlasticityProblem(
             end
             return ComponentVector(ps)
         end
-        pred = predict(ψ, test, g(ps, qs); ad_type, kwargs...)
+        pred = ContinuumMechanicsBase.predict(ψ, test, g(ps, qs); ad_type, kwargs...)
         resϵ = [first(x) for x in eachcol(pred.data.ϵ)]
         testϵ = [first(x) for x in test.data.ϵ]
         # resϵ = [x[1, 1] for x in pred.data.ϵ]
@@ -85,7 +83,7 @@ function BammannChiesaJohnsonPlasticity.BCJPlasticityProblem(
         lb = u0 .* -Inf
     end
 
-    model_ps = parameters(ψ)
+    model_ps = ContinuumMechanicsBase.parameters(ψ)
     for p in model_ps
         if !isnothing(lb)
             if (u0[p] < lb[p])
