@@ -20,18 +20,14 @@ Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
 OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
 
 [extensions]
-BCJPlasticityOptimizationExt = ["Optimization", "OptimizationOptimJL", "LossFunctions"]
+OptimizationBCJPlasticityExt = ["Optimization", "OptimizationOptimJL", "LossFunctions"]
 
 [compat]
 ComponentArrays = "0.15.24"
 ContinuumMechanicsBase = "0.1.1"
 DocStringExtensions = "0.9.3"
 Documenter = "1"
-ForwardDiff = "0.10.38"
 LinearAlgebra = "1.11.0"
-LossFunctions = "1.0.1"
-Optimization = "4.1.1"
-OptimizationOptimJL = "0.4.1"
 PackageExtensionCompat = "1.0.2"
 StructArrays = "0.7.0"
 Tensors = "1.16.1"

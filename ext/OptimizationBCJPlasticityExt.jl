@@ -1,11 +1,11 @@
-module BCJPlasticityOptimizationExt
+module OptimizationBCJPlasticityExt
 
 using BammannChiesaJohnsonPlasticity
-
+using ContinuumMechanicsBase
 using ComponentArrays
 using Optimization, OptimizationOptimJL, LossFunctions
 
-export parameters, parameter_bounds, BCJPlasticityProblem
+export parameters, parameter_bounds, MaterialOptimizationProblem
 
 include("BCJMetals.jl")
 
