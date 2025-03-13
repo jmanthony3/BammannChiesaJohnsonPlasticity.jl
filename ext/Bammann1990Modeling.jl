@@ -1,4 +1,4 @@
-parameters(::Bammann1990Modeling) = (
+ContinuumMechanicsBase.parameters(::Bammann1990Modeling) = (
     :C₁,    :C₂,     # V
     :C₃,    :C₄,     # Y
     :C₅,    :C₆,     # f
@@ -10,7 +10,7 @@ parameters(::Bammann1990Modeling) = (
     :C₁₇,   :C₁₈     # R_s
 )
 
-function parameter_bounds(::Bammann1990Modeling, ::Any)
+function ContinuumMechanicsBase.parameter_bounds(::Bammann1990Modeling, ::Any)
     lb = (
             C₁  = 0.0,  C₂  = 0.0,  # V
             C₃  = 0.0,  C₄  = 0.0,  # Y
@@ -26,15 +26,15 @@ function parameter_bounds(::Bammann1990Modeling, ::Any)
     return (lb = lb, ub = ub)
 end
 
-function MaterialOptimizationProblem(
+function ContinuumMechanicsBase.MaterialOptimizationProblem(
     ψ   ::Bammann1990Modeling,  # {T, S},
     test::BCJMetalUniaxialTest{T},
     u0;
     ad_type,
     ui,
     loss    = L2DistLoss(),
-    lb      = parameter_bounds(ψ, test).lb,
-    ub      = parameter_bounds(ψ, test).ub,
+    lb      = ContinuumMechanicsBase.parameter_bounds(ψ, test).lb,
+    ub      = ContinuumMechanicsBase.parameter_bounds(ψ, test).ub,
     int     = nothing,
     lcons   = nothing,
     ucons   = nothing,
@@ -81,7 +81,7 @@ function MaterialOptimizationProblem(
         lb = u0 .* -Inf
     end
 
-    model_ps = parameters(ψ)
+    model_ps = ContinuumMechanicsBase.parameters(ψ)
     for p in model_ps
         if !isnothing(lb)
             if (u0[p] < lb[p])

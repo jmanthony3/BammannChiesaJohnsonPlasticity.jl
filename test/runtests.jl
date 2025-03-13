@@ -44,7 +44,7 @@ using Test
         C₁₇ = p.C₁₇,    C₁₈ = p.C₁₈,   # R_s
         C₁₉ = p.C₁₉,    C₂₀ = p.C₂₀    # Y_adj
     )
-    prob = BCJPlasticityProblem(ψ, test, p; ad_type=AutoForwardDiff(), ui=q)
+    prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p; ad_type=AutoForwardDiff(), ui=q)
     sol = solve(prob, LBFGS())
     @test sol.retcode == SciMLBase.ReturnCode.Success
 
