@@ -39,9 +39,10 @@ begin
 
 
 	
-	using BammannChiesaJohnsonPlasticity, PlutoUI
+	using PlutoUI
 	import PlutoUI: combine
 
+	using BammannChiesaJohnsonPlasticity
 	using ContinuumMechanicsBase
 	using ComponentArrays
 	using CSV, DataFrames
@@ -201,7 +202,7 @@ end
 # ╠═╡ show_logs = false
 begin
 	q = parameters_selection(ComponentVector(p), p_checkboxes)
-	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, AutoForwardDiff(), L2DistLoss(), ui=q)
+	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(), ui=q)
 	sol = solve(prob, LBFGS())
 	calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
 	scatter!(deepcopy(plt), [first(x) for x in eachcol(calib.data.ϵ)], [symmetricvonMises(x) for x in eachcol(calib.data.σ)], label="DK (Calib.)")
@@ -209,7 +210,7 @@ end
 
 # ╔═╡ Cell order:
 # ╟─d534bf54-4c83-43d6-a62c-8e4a34f8f74d
-# ╟─5cacf487-3916-4b7a-8fbf-04c8b4c9a6d9
+# ╠═5cacf487-3916-4b7a-8fbf-04c8b4c9a6d9
 # ╟─156a860c-e8a5-4dd8-b234-0a0e4419b5a5
 # ╟─398fa1e3-1d11-4285-ad23-b11a4d8628c5
 # ╟─ba3e98a7-9088-48bf-abeb-110d458b3297
