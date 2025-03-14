@@ -10,7 +10,7 @@ ContinuumMechanicsBase.parameters(::Bammann1990Modeling) = (
     :C₁₇,   :C₁₈     # R_s
 )
 
-function ContinuumMechanicsBase.parameter_bounds(::Bammann1990Modeling, ::Any)
+function ContinuumMechanicsBase.parameter_bounds(::Bammann1990Modeling, ::T) where {T<:ContinuumMechanicsBase.AbstractMaterialTest}
     lb = (
             C₁  = 0.0,  C₂  = 0.0,  # V
             C₃  = 0.0,  C₄  = 0.0,  # Y
@@ -27,14 +27,15 @@ function ContinuumMechanicsBase.parameter_bounds(::Bammann1990Modeling, ::Any)
 end
 
 function ContinuumMechanicsBase.MaterialOptimizationProblem(
-    ψ   ::Bammann1990Modeling,  # {T, S},
+    ψ   ::Bammann1990Modeling{T},  # , S},
     test::BCJMetalUniaxialTest{T},
-    u0;
+    u₀,
+    ps,
     ad_type,
+    loss;
     ui,
-    loss    = L2DistLoss(),
-    lb      = ContinuumMechanicsBase.parameter_bounds(ψ, test).lb,
-    ub      = ContinuumMechanicsBase.parameter_bounds(ψ, test).ub,
+    lb      = parameter_bounds(ψ, test).lb,
+    ub      = parameter_bounds(ψ, test).ub,
     int     = nothing,
     lcons   = nothing,
     ucons   = nothing,
@@ -66,32 +67,34 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
         return res
     end
 
-    u0 = ComponentVector(u0)
+    u₀ = ComponentVector(u₀)
+    # pb = ContinuumMechanicsBase.parameter_bounds(ψ, test)
+    # lb, ub = pb.lb, pb.ub
     if !isnothing(lb) && !isnothing(ub)
         lb = ComponentVector(lb)
         ub = ComponentVector(ub)
     elseif !isnothing(lb)
         lb = ComponentVector(lb)
-        ub = u0 .* Inf
+        ub = u₀ .* Inf
     elseif !isnothing(ub)
         ub = ComponentVector(ub)
-        lb = u0 .* -Inf
+        lb = u₀ .* -Inf
     else
-        ub = u0 .* Inf
-        lb = u0 .* -Inf
+        ub = u₀ .* Inf
+        lb = u₀ .* -Inf
     end
 
     model_ps = ContinuumMechanicsBase.parameters(ψ)
     for p in model_ps
         if !isnothing(lb)
-            if (u0[p] < lb[p])
-                @error "Parameter $p = $(u0[p]) is less than lower bound of $(lb[p])"
+            if (u₀[p] < lb[p])
+                @error "Parameter $p = $(u₀[p]) is less than lower bound of $(lb[p])"
                 return nothing
             end
         end
         if !isnothing(ub)
-            if (u0[p] > ub[p])
-                @error "Parameter $p = $(u0[p]) is greater than upper bound of $(ub[p])"
+            if (u₀[p] > ub[p])
+                @error "Parameter $p = $(u₀[p]) is greater than upper bound of $(ub[p])"
                 return nothing
             end
         end
@@ -100,5 +103,5 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
     func = OptimizationFunction(f, ad_type)
     # Check for Bounds
     p = (ψ, test, ui, loss, ad_type, kwargs)
-    return OptimizationProblem(func, u0, p; lb, ub, int, lcons, ucons, sense)
+    return OptimizationProblem(func, u₀, p; lb, ub, int, lcons, ucons, sense)
 end

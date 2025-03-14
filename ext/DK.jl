@@ -36,6 +36,8 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
     ad_type,
     loss;
     ui,
+    lb      = parameter_bounds(ψ, test).lb,
+    ub      = parameter_bounds(ψ, test).ub,
     int     = nothing,
     lcons   = nothing,
     ucons   = nothing,
@@ -68,8 +70,8 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
     end
 
     u₀ = ComponentVector(u₀)
-    pb = ContinuumMechanicsBase.parameter_bounds(ψ, test)
-    lb, ub = pb.lb, pb.ub
+    # pb = ContinuumMechanicsBase.parameter_bounds(ψ, test)
+    # lb, ub = pb.lb, pb.ub
     if !isnothing(lb) && !isnothing(ub)
         lb = ComponentVector(lb)
         ub = ComponentVector(ub)
