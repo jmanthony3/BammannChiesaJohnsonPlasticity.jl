@@ -204,7 +204,7 @@ begin
 	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, AutoForwardDiff(), L2DistLoss(), ui=q)
 	sol = solve(prob, LBFGS())
 	calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
-	scatter!(plt, [first(x) for x in eachcol(calib.data.ϵ)], [symmetricvonMises(x) for x in eachcol(calib.data.σ)], label="DK (Calib.)")
+	scatter!(deepcopy(plt), [first(x) for x in eachcol(calib.data.ϵ)], [symmetricvonMises(x) for x in eachcol(calib.data.σ)], label="DK (Calib.)")
 end
 
 # ╔═╡ Cell order:

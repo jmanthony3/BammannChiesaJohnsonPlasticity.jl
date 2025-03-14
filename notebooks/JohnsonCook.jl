@@ -437,7 +437,7 @@ begin
 	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(), ui=q)
 	sol = solve(prob, LBFGS())
 	calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
-	scatter!(plt, [only(x) for x in eachcol(calib.data.ϵ)], [only(x) for x in eachcol(calib.data.σ)], label="JC (Calib.)")
+	scatter!(deepcopy(plt), [only(x) for x in eachcol(calib.data.ϵ)], [only(x) for x in eachcol(calib.data.σ)], label="JC (Calib.)")
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
