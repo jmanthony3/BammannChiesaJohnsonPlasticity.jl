@@ -2,5 +2,5 @@
 /docs/Manifest.toml
 /docs/build/
 /notebooks/Manifest.toml
-/notebooks/JohnsonCook backup 1.jl
+/notebooks/*backup*.jl
 /test/Manifest.toml
