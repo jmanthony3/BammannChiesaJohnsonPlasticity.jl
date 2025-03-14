@@ -11,7 +11,7 @@ ContinuumMechanicsBase.parameters(::DK) = (
     :C₁₉,   :C₂₀    # Y_adj
 )
 
-function ContinuumMechanicsBase.parameter_bounds(::DK, ::Any)
+function ContinuumMechanicsBase.parameter_bounds(::DK, ::T) where {T<:ContinuumMechanicsBase.AbstractMaterialTest}
     lb = (
             C₁  = 0.0,  C₂  = 0.0,  # V
             C₃  = 0.0,  C₄  = 0.0,  # Y
