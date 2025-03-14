@@ -34,10 +34,15 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
     u₀,
     ui,
     ad_type,
-    loss
+    loss;
+    int     = nothing,
+    lcons   = nothing,
+    ucons   = nothing,
+    sense   = nothing,
+    kwargs...,
 ) where {T<:AbstractFloat} #, S<:SymmetricTensor{2, 3, T}}
     function f(ps, p)
-        ψ, test, qs, loss, ad_type = p
+        ψ, test, qs, loss, ad_type, kwargs = p
         function g(ps, qs)
             if !isnothing(qs) && any(!isnan, qs)
                 for (name, value) in zip(keys(qs), qs)
@@ -49,7 +54,7 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
             end
             return ComponentVector(ps)
         end
-        pred = ContinuumMechanicsBase.predict(ψ, test, g(ps, qs); ad_type)
+        pred = ContinuumMechanicsBase.predict(ψ, test, g(ps, qs); ad_type, kwargs...)
         resϵ = [first(x) for x in eachcol(pred.data.ϵ)]
         testϵ = [first(x) for x in test.data.ϵ]
         # resϵ = [x[1, 1] for x in pred.data.ϵ]
@@ -96,6 +101,6 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
 
     func = OptimizationFunction(f, ad_type)
     # Check for Bounds
-    p = (ψ, test, ui, loss, ad_type)
-    return OptimizationProblem(func, u₀, p; lb, ub)
+    p = (ψ, test, ui, loss, ad_type, kwargs)
+    return OptimizationProblem(func, u₀, p; lb, ub, int, lcons, ucons, sense)
 end
