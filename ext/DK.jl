@@ -49,7 +49,7 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
             end
             return ComponentVector(ps)
         end
-        pred = ContinuumMechanicsBase.predict(ψ, test, g(ps, qs); ad_type, kwargs...)
+        pred = ContinuumMechanicsBase.predict(ψ, test, g(ps, qs); ad_type)
         resϵ = [first(x) for x in eachcol(pred.data.ϵ)]
         testϵ = [first(x) for x in test.data.ϵ]
         # resϵ = [x[1, 1] for x in pred.data.ϵ]
