@@ -32,9 +32,10 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
     ψ   ::DK{T}, # , S},
     test::BCJMetalUniaxialTest{T},
     u₀,
-    ui,
+    ps,
     ad_type,
     loss;
+    ui,
     int     = nothing,
     lcons   = nothing,
     ucons   = nothing,
