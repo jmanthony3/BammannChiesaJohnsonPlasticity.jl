@@ -6,7 +6,7 @@ using CSV, DataFrames
 using FiniteDiff
 import ForwardDiff
 using Optimization, OptimizationOptimJL, LossFunctions
-using Plots
+# using Plots
 
 using Test
 
@@ -32,10 +32,10 @@ p = ComponentVector(
     C₁₉ = 1e-10,                    C₂₀ = 1e-10                 # Y_adj
 )
 res = ContinuumMechanicsBase.predict(ψ, test, p)
-plt = scatter(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, label="exp")
-scatter!(plt, [first(x) for x in eachcol(res.data.ϵ)], [symmetricvonMises(x) for x in eachcol(res.data.σ)], label="DK")
-# scatter!(plt, [x[1, 1] for x in res.data.ϵ], [vonMises(x) for x in res.data.σ], label="DK")
-display(plt)
+# plt = scatter(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, label="exp")
+# scatter!(plt, [first(x) for x in eachcol(res.data.ϵ)], [symmetricvonMises(x) for x in eachcol(res.data.σ)], label="DK")
+# # scatter!(plt, [x[1, 1] for x in res.data.ϵ], [vonMises(x) for x in res.data.σ], label="DK")
+# display(plt)
 
 # q = ComponentVector(
 #         C₁  = NaN,      C₂  = p.C₂,    # V

@@ -119,71 +119,34 @@ function ContinuumMechanicsBase.predict(
     return (data=(ϵ=hcat(ϵ⃗...), σ=hcat(σ⃗...)),)
 end
 
-
-function parameters(::M) where {M<:ContinuumMechanicsBase.AbstractMaterialModel} end
-
-function parameter_bounds(::M, ::Any) where {M<:ContinuumMechanicsBase.AbstractMaterialModel}
-    lb = nothing
-    ub = nothing
-    return (lb = lb, ub = ub)
-end
-
-function parameter_bounds(
-            ψ       ::M,
-            tests   ::Vector{Any},
-        ) where {M<:ContinuumMechanicsBase.AbstractMaterialModel}
-    bounds = map(Base.Fix1(parameter_bounds, ψ), tests)
-    lbs = getfield.(bounds, :lb)
-    ubs = getfield.(bounds, :ub)
-    if !(eltype(lbs) <: Nothing)
-        lb_ps = fieldnames(eltype(lbs))
-        lb = map(p -> p .=> maximum(getfield.(lbs, p)), lb_ps) |> NamedTuple
-    else
-        lb = nothing
-    end
-    if !(eltype(ubs) <: Nothing)
-        ub_ps = fieldnames(eltype(ubs))
-        ub = map(p -> p .=> minimum(getfield.(ubs, p)), ub_ps) |> NamedTuple
-    else
-        ub = nothing
-    end
-    return (lb = lb, ub = ub)
-end
-
 parameters(::JC) = (:A, :B, :n, :C, :m)
 
-"""
-$(SIGNATURES)
-
-Creates an `OptimizationProblem` for use in [`Optimization.jl`](https://docs.sciml.ai/Optimization/stable/) to find the optimal parameters.
-
-# Arguments:
-- `ψ`: material model to use
-- `test` or `tests`: A single or vector of hyperelastics tests to use when fitting the parameters
-- `u₀`: Initial guess for parameters
-- `ps`: Any additional parameters for calling predict
-- `adb`: Select differentiation type from [`ADTypes.jl`](https://github.com/SciML/ADTypes.jl). The type is automatically applied to the type of AD applied to the Optimization Problem also.
-- `loss`: Loss function from [`LossFunctions.jl`](https://github.com/JuliaML/LossFunctions.jl)
-"""
-function JCPlasticityProblem end
-
-function JCPlasticityProblem(
+# function ContinuumMechanicsBase.MaterialOptimizationProblem( # what I had before
+#     ψ   ::JC{T}, # , S},
+#     test::JCUniaxialTest{T},
+#     u0;
+#     ad_type,
+#     ui,
+#     loss    = L2DistLoss(),
+#     lb      = parameter_bounds(ψ, test).lb,
+#     ub      = parameter_bounds(ψ, test).ub,
+#     int     = nothing,
+#     lcons   = nothing,
+#     ucons   = nothing,
+#     sense   = nothing,
+#     kwargs...,
+# ) where {T<:AbstractFloat} #, S<:SymmetricTensor{2, 3, T}}
+function ContinuumMechanicsBase.MaterialOptimizationProblem( # with CMB@v0.2.2
     ψ   ::JC{T}, # , S},
     test::JCUniaxialTest{T},
-    u0;
-    ad_type,
+    u0,
     ui,
-    loss    = L2DistLoss(),
-    lb      = parameter_bounds(ψ, test).lb,
-    ub      = parameter_bounds(ψ, test).ub,
-    int     = nothing,
-    lcons   = nothing,
-    ucons   = nothing,
-    sense   = nothing,
-    kwargs...,
+    ad_type,
+    loss
 ) where {T<:AbstractFloat} #, S<:SymmetricTensor{2, 3, T}}
     function f(ps, p)
-        ψ, test, qs, loss, ad_type, kwargs = p
+        # ψ, test, qs, loss, ad_type, kwargs = p # what I had
+        ψ, test, qs, loss, ad_type = p # with CMB@v0.2.2
         function g(ps, qs)
             if !isnothing(qs) && any(!isnan, qs)
                 for (name, value) in zip(keys(qs), qs)
@@ -195,7 +158,8 @@ function JCPlasticityProblem(
             end
             return ComponentVector(ps)
         end
-        pred = predict(ψ, test, g(ps, qs); ad_type, kwargs...)
+        # pred = predict(ψ, test, g(ps, qs); ad_type, kwargs...) # what I had
+        pred = predict(ψ, test, g(ps, qs); ad_type) # with CMB@v0.2.2
         resϵ = [first(x) for x in eachcol(pred.data.ϵ)]
         testϵ = [first(x) for x in test.data.ϵ]
         s = collect([[x...] for x in eachcol(pred.data.σ)[[findlast(x .>= resϵ) for x in testϵ]]])
@@ -205,6 +169,8 @@ function JCPlasticityProblem(
     end
 
     u0 = ComponentVector(u0)
+    pb = parameter_bounds(ψ, test)
+    lb, ub = pb.lb, pb.ub
     if !isnothing(lb) && !isnothing(ub)
         lb = ComponentVector(lb)
         ub = ComponentVector(ub)
@@ -237,6 +203,8 @@ function JCPlasticityProblem(
 
     func = OptimizationFunction(f, ad_type)
     # Check for Bounds
-    p = (ψ, test, ui, loss, ad_type, kwargs)
-    return OptimizationProblem(func, u0, p; lb, ub, int, lcons, ucons, sense)
+    # p = (ψ, test, ui, loss, ad_type, kwargs) # what I had
+    p = (ψ, test, ui, loss, ad_type) # with CMB@v0.2.2
+    # return OptimizationProblem(func, u0, p; lb, ub, int, lcons, ucons, sense) # what I had
+    return OptimizationProblem(func, u0, p; lb, ub) # with CMB@v0.2.2
 end
