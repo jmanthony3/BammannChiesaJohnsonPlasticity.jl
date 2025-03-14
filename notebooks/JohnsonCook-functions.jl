@@ -121,32 +121,24 @@ end
 
 parameters(::JC) = (:A, :B, :n, :C, :m)
 
-# function ContinuumMechanicsBase.MaterialOptimizationProblem( # what I had before
-#     ψ   ::JC{T}, # , S},
-#     test::JCUniaxialTest{T},
-#     u0;
-#     ad_type,
-#     ui,
-#     loss    = L2DistLoss(),
-#     lb      = parameter_bounds(ψ, test).lb,
-#     ub      = parameter_bounds(ψ, test).ub,
-#     int     = nothing,
-#     lcons   = nothing,
-#     ucons   = nothing,
-#     sense   = nothing,
-#     kwargs...,
-# ) where {T<:AbstractFloat} #, S<:SymmetricTensor{2, 3, T}}
-function ContinuumMechanicsBase.MaterialOptimizationProblem( # with CMB@v0.2.2
+function ContinuumMechanicsBase.MaterialOptimizationProblem(
     ψ   ::JC{T}, # , S},
     test::JCUniaxialTest{T},
     u0,
-    ui,
+    model_ps,
     ad_type,
-    loss
+    loss;
+    ui,
+    lb      = ContinuumMechanicsBase.parameter_bounds(ψ, test).lb,
+    ub      = ContinuumMechanicsBase.parameter_bounds(ψ, test).ub,
+    int     = nothing,
+    lcons   = nothing,
+    ucons   = nothing,
+    sense   = nothing,
+    kwargs...,
 ) where {T<:AbstractFloat} #, S<:SymmetricTensor{2, 3, T}}
     function f(ps, p)
-        # ψ, test, qs, loss, ad_type, kwargs = p # what I had
-        ψ, test, qs, loss, ad_type = p # with CMB@v0.2.2
+        ψ, test, qs, loss, ad_type, kwargs = p
         function g(ps, qs)
             if !isnothing(qs) && any(!isnan, qs)
                 for (name, value) in zip(keys(qs), qs)
@@ -158,8 +150,7 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem( # with CMB@v0.2.2
             end
             return ComponentVector(ps)
         end
-        # pred = predict(ψ, test, g(ps, qs); ad_type, kwargs...) # what I had
-        pred = predict(ψ, test, g(ps, qs); ad_type) # with CMB@v0.2.2
+        pred = ContinuumMechanicsBase.predict(ψ, test, g(ps, qs); ad_type, kwargs...)
         resϵ = [first(x) for x in eachcol(pred.data.ϵ)]
         testϵ = [first(x) for x in test.data.ϵ]
         s = collect([[x...] for x in eachcol(pred.data.σ)[[findlast(x .>= resϵ) for x in testϵ]]])
@@ -169,8 +160,8 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem( # with CMB@v0.2.2
     end
 
     u0 = ComponentVector(u0)
-    pb = parameter_bounds(ψ, test)
-    lb, ub = pb.lb, pb.ub
+    # pb = parameter_bounds(ψ, test)
+    # lb, ub = pb.lb, pb.ub
     if !isnothing(lb) && !isnothing(ub)
         lb = ComponentVector(lb)
         ub = ComponentVector(ub)
@@ -185,7 +176,7 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem( # with CMB@v0.2.2
         lb = u0 .* -Inf
     end
 
-    model_ps = parameters(ψ)
+    # model_ps = parameters(ψ)
     for p in model_ps
         if !isnothing(lb)
             if (u0[p] < lb[p])
@@ -203,8 +194,6 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem( # with CMB@v0.2.2
 
     func = OptimizationFunction(f, ad_type)
     # Check for Bounds
-    # p = (ψ, test, ui, loss, ad_type, kwargs) # what I had
-    p = (ψ, test, ui, loss, ad_type) # with CMB@v0.2.2
-    # return OptimizationProblem(func, u0, p; lb, ub, int, lcons, ucons, sense) # what I had
-    return OptimizationProblem(func, u0, p; lb, ub) # with CMB@v0.2.2
+    p = (ψ, test, ui, loss, ad_type, kwargs)
+    return OptimizationProblem(func, u0, p; lb, ub, int, lcons, ucons, sense)
 end

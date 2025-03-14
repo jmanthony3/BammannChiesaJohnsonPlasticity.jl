@@ -201,7 +201,7 @@ end
 # ╠═╡ show_logs = false
 begin
 	q = parameters_selection(ComponentVector(p), p_checkboxes)
-	prob = BCJPlasticityProblem(ψ, test, p; ad_type=AutoForwardDiff(), ui=q)
+	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, AutoForwardDiff(), L2DistLoss(), ui=q)
 	sol = solve(prob, LBFGS())
 	calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
 	scatter!(plt, [first(x) for x in eachcol(calib.data.ϵ)], [symmetricvonMises(x) for x in eachcol(calib.data.σ)], label="DK (Calib.)")

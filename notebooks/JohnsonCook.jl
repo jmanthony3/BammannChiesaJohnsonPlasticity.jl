@@ -19,25 +19,6 @@ end
 # ╔═╡ 5cacf487-3916-4b7a-8fbf-04c8b4c9a6d9
 # ╠═╡ show_logs = false
 begin
-	# using Pkg
-	# Pkg.activate(".") # activate project in current directory
-	# Pkg.add("ContinuumMechanicsBase")
-	# Pkg.add("ComponentArrays")
-	# Pkg.add("StructArrays")
-	# Pkg.add("DocStringExtensions")
-	# Pkg.add("CSV")
-	# Pkg.add("DataFrames")
-	# Pkg.add("FiniteDiff")
-	# Pkg.add("ForwardDiff")
-	# Pkg.add("Optimization")
-	# Pkg.add("OptimizationOptimJL")
-	# Pkg.add("LossFunctions")
-	# Pkg.add("Plots")
-	# Pkg.add("Pluto")
-	# Pkg.add("PlutoUI")
-
-
-	
 	using PlutoUI
 	import PlutoUI: combine
 
@@ -100,7 +81,10 @@ begin
 end
 
 # ╔═╡ 4e8be47a-2c49-4bc0-ad5d-b4d6441fcd69
-include("JohnsonCook-functions.jl")
+begin
+	using DocStringExtensions
+	include("JohnsonCook-functions.jl")
+end
 
 # ╔═╡ d534bf54-4c83-43d6-a62c-8e4a34f8f74d
 md"""
@@ -363,22 +347,7 @@ begin
 	    return OptimizationProblem(func, u0, p; lb, ub, int, lcons, ucons, sense)
 	end
 end
-
-# ╔═╡ d534bf54-4c83-43d6-a62c-8e4a34f8f74d
-md"""
-# Johnson-Cook Plasticity Calibration
-This notebook can be used to calibrate the constants for the empirical Johnson-Cook plasticity model.
-This echos the work of the neighboring notebook for interacting with and calibrating the Bammann-Chiesa-Johnson (BCJ) plasticity model which relies on the the `BammannChiesaJohnsonPlasticity.jl` package; however, this notebook for Johnson-Cook includes a cell that defines all the necessary types/structures, constructors, and functions for method dispatching on the functions defined in `ContinuumMechanicsBase.jl`.
-That is, this notebook could be adapted for the rapid development and testing of other material models: e. g. if one wanted to implement their own variation of the Johnson-Cook of BCJ models.
-What follows is an example of loading experimental data for _insert test conditions_ and constructing the appropriate BCJ model from test conditions and material properties.
-
-## Initialize Project Environment
-"""
-
-# ╔═╡ 741432aa-fbab-4a40-962f-fbd9b5d9166c
-md"""
-Secondly, we define all the necessary types/structures, constructors, and functions to utilize the method dispatching of `ContinuumMechanicsBase.jl` and perform model calibration.
-"""
+  ╠═╡ =#
 
 # ╔═╡ 156a860c-e8a5-4dd8-b234-0a0e4419b5a5
 md"""
@@ -465,7 +434,7 @@ end
 # ╠═╡ show_logs = false
 begin
 	q = parameters_selection(ComponentVector(p), p_checkboxes)
-	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, q, AutoForwardDiff(), L2DistLoss())
+	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(), ui=q)
 	sol = solve(prob, LBFGS())
 	calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
 	scatter!(plt, [only(x) for x in eachcol(calib.data.ϵ)], [only(x) for x in eachcol(calib.data.σ)], label="JC (Calib.)")
@@ -491,7 +460,7 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 [compat]
 CSV = "~0.10.15"
 ComponentArrays = "~0.15.25"
-ContinuumMechanicsBase = "~0.1.1"
+ContinuumMechanicsBase = "~0.2.2"
 DataFrames = "~1.7.0"
 DocStringExtensions = "~0.9.3"
 FiniteDiff = "~2.27.0"
@@ -510,7 +479,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "d92c88494157c0cf677979239052da2cc15ce1a0"
+project_hash = "abbf170f2b85985b62866643909f1d92bd3820a9"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e2478490447631aedba0823d4d7a80b2cc8cdb32"
@@ -564,9 +533,9 @@ version = "0.1.42"
 
 [[deps.Adapt]]
 deps = ["LinearAlgebra", "Requires"]
-git-tree-sha1 = "cd8b948862abee8f3d3e9b73a102a9ca924debb0"
+git-tree-sha1 = "f7817e2e585aa6d924fd714df1e2a84be7896c60"
 uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
-version = "4.2.0"
+version = "4.3.0"
 
     [deps.Adapt.extensions]
     AdaptSparseArraysExt = "SparseArrays"
@@ -790,9 +759,9 @@ version = "1.5.8"
 
 [[deps.ContinuumMechanicsBase]]
 deps = ["DocStringExtensions", "LinearAlgebra", "RecursiveArrayTools"]
-git-tree-sha1 = "bc297fc631d10ef059906b1b993274a2558ba462"
+git-tree-sha1 = "82be24954b4946ca4ab61257fca47ee69dfaaf39"
 uuid = "3a778109-d974-46c8-ac54-09f30d605bdf"
-version = "0.1.1"
+version = "0.2.2"
 
 [[deps.Contour]]
 git-tree-sha1 = "439e35b0b36e2e5881738abc8857bd92ad6ff9a8"
@@ -1646,9 +1615,9 @@ version = "1.4.3"
 
 [[deps.Plots]]
 deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "JLFzf", "JSON", "LaTeXStrings", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "Pkg", "PlotThemes", "PlotUtils", "PrecompileTools", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "RelocatableFolders", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "TOML", "UUIDs", "UnicodeFun", "UnitfulLatexify", "Unzip"]
-git-tree-sha1 = "dae01f8c2e069a683d3a6e17bbae5070ab94786f"
+git-tree-sha1 = "564b477ae5fbfb3e23e63fc337d5f4e65e039ca4"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.40.9"
+version = "1.40.10"
 
     [deps.Plots.extensions]
     FileIOExt = "FileIO"
