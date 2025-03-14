@@ -37,7 +37,7 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
     loss
 ) where {T<:AbstractFloat} #, S<:SymmetricTensor{2, 3, T}}
     function f(ps, p)
-        ψ, test, qs, loss, ad_type, kwargs = p
+        ψ, test, qs, loss, ad_type = p
         function g(ps, qs)
             if !isnothing(qs) && any(!isnan, qs)
                 for (name, value) in zip(keys(qs), qs)
@@ -96,6 +96,6 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
 
     func = OptimizationFunction(f, ad_type)
     # Check for Bounds
-    p = (ψ, test, ui, loss, ad_type, kwargs)
-    return OptimizationProblem(func, u₀, p; lb, ub, int, lcons, ucons, sense)
+    p = (ψ, test, ui, loss, ad_type)
+    return OptimizationProblem(func, u₀, p; lb, ub)
 end
