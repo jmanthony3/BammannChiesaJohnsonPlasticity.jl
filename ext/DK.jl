@@ -32,7 +32,7 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
     ψ   ::DK{T}, # , S},
     test::BCJMetalUniaxialTest{T},
     u₀,
-    ps,
+    model_ps,
     ad_type,
     loss;
     ui,
@@ -86,7 +86,7 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
         lb = u₀ .* -Inf
     end
 
-    model_ps = ContinuumMechanicsBase.parameters(ψ)
+    # model_ps = ContinuumMechanicsBase.parameters(ψ)
     for p in model_ps
         if !isnothing(lb)
             if (u₀[p] < lb[p])
