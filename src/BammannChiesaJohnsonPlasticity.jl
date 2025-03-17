@@ -47,7 +47,7 @@ abstract type AbstractBCJModel      <: ContinuumMechanicsBase.AbstractMaterialMo
 abstract type AbstractBCJTest       <: ContinuumMechanicsBase.AbstractMaterialTest end
 
 
-include("BCJMetals.jl") # `include`s for metal-specific models
+include("Metals.jl") # `include`s for metal-specific models
 
 
 
