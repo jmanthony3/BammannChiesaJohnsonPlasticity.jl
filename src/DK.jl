@@ -1,5 +1,5 @@
 export DK
-export map, predict
+export update, predict
 
 using ContinuumMechanicsBase
 using ComponentArrays, StructArrays

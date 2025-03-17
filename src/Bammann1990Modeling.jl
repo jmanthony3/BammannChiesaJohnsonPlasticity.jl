@@ -1,5 +1,5 @@
 export Bammann1990Modeling
-export map, predict
+export update, predict
 
 using ContinuumMechanicsBase
 using ComponentArrays, StructArrays
