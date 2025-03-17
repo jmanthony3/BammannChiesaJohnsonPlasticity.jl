@@ -2,9 +2,7 @@
 Documentation for [BammannChiesaJohnsonPlasticity](https://github.com/jmanthony3/BammannChiesaJohnsonPlasticity.jl).
 
 ```@contents
-Modules = [
-    BammannChiesaJohnsonPlasticity,
-    BammannChiesaJohnsonPlasticity.Metals]
+Modules = [BammannChiesaJohnsonPlasticity]
 Pages   = [
     "bcjplasticity.md",
     "metals.md"]
@@ -17,9 +15,7 @@ Depth   = 1
 
 ## Index
 ```@index
-Modules = [
-    BammannChiesaJohnsonPlasticity,
-    BammannChiesaJohnsonPlasticity.Metals]
+Modules = [BammannChiesaJohnsonPlasticity]
 Pages   = [
     "bcjplasticity.md",
     "metals.md"]

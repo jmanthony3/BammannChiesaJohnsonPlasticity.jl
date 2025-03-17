@@ -1,4 +1,4 @@
-module Metals
+# module Metals
 
 
 
@@ -7,7 +7,7 @@ export BCJMetalStrainControl
 export BCJMetalDataEntry
 export BCJMetalUniaxialTest
 
-import ..BammannChiesaJohnsonPlasticity: AbstractBCJModel, AbstractBCJTest
+# import ..BammannChiesaJohnsonPlasticity: AbstractBCJModel, AbstractBCJTest
 
 using ContinuumMechanicsBase
 using ComponentArrays, StructArrays
@@ -83,4 +83,4 @@ end
 include("Bammann1990Modeling.jl")
 include("DK.jl")
 
-end # end of module
+# end # end of module

@@ -1,7 +1,7 @@
 # Base
 
 ```@meta
-CurrentModule = BammannChiesaJohnsonPlasticity.Metals
+CurrentModule = BammannChiesaJohnsonPlasticity
 ```
 
 ## Types
