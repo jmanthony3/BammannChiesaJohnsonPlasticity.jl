@@ -36,6 +36,7 @@ begin
 	Pkg.add("Plots")
 	Pkg.add("Pluto")
 	Pkg.add("PlutoUI")
+	Pkg.add("Printf")
 
 
 	
@@ -50,6 +51,7 @@ begin
 	import ForwardDiff
 	using Optimization, OptimizationOptimJL, LossFunctions
 	using Plots
+	using Printf
 
 
 
@@ -96,6 +98,13 @@ begin
 		return ComponentVector(parameters)
 	end
 
+	"""
+	(x, y): Actual value
+	
+	(x̂, ŷ): Predicted value
+	"""
+	rmse((x, y), (x̂, ŷ)) = √(length(x) \ sum((ŷ[map(xᵢ->(yᵢ = findfirst(xᵢ .<= x̂); !isnothing(yᵢ) ? yᵢ : findlast(xᵢ .>= x̂)), x)] - y) .^ 2.0))
+
 	md"""
 	First, we start by loading the required packages and defining some helper functions.
 	"""
@@ -105,9 +114,11 @@ end
 md"""
 # Bammann-Chiesa-Johnson Plasticity Calibration
 This notebook can be used to calibrate the constants for Internal State Variables (ISVs) in the Julian implementation of the Bammann-Chiesa-Johnson (BCJ) plasticity model.
-The `BammannChiesaJohnsonPlasticity.jl` package was modelled after the `Hyperelastics.jl` package implementing the `ContinuumMechanicsBase.jl` package for standard function signatures.
-Therefore, the `BCJPlasticity.jl` package is fully capable of performing point-simulator calibrations for BCJ model constants via the `Optimization.jl` package from SciML.
-What follows is an example of loading experimental data for _insert test conditions_ and constructing the appropriate BCJ model from test conditions and material properties.
+The `BammannChiesaJohnsonPlasticity.jl` package was modeled after the `Hyperelastics.jl` package implementing the `ContinuumMechanicsBase.jl` package for common function signatures.
+Therefore, the `BCJPlasticity.jl` package is fully capable of performing point-simulator predictions for a variety of uniaxial loading conditions at given temperatures and strain rates.
+With the `Optimization.jl` package from SciML, calibrations for BCJ model constants may also be performed.
+This notebook expands on the `BCJPlasticity.jl` package with sliders, checkboxes, and other widgets from the `PlutoUI.jl` package which adds a layer of interaction with the BCJ plasticity model of choice.
+What follows is an example of loading experimental data from a tension test of 4340 stainless steel at room temperature ($295 [K]$) and $2 \times 10^{-3} [mm/mm/s]$ strain rate and constructing the appropriate BCJ model from test conditions and material properties.
 
 ## Initialize Project Environment
 """
@@ -192,7 +203,7 @@ p
 begin
 	res = ContinuumMechanicsBase.predict(ψ, test, p)
 	plt = scatter(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, label="exp")
-	scatter!(plt, [first(x) for x in eachcol(res.data.ϵ)], [symmetricvonMises(x) for x in eachcol(res.data.σ)], label="DK")
+	scatter!(plt, [first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)], label="DK")
 end
 
 # ╔═╡ 22a08ebd-2461-4625-8f9b-3ec72cbb5a05
@@ -205,8 +216,21 @@ begin
 	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(), ui=q)
 	sol = solve(prob, LBFGS())
 	calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
-	scatter!(deepcopy(plt), [first(x) for x in eachcol(calib.data.ϵ)], [symmetricvonMises(x) for x in eachcol(calib.data.σ)], label="DK (Calib.)")
+	scatter!(plt, [first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)], label=@sprintf(
+		"DK (Calib.) (K:%d, T:%.3f [s], RMSE:%.3f)", sol.stats.iterations, sol.stats.time, rmse(
+			(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
+			([first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)])
+		)))
 end
+
+# ╔═╡ ac027691-ae47-4450-b9d6-b814b5be79d5
+i, r = 1, deepcopy(q); for (key, value) in zip(keys(p), q)
+	if isnan(value)
+		r[key] = sol.u[i]
+		@printf("%s: %.9f\n", key, r[key])
+	end
+	i += 1
+end; r
 
 # ╔═╡ Cell order:
 # ╟─d534bf54-4c83-43d6-a62c-8e4a34f8f74d
@@ -226,3 +250,4 @@ end
 # ╟─65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
 # ╠═22a08ebd-2461-4625-8f9b-3ec72cbb5a05
 # ╠═df492d79-2a80-4fb2-ad59-f57f4e2b99e9
+# ╠═ac027691-ae47-4450-b9d6-b814b5be79d5

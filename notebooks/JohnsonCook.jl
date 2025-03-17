@@ -29,6 +29,7 @@ begin
 	import ForwardDiff
 	using Optimization, OptimizationOptimJL, LossFunctions
 	using Plots
+	using Printf
 
 
 
@@ -54,7 +55,7 @@ begin
 		return PlutoUI.combine() do Child
 			
 			inputs = [
-				md"""$(parameter): $(CheckBox())"""
+				md"""$(parameter): $(CheckBox(default=true))"""
 				
 				for parameter in parameters
 			]
@@ -74,6 +75,13 @@ begin
 		end
 		return ComponentVector(parameters)
 	end
+
+	"""
+	(x, y): Actual value
+	
+	(x̂, ŷ): Predicted value
+	"""
+	rmse((x, y), (x̂, ŷ)) = √(length(x) \ sum((ŷ[map(xᵢ->(yᵢ = findfirst(xᵢ .<= x̂); !isnothing(yᵢ) ? yᵢ : findlast(xᵢ .>= x̂)), x)] - y) .^ 2.0))
 
 	md"""
 	First, we start by loading the required packages and defining some helper functions.
@@ -437,7 +445,11 @@ begin
 	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(), ui=q)
 	sol = solve(prob, LBFGS())
 	calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
-	scatter!(deepcopy(plt), [only(x) for x in eachcol(calib.data.ϵ)], [only(x) for x in eachcol(calib.data.σ)], label="JC (Calib.)")
+	scatter!(deepcopy(plt), [only(x) for x in eachcol(calib.data.ϵ)], [only(x) for x in eachcol(calib.data.σ)], label=@sprintf(
+		"JC (Calib.) (K:%d, T:%.3f [s], RMSE:%.3f)", sol.stats.iterations, sol.stats.time, rmse(
+			(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
+			([first(x) for x in eachcol(calib.data.ϵ)], [first(x) for x in eachcol(calib.data.σ)])
+		)))
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -455,6 +467,7 @@ Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
 OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 
 [compat]
@@ -479,7 +492,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "abbf170f2b85985b62866643909f1d92bd3820a9"
+project_hash = "894e2ee402cf8642a2da7a1c74a0fe47c48914b9"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e2478490447631aedba0823d4d7a80b2cc8cdb32"

@@ -89,12 +89,12 @@ istate: 1 = tension, 2 = torsion
 
 **no damage in this model**
 """
-function update(model::JC, ϵ, (;
+function update(ψ::JC, ϵ, (;
             A, B, n, C, m
         ))
     return (#=[=#   A   +   (  B * ( ϵ ^ n )  )     #=]=#) * (#=[=#
-        1.0 + ( C * log(model.ϵ⁺) )                 #=]=#) * (#=[=#
-        1.0 - ( model.θ⁺ ^ m )                      #=]=#)
+        1.0 + ( C * log(ψ.ϵ⁺) )                     #=]=#) * (#=[=#
+        1.0 - ( ψ.θ⁺ ^ m )                          #=]=#)
 end
 
 function ContinuumMechanicsBase.predict(
@@ -155,7 +155,7 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
         testϵ = [first(x) for x in test.data.ϵ]
         s = collect([[x...] for x in eachcol(pred.data.σ)[[findlast(x .>= resϵ) for x in testϵ]]])
         res = map(i -> loss.(only(i[1]), only(i[2])), zip(s, test.data.σ)) |> mean
-        @show res
+        # @show res # uncomment for testing
         return res
     end
 
