@@ -172,7 +172,7 @@ Construct the model type given the loading conditions and material properties.
 """
 
 # ╔═╡ 1b83b3e8-9593-483b-a690-fe06aa48aeb5
-ψ = DK(bcj_loading, μ)
+ψ = Bammann1990Modeling(bcj_loading, μ)
 
 # ╔═╡ bd66c9a7-cf0a-4d34-884b-f369722801a8
 md"""
@@ -181,16 +181,24 @@ Now we can make a group of sliders for the pre-defined model `parameters`.
 
 # ╔═╡ 45ed6284-590e-40ee-93f2-439f264fa032
 p0 = ComponentVector(
-	C₁ 	= 35016459.896579415, 		C₂ 	= 323.93342698083165, 	# V
-	C₃ 	= 500340419.8337271, 		C₄ 	= 143.08381901004486, 	# Y
-	C₅ 	= 4.101775377562497, 		C₆ 	= 271.0245526, 			# f
-	C₇ 	= 1.0834796217232945e-06, 	C₈ 	= 1023.6278003945317, 	# r_s
-	C₉ 	= 2358205093.844017, 		C₁₀ = 676421.9935474312, 	# h
-	C₁₁ = 1.3465080192134937e-10, 	C₁₂ = 98.35671405000001, 	# r_d
-	C₁₃ = 2.533629073577668e-09, 	C₁₄ = 403.2291451343492, 	# R_s
-	C₁₅ = 1159915808.5023918, 		C₁₆ = 959557.0948847248, 	# H
-	C₁₇ = 6.204370386543724e-12, 	C₁₈ = 203.95288011132806, 	# R_s
-	C₁₉ = 1e-10, 					C₂₀ = 1e-10 				# Y_adj
+	C₁  = 3.78679e7,
+	C₂  = 352.303,      # V
+	C₃  = 4.44448e8,
+	C₄  = 118.644,      # Y
+	C₅  = 1.17097,
+	C₆  = 644.065,      # f
+	C₇  = 1.07958e-8,
+	C₈  = 5094.6,       # r_s
+	C₉  = 9.97698e-10,
+	C₁₀ = 196.07,       # r_d
+	C₁₁ = 7.82595e-10,
+	C₁₂ = 14102.4,      # R_s
+	C₁₃ = 4.37044e-12,
+	C₁₄ = 7.75843e-12,  # R_d
+	C₁₅ = 5.91094e7,
+	C₁₆ = 0.0022459,    # h
+	C₁₇ = 5.27401e8,
+	C₁₈ = 0.00142715,   # H
 )
 
 # ╔═╡ 2494657a-bdaa-48c5-8209-a36585697975
@@ -202,8 +210,16 @@ p
 # ╔═╡ 65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
 begin
 	res = ContinuumMechanicsBase.predict(ψ, test, p)
-	plt = scatter(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, label="exp")
-	scatter!(plt, [first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)], label="DK")
+	plt = scatter(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"], label="exp",
+		xlabel="True Strain (ϵ) [mm/mm]",
+		ylabel="True Stress (σ) [MPa]")
+	plot!(plt, [first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6, label=@sprintf(
+			"Bammann1990Modeling (RMSE:%.3f)", rmse(
+					(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
+					([first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6))
+			),
+		linecolor=:blue
+	)
 end
 
 # ╔═╡ 22a08ebd-2461-4625-8f9b-3ec72cbb5a05
@@ -216,11 +232,13 @@ begin
 	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(), ui=q)
 	sol = solve(prob, LBFGS())
 	calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
-	scatter!(plt, [first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)], label=@sprintf(
-		"DK (Calib.) (K:%d, T:%.3f [s], RMSE:%.3f)", sol.stats.iterations, sol.stats.time, rmse(
-			(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
-			([first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)])
-		)))
+	plot!(deepcopy(plt), [first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6, label=@sprintf(
+			"Bammann1990Modeling (RMSE:%.3f, K:%d, T:%.3f [s])", rmse(
+				(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
+				([first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6)),
+			sol.stats.iterations, sol.stats.time),
+		linecolor=:blue,
+		linestyle=:dash)
 end
 
 # ╔═╡ ac027691-ae47-4450-b9d6-b814b5be79d5
@@ -229,7 +247,7 @@ i, r = 1, deepcopy(q); for (key, value) in zip(keys(p), q)
 		r[key] = sol.u[i]
 		@printf("%s: %.9f\n", key, r[key])
 	end
-	i += 1
+	global i += 1
 end; r
 
 # ╔═╡ Cell order:
@@ -247,7 +265,7 @@ end; r
 # ╠═45ed6284-590e-40ee-93f2-439f264fa032
 # ╠═2494657a-bdaa-48c5-8209-a36585697975
 # ╠═d4836c95-8b9d-4c0e-bcf3-29abdc551967
-# ╟─65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
+# ╠═65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
 # ╠═22a08ebd-2461-4625-8f9b-3ec72cbb5a05
 # ╠═df492d79-2a80-4fb2-ad59-f57f4e2b99e9
 # ╠═ac027691-ae47-4450-b9d6-b814b5be79d5
