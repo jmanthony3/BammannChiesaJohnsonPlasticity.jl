@@ -11,6 +11,7 @@ ContinuumMechanicsBase.parameters(::DK) = (
     :C₁₉,   :C₂₀    # Y_adj
 )
 
+"Set lower bounds to zero for physical admissibility."
 function ContinuumMechanicsBase.parameter_bounds(::DK, ::T) where {T<:ContinuumMechanicsBase.AbstractMaterialTest}
     lb = (
             C₁  = 0.0,  C₂  = 0.0,  # V
@@ -65,7 +66,7 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
         s = collect([[x...] for x in eachcol(pred.data.σ)[[findlast(x .>= resϵ) for x in testϵ]]])
         # s = collect([[x...] for x in pred.data.σ[[findlast(x .>= resϵ) for x in testϵ]]])
         res = map(i -> loss.(symmetricvonMises(i[1]), only(i[2])), zip(s, test.data.σ)) |> mean
-        @show res
+        # @show res # uncomment for testing
         return res
     end
 

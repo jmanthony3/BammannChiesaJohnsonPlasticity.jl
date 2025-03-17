@@ -2,40 +2,40 @@ module BammannChiesaJohnsonPlasticity
 
 
 
-export triu_vec
-export δ, vonMises, symmetricmagnitude, symmetricvonMises
-export AbstractBCJModel, AbstractBCJTest
-export parameters, parameter_bounds, BCJPlasticityProblem
+# export triu_vec, δ, vonMises # uncomment when we can work with Tensors.jl (#5)
+export norm_symvec, vonMises
+export AbstractBCJModel, AbstractBCJTest, map
 
 
 using ContinuumMechanicsBase
 using DocStringExtensions
 using LinearAlgebra
-using Tensors # : *, ⊡, sqrt, dev
+# using Tensors # : *, ⊡, sqrt, dev
 
 
 
-# helper functions for working with symmetric tensors
-"Get symmetric, second-rank tensor as flat vector."
-triu_vec(A::SymmetricTensor{2, 3, <:AbstractFloat}) = A[triu!(trues(size(A)))]
+# # helper functions for working with symmetric tensors
+# "Get symmetric, second-rank tensor as flat vector."
+# triu_vec(A::SymmetricTensor{2, 3, <:AbstractFloat}) = A[triu!(trues(size(A)))]
 
-"Kroenecker's Delta"
-δ(i, j) = i == j ? 1.0 : 0.0 # helper function
+# "Kroenecker's Delta"
+# δ(i, j) = i == j ? 1.0 : 0.0 # helper function
 
-"von Mises (equivalent) scalar for second rank tensor. Internally uses deviatoric."
-vonMises(x::SecondOrderTensor) = (s = dev(x); sqrt(3.0/2.0 * s ⊡ s))
+# "von Mises (equivalent) scalar for second rank tensor. Internally uses deviatoric."
+# vonMises(x::SecondOrderTensor) = (s = dev(x); sqrt(3.0/2.0 * s ⊡ s))
 
-"Calculate scalar magnitude for flat vector of symmetric tensor: e. g. A̲̲ ≡⃗ [A₁₁, A₂₂, A₃₃, A₁₂, A₂₃, A₁₃]"
-symmetricmagnitude(tensor::Vector{<:Real}) = √( sum(tensor[1:3] .^ 2.) + 2sum(tensor[4:6] .^ 2.) )
+"Calculate scalar magnitude for flat vector of symmetric tensor: e. g. A̲̲ ≡⃗ [A₁₁, A₁₂, A₁₃, A₂₂, A₂₃, A₃₃]"
+norm_symvec(tensor::Vector{<:Real}) = √( sum(tensor[[1, 4, 6]] .^ 2.0) + 2sum(tensor[[2, 3, 5]] .^ 2.0) )
 
-"von Mises (equivalent) scalar for flat vector of symmetric tensor: e. g. A̲̲ ≡⃗ [A₁₁, A₂₂, A₃₃, A₁₂, A₂₃, A₁₃]"
-function symmetricvonMises(tensor::Union{Vector{<:Real}, SubArray{<:Real}}) # ::AbstractFloat
-    σvM = sum(map(x->x^2., [tensor[1] - tensor[2], tensor[2] - tensor[3], tensor[3] - tensor[1]])) + (
-        6sum(map(x->x^2., [tensor[4], tensor[5], tensor[6]])))
+"von Mises (equivalent) scalar for flat vector of symmetric tensor: e. g. A̲̲ ≡⃗ [A₁₁, A₁₂, A₁₃, A₂₂, A₂₃, A₃₃]"
+function vonMises(tensor::Union{Vector{<:Real}, SubArray{<:Real}}) # ::AbstractFloat
+    σvM = sum(map(x->x^2.0, [tensor[1] - tensor[4], tensor[4] - tensor[6], tensor[6] - tensor[1]])) + (
+        6sum(map(x->x^2.0, [tensor[2], tensor[3], tensor[5]])))
     return √(σvM / 2.)
 end
 # symmetricvonMises(tensor::Matrix{<:Real})::Vector{AbstractFloat} = map(symmetricvonMises, eachcol(tensor))
-symmetricvonMises(tensor) = map(symmetricvonMises, eachcol(tensor))
+"von Mises (equivalent) scalar for symmetric tensor."
+vonMises(tensor) = map(vonMises, eachcol(tensor))
 
 
 
@@ -45,6 +45,13 @@ abstract type AbstractBCJModel      <: ContinuumMechanicsBase.AbstractMaterialMo
 
 "Define parent type for all BCJ-variant tests."
 abstract type AbstractBCJTest       <: ContinuumMechanicsBase.AbstractMaterialTest end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Map the given viscoplasticity model from the current material state onto the next intermediate material state.
+"""
+function map(ψ::AbstractBCJModel, args...; kwargs...) end
 
 
 include("Metals.jl") # `include`s for metal-specific models

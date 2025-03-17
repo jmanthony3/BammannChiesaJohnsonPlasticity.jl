@@ -44,7 +44,6 @@ using Test
         C₁₇ = p.C₁₇,    C₁₈ = p.C₁₈,   # R_s
         C₁₉ = p.C₁₉,    C₂₀ = p.C₂₀    # Y_adj
     )
-    # prob = MaterialOptimizationProblem(ψ, test, p; ad_type=AutoForwardDiff(), ui=q) # what I had before while testing (#6d5205)
     prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(); ui=q) # with CMB@v0.2.2
     sol = solve(prob, LBFGS())
     @test sol.retcode == SciMLBase.ReturnCode.Success

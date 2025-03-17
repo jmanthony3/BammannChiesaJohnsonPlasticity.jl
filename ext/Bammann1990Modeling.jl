@@ -1,15 +1,16 @@
 ContinuumMechanicsBase.parameters(::Bammann1990Modeling) = (
-    :C₁,    :C₂,     # V
-    :C₃,    :C₄,     # Y
-    :C₅,    :C₆,     # f
-    :C₇,    :C₈,     # r_d
-    :C₉,    :C₁₀,    # h
-    :C₁₁,   :C₁₂,    # r_s
-    :C₁₃,   :C₁₄,    # R_d
-    :C₁₅,   :C₁₆,    # H
-    :C₁₇,   :C₁₈     # R_s
+    :C₁,    :C₂,    # V
+    :C₃,    :C₄,    # Y
+    :C₅,    :C₆,    # f
+    :C₇,    :C₈,    # r_d
+    :C₉,    :C₁₀,   # h
+    :C₁₁,   :C₁₂,   # r_s
+    :C₁₃,   :C₁₄,   # R_d
+    :C₁₅,   :C₁₆,   # H
+    :C₁₇,   :C₁₈    # R_s
 )
 
+"Set lower bounds to zero for physical admissibility."
 function ContinuumMechanicsBase.parameter_bounds(::Bammann1990Modeling, ::T) where {T<:ContinuumMechanicsBase.AbstractMaterialTest}
     lb = (
             C₁  = 0.0,  C₂  = 0.0,  # V
@@ -63,7 +64,7 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
         s = collect([[x...] for x in eachcol(pred.data.σ)[[findlast(x .>= resϵ) for x in testϵ]]])
         # s = collect([[x...] for x in pred.data.σ[[findlast(x .>= resϵ) for x in testϵ]]])
         res = map(i -> loss.(symmetricvonMises(i[1]), only(i[2])), zip(s, test.data.σ)) |> mean
-        @show res
+        # @show res # uncomment for testing
         return res
     end
 
