@@ -60,7 +60,7 @@ function Bammann1990Modeling(conditions::BCJMetalStrainControl, μ::AbstractFloa
 end
 
 "Use the equations from [bammannModelingTemperatureStrain1990](@cite)."
-function map(ψ::Bammann1990Modeling, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
+function Base.map(ψ::Bammann1990Modeling, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
             C₁,     C₂,     # V
             C₃,     C₄,     # Y
             C₅,     C₆,     # f

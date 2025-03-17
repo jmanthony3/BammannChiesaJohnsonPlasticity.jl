@@ -51,7 +51,7 @@ abstract type AbstractBCJTest       <: ContinuumMechanicsBase.AbstractMaterialTe
 
 Map the given viscoplasticity model from the current material state onto the next intermediate material state.
 """
-function map(ψ::AbstractBCJModel, args...; kwargs...) end
+function Base.map(ψ::AbstractBCJModel, args...; kwargs...) end
 
 
 include("Metals.jl") # `include`s for metal-specific models

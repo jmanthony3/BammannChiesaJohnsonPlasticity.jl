@@ -69,7 +69,7 @@ istate: 1 = tension, 2 = torsion
 
 **no damage in this model**
 """
-function map(ψ::DK, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
+function Base.map(ψ::DK, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
             C₁,     C₂,     # V
             C₃,     C₄,     # Y
             C₅,     C₆,     # f
