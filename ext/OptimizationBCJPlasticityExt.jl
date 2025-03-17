@@ -7,6 +7,6 @@ using Optimization, OptimizationOptimJL, LossFunctions
 
 export parameters, parameter_bounds, MaterialOptimizationProblem
 
-include("BCJMetals.jl")
+include("Metals.jl")
 
 end # end of module
