@@ -4,7 +4,7 @@ module BammannChiesaJohnsonPlasticity
 
 # export triu_vec, δ, vonMises # uncomment when we can work with Tensors.jl (#5)
 export norm_symvec, vonMises
-export AbstractBCJModel, AbstractBCJTest, map
+export AbstractBCJModel, AbstractBCJTest, update
 
 
 using ContinuumMechanicsBase
@@ -49,9 +49,9 @@ abstract type AbstractBCJTest       <: ContinuumMechanicsBase.AbstractMaterialTe
 """
     $(TYPEDSIGNATURES)
 
-Map the given viscoplasticity model from the current material state onto the next intermediate material state.
+Given viscoplasticity model and the current material state, update to the next material state.
 """
-function Base.map(ψ::AbstractBCJModel, args...; kwargs...) end
+function update(ψ::AbstractBCJModel, args...; kwargs...) end
 
 
 include("Metals.jl") # `include`s for metal-specific models

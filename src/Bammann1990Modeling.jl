@@ -60,7 +60,7 @@ function Bammann1990Modeling(conditions::BCJMetalStrainControl, μ::AbstractFloa
 end
 
 "Use the equations from [bammannModelingTemperatureStrain1990](@cite)."
-function Base.map(ψ::Bammann1990Modeling, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
+function update(ψ::Bammann1990Modeling, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
             C₁,     C₂,     # V
             C₃,     C₄,     # Y
             C₅,     C₆,     # f
@@ -166,7 +166,7 @@ function ContinuumMechanicsBase.predict(
     push!(ϵ⃗, ϵ̲̲)
     push!(σ⃗, σ̲̲)
     for i ∈ range(2, M)
-        σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾ = map(ψ, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, p)
+        σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾ = update(ψ, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, p)
         # update!(ψ, σ__, α__, κ, ϵ__, ϵₚ__, p)
         push!(ϵ⃗, ϵ̲̲)
         push!(σ⃗, σ̲̲)
