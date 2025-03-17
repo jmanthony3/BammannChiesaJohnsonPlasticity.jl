@@ -114,30 +114,29 @@ function update(ψ::DK, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
 
     # trial guesses
     α_mag       = norm_symvec(α̲̲)
-    # α_mag       = norm(α__)
+    # α_mag       = norm(α̲̲)
     α_mag      *= sqrt23
     # trial guesses: ISVs (from recovery) and stress
-    recovery    = Δt * (r_d * ϵ̇_eff + r_s) * α_mag    # recovery for alpha (kinematic hardening)
-    Recovery    = Δt * (R_d * ϵ̇_eff + R_s) * κ  # recovery for kappa (isotropic hardening)
+    recovery    = Δt * (r_d * ϵ̇_eff + r_s) * α_mag      # recovery for alpha (kinematic hardening)
+    Recovery    = Δt * (R_d * ϵ̇_eff + R_s) * κ          # recovery for kappa (isotropic hardening)
     α̲̲⁽ᵗʳ⁾       = α̲̲   .* (1 - recovery)
-    # αₜᵣ__       = α__   * (1 - recovery)
+    # αₜᵣ__       = α̲̲   * (1 - recovery)
     κ⁽ᵗʳ⁾       = κ     * (1 - Recovery)
     σ̲̲⁽ᵗʳ⁾       = σ̲̲ + (2μ * Δϵ)                         # trial stress
-    ξ̲̲⁽ᵗʳ⁾       = σ̲̲⁽ᵗʳ⁾ - (2.0 / 3.0) * α̲̲⁽ᵗʳ⁾                                             # trial overstress original
-    # ξ__         = σₜᵣ__ - αₜᵣ__                                             # trial overstress original
-    # ξ__          .= σₜᵣ__ - sqrt23 .* αₜᵣ__                                 # trial overstress FIT
+    ξ̲̲⁽ᵗʳ⁾       = σ̲̲⁽ᵗʳ⁾ - (2.0 / 3.0) * α̲̲⁽ᵗʳ⁾           # trial overstress original
+    # ξ̲̲⁽ᵗʳ⁾       = σ̲̲⁽ᵗʳ⁾ - α̲̲⁽ᵗʳ⁾                       # trial overstress original
+    # ξ̲̲⁽ᵗʳ⁾      .= σ̲̲⁽ᵗʳ⁾ - sqrt23 .* α̲̲⁽ᵗʳ⁾             # trial overstress FIT
     ξ_mag       = norm_symvec(ξ̲̲⁽ᵗʳ⁾)
     # ξ_mag       = norm(ξ__)
 
 
     # yield criterion
-    flow_rule = ξ_mag - sqrt23 * (κ⁽ᵗʳ⁾ + β)                                             # same as vumat20
+    flow_rule = ξ_mag - sqrt23 * (κ⁽ᵗʳ⁾ + β)            # same as vumat20
     if flow_rule <= 0.0     # elastic
         # trial guesses are correct
         σ̲̲           = @. σ̲̲⁽ᵗʳ⁾
         α̲̲           = @. α̲̲⁽ᵗʳ⁾
         κ           = κ⁽ᵗʳ⁾
-        # state.ξ__   = ξ__
         ϵ̲̲          += @. Δϵ
         # state.ϵ_dot_plastic__    .= 0.
     else                    # plastic
@@ -145,15 +144,14 @@ function update(ψ::DK, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
         Δγ          = flow_rule / (2μ + 2(h + H) / 3)     # original
         n̂           = ξ̲̲⁽ᵗʳ⁾ ./ ξ_mag
         # n̂           = ξ__ / ξ_mag
-        σ__prev     = σ̲̲
+        σ̲̲_prev      = σ̲̲
         σ̲̲           = @. σ̲̲⁽ᵗʳ⁾ - (2μ * Δγ) .* n̂
         α̲̲           = @. α̲̲⁽ᵗʳ⁾ + ( h * Δγ) .* n̂
-        # σ__         = @. σₜᵣ__ - (2μ * Δγ) * n̂
-        # α__         = @. αₜᵣ__ + ( h * Δγ) * n̂
-        # state.ξ__   = state.σ__ - state.α__
+        # σ̲̲           = @. σ̲̲⁽ᵗʳ⁾ - (2μ * Δγ) * n̂
+        # α̲̲           = @. α̲̲⁽ᵗʳ⁾ + ( h * Δγ) * n̂
         κ           = κ⁽ᵗʳ⁾   + (H * sqrt23 * Δγ)  # original
-        ϵ̲̲⁽ᵖ⁾       += @. (Δϵ - ((σ̲̲ - σ__prev) ./ 2μ))
-        # ϵₚ__       += @. (Δϵ - ((σ__ - σ__prev) / 2μ))
+        ϵ̲̲⁽ᵖ⁾       += @. (Δϵ - ((σ̲̲ - σ̲̲_prev) ./ 2μ))
+        # ϵ̲̲⁽ᵖ⁾       += @. (Δϵ - ((σ̲̲ - σ̲̲_prev) / 2μ))
         ϵ̲̲          += @. Δϵ
     end
     # ϵ_dot_plastic__ .= (f * sinh(V \ (ξ_mag - κ - Y)) / ξ_mag) * ξ__
@@ -172,8 +170,8 @@ function ContinuumMechanicsBase.predict(
     σ̲̲       = zeros(T, 6)   # deviatoric stress
     ϵ̲̲⁽ᵖ⁾    = zeros(T, 6)   # plastic strain
     ϵ̲̲       = zeros(T, 6)   # total strain
-    α̲̲       = fill(1e-7, 6) # alpha: kinematic hardening
-    κ       = 0.0           # kappa: isotropic hardening
+    α̲̲       = fill(1e-7, 6) # kinematic hardening
+    κ       = 0.0           # isotropic hardening
     ϵ⃗ = []
     σ⃗ = []
     push!(ϵ⃗, ϵ̲̲)
@@ -188,9 +186,8 @@ function ContinuumMechanicsBase.predict(
     # σ__     = zeros(T, 6)   # deviatoric stress
     # ϵₚ__    = zeros(T, 6)   # plastic strain
     # ϵ__     = zeros(T, 6)   # total strain
-    # α__     = fill(1e-7, 6) # alpha: kinematic hardening
-    # κ       = 0.0           # kappa: isotropic hardening
-    # ξ__     = zeros(T, 6)   # overstress (S - 2/3*alpha)
+    # α__     = fill(1e-7, 6) # kinematic hardening
+    # κ       = 0.0           # isotropic hardening
     # ϵ⃗ = zeros(T, (6, M))
     # σ⃗ = zeros(T, (6, M))
     # for i ∈ range(2, M)
@@ -202,9 +199,8 @@ function ContinuumMechanicsBase.predict(
     #     σ__     = zero(s)       # deviatoric stress
     #     ϵₚ__    = zero(s)       # plastic strain
     #     ϵ__     = zero(s)       # total strain
-    #     α__     = fill(1e-7, s) # alpha: kinematic hardening
-    #     κ       = 0.            # kappa: isotropic hardening
-    #     ξ__     = zero(s)       # overstress (S - 2/3*alpha)
+    #     α__     = fill(1e-7, s) # kinematic hardening
+    #     κ       = 0.            # isotropic hardening
     #     ϵ⃗ = zeros(s, M, 1)
     #     σ⃗ = zeros(s, M, 1)
     #     ϵ⃗[1], σ⃗[1] = ϵ__, σ__
