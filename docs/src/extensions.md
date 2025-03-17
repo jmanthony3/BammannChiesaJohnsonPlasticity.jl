@@ -1,12 +1,12 @@
 # Base
 
 ```@meta
-CurrentModule = BammannChiesaJohnsonPlasticity.OptimizationBCJPlasticityExt
+CurrentModule = Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)
 ```
 
 ## Types
 ```@autodocs
-Modules = [BammannChiesaJohnsonPlasticity.OptimizationBCJPlasticityExt]
+Modules = [Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)]
 Order   = [:type]
 Pages   = [
     "OptimizationBCJPlasticityExt.jl",
@@ -16,7 +16,7 @@ Pages   = [
 
 ## Functions
 ```@autodocs
-Modules = [BammannChiesaJohnsonPlasticity.OptimizationBCJPlasticityExt]
+Modules = [Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)]
 Order   = [:function]
 Pages   = [
     "OptimizationBCJPlasticityExt.jl",
@@ -26,7 +26,7 @@ Pages   = [
 
 ## Index
 ```@index
-Modules = [BammannChiesaJohnsonPlasticity.OptimizationBCJPlasticityExt]
+Modules = [Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)]
 Order   = [:type, :function]
 Pages   = [
     "OptimizationBCJPlasticityExt.jl",
