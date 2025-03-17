@@ -1,6 +1,7 @@
 using Documenter
 using DocumenterCitations
 using BammannChiesaJohnsonPlasticity
+using Optimization, OptimizationOptimJL, LossFunctions
 
 DocMeta.setdocmeta!(BammannChiesaJohnsonPlasticity, :DocTestSetup, :(using BammannChiesaJohnsonPlasticity); recursive=true)
 
@@ -10,7 +11,7 @@ bib = CitationBibliography(
 )
 
 makedocs(;
-    modules = [BammannChiesaJohnsonPlasticity],
+    modules = [BammannChiesaJohnsonPlasticity, Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)],
     authors = "Joby M. Anthony III",
     repo    = "https://github.com/jmanthony3/BammannChiesaJohnsonPlasticity.jl/blob/{commit}{path}#{line}",
     sitename= "BammannChiesaJohnsonPlasticity.jl",

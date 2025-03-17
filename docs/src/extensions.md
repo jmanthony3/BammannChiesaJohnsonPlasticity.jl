@@ -29,7 +29,6 @@ Pages   = [
 Modules = [Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)]
 Order   = [:type, :function]
 Pages   = [
-    "OptimizationBCJPlasticityExt.jl",
-    "Metals.jl",
-    "Bammann1990Modeling.jl"]
+    "bcjplasticity.md",
+    "metals.md"]
 ```
