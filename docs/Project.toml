@@ -1,3 +1,4 @@
 [deps]
 BammannChiesaJohnsonPlasticity = "056ed34d-f5e1-4b0f-b3f6-c7e5e8ee168e"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
