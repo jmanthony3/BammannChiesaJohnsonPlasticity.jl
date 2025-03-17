@@ -22,31 +22,29 @@ using Test
         prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(); ui=q)
         return solve(prob, LBFGS())
     end
-    @testset "DK" begin
-        ψ = DK(bcj_loading, μ)
+    @testset "Bammann1990Modeling" begin
+        ψ = Bammann1990Modeling(bcj_loading, μ)
         p = ComponentVector(
-            C₁  = 35016459.896579415,       C₂  = 323.93342698083165,   # V
-            C₃  = 500340419.8337271,        C₄  = 143.08381901004486,   # Y
-            C₅  = 4.101775377562497,        C₆  = 271.0245526,          # f
-            C₇  = 1.0834796217232945e-06,   C₈  = 1023.6278003945317,   # r_s
-            C₉  = 2358205093.844017,        C₁₀ = 676421.9935474312,    # h
-            C₁₁ = 1.3465080192134937e-10,   C₁₂ = 98.35671405000001,    # r_d
-            C₁₃ = 2.533629073577668e-09,    C₁₄ = 403.2291451343492,    # R_s
-            C₁₅ = 1159915808.5023918,       C₁₆ = 959557.0948847248,    # H
-            C₁₇ = 6.204370386543724e-12,    C₁₈ = 203.95288011132806,   # R_s
-            C₁₉ = 1e-10,                    C₂₀ = 1e-10                 # Y_adj
+            C₁  = 3.78679e7,                C₂  = 352.303,      # V
+            C₃  = 4.44448e8,                C₄  = 118.644,      # Y
+            C₅  = 1.17097,                  C₆  = 644.065,      # f
+            C₇  = 1.07958e-8,               C₈  = 5094.6,       # r_s
+            C₉  = 9.97698e-10,              C₁₀ = 196.07,       # r_d
+            C₁₁ = 7.82595e-10,              C₁₂ = 14102.4,      # R_s
+            C₁₃ = 4.37044e-12,              C₁₄ = 7.75843e-12,  # R_d
+            C₁₅ = 5.91094e7,                C₁₆ = 0.0022459,    # h
+            C₁₇ = 5.27401e8,                C₁₈ = 0.00142715,   # H
         )
         q = ComponentVector(
             C₁  = NaN,      C₂  = NaN,      # V
             C₃  = p.C₃,     C₄  = p.C₄,     # Y
             C₅  = p.C₅,     C₆  = p.C₆,     # f
-            C₇  = p.C₇,     C₈  = p.C₈,     # r_d
-            C₉  = p.C₉,     C₁₀ = p.C₁₀,    # h
-            C₁₁ = p.C₁₁,    C₁₂ = p.C₁₂,    # r_s
-            C₁₃ = p.C₁₃,    C₁₄ = p.C₁₄,    # R_d
-            C₁₅ = p.C₁₅,    C₁₆ = p.C₁₆,    # H
-            C₁₇ = p.C₁₇,    C₁₈ = p.C₁₈,    # R_s
-            C₁₉ = p.C₁₉,    C₂₀ = p.C₂₀     # Y_adj
+            C₇  = p.C₇,     C₈  = p.C₈,     # r_s
+            C₉  = p.C₉,     C₁₀ = p.C₁₀,    # r_d
+            C₁₁ = p.C₁₁,    C₁₂ = p.C₁₂,    # R_s
+            C₁₃ = p.C₁₃,    C₁₄ = p.C₁₄,    # R_s
+            C₁₅ = p.C₁₅,    C₁₆ = p.C₁₆,    # h
+            C₁₇ = p.C₁₇,    C₁₈ = p.C₁₈,    # H
         )
         @test testmodel(ψ, p, q).retcode == SciMLBase.ReturnCode.Success
     end

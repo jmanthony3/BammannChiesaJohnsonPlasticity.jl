@@ -59,17 +59,20 @@ function Bammann1990Modeling(conditions::BCJMetalStrainControl, μ::AbstractFloa
     return Bammann1990Modeling{T}(θ, ϵ̇_eff, ϵₙ, N, Δϵ, Δt, μ)
 end
 
-"Use the equations from [bammannModelingTemperatureStrain1990](@cite)."
+"""
+Use the equations from [bammannModelingTemperatureStrain1990](@cite).
+Note: though not explicitly listed in paper, temperature equations `h = C₁₅ * exp(C₁₆ * θ)` and `H = C₁₇ * exp(C₁₈ * θ)` are included.
+"""
 function update(ψ::Bammann1990Modeling, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
             C₁,     C₂,     # V
             C₃,     C₄,     # Y
             C₅,     C₆,     # f
             C₇,     C₈,     # r_d
-            C₉,     C₁₀,    # h
-            C₁₁,    C₁₂,    # r_s
-            C₁₃,    C₁₄,    # R_d
-            C₁₅,    C₁₆,    # H
-            C₁₇,    C₁₈     # R_s
+            C₉,     C₁₀,    # r_s
+            C₁₁,    C₁₂,    # R_d
+            C₁₃,    C₁₄,    # R_s
+            C₁₅,    C₁₆,    # h
+            C₁₇,    C₁₈     # H
         ))
     θ       = ψ.θ
     ϵ̇_eff   = ψ.ϵ̇_eff
@@ -93,11 +96,11 @@ function update(ψ::Bammann1990Modeling, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽�
     f   = C₅    * exp( -C₆ / θ )
     β   = Y + (V * asinh( ϵ̇_eff / f ))
     r_d = C₇    * exp( -C₈  / θ )
-    h   = C₉    * exp(  C₁₀ * θ )
-    r_s = C₁₁   * exp( -C₁₂ / θ )
-    R_d = C₁₃   * exp( -C₁₄ / θ )
-    H   = C₁₅   * exp(  C₁₆ * θ )
-    R_s = C₁₇   * exp( -C₁₈ / θ )
+    r_s = C₉    * exp( -C₁₀ / θ )
+    R_d = C₁₁   * exp( -C₁₂ / θ )
+    R_s = C₁₃   * exp( -C₁₄ / θ )
+    h   = C₁₅   * exp(  C₁₆ * θ )
+    H   = C₁₇   * exp(  C₁₈ * θ )
 
 
     # trial guesses
