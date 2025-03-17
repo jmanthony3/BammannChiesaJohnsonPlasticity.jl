@@ -2,3 +2,6 @@
 BammannChiesaJohnsonPlasticity = "056ed34d-f5e1-4b0f-b3f6-c7e5e8ee168e"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
+LossFunctions = "30fc2ffe-d236-52d8-8643-a9d8f7c094a7"
+Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
+OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
