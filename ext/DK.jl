@@ -65,7 +65,7 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
         # testϵ = [x[1, 1] for x in test.data.ϵ]
         s = collect([[x...] for x in eachcol(pred.data.σ)[[findlast(x .>= resϵ) for x in testϵ]]])
         # s = collect([[x...] for x in pred.data.σ[[findlast(x .>= resϵ) for x in testϵ]]])
-        res = map(i -> loss.(symmetricvonMises(i[1]), only(i[2])), zip(s, test.data.σ)) |> mean
+        res = map(i -> loss.(vonMises(i[1]), only(i[2])), zip(s, test.data.σ)) |> mean
         # @show res # uncomment for testing
         return res
     end
