@@ -15,13 +15,13 @@ using DocStringExtensions
 # using LinearAlgebra
 
 
-"Sub-type for BCJ-models specific to metals."
+"Sub-type of `AbstractBCJModel` for BCJ-models specific to metals."
 abstract type AbstractBCJMetalModel         <: AbstractBCJModel end
 # abstract type ISVMetal{T<:BCJMetal} end
 # abstract type ISVMetalKinematicHardening{T} <: ISVMetal{T} end # α__
 # abstract type ISVMetalIsotropicHardening{T} <: ISVMetal{T} end # κ
 # abstract type ISVMetalDamage{T}             <: ISVMetal{T} end # ϕ
-"Sub-type for BCJ-models specific to metals."
+"Sub-type of `AbstractBCJTest` for BCJ-models specific to metals."
 abstract type AbstractBCJMetalTest{T}       <: AbstractBCJTest end
 
 "Stucture for strain-controlled loadings of metals for temperature, `θ`; strain rate, `ϵ̇`; final strain, `ϵₙ`; number of loading increments, `N`; loading direction, `loaddir` ∈ {`:tension`, `:compression`, `:torsion`}."

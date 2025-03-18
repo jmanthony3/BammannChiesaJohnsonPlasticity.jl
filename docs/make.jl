@@ -24,8 +24,10 @@ makedocs(;
     ),
     pages   = [
         "Home" => "index.md",
-        "Bammann-Chiesa-Johnson Plasticity" => "bcjplasticity.md",
-        "Metals" => "metals.md",
+        "Bammann-Chiesa-Johnson Plasticity" => "BammannChiesaJohnsonPlasticity.md",
+        "Metals" => ["Metals.md",
+            "Bammann1990Modeling" => "Bammann1990Modeling.md",
+        ],
         "Extensions" => "extensions.md"
     ],
     plugins = [bib],

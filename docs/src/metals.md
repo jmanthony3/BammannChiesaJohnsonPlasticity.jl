@@ -1,32 +1,37 @@
-# Base
+# Metals
 
 ```@meta
 CurrentModule = BammannChiesaJohnsonPlasticity
+```
+
+```@contents
+Modules = [BammannChiesaJohnsonPlasticity]
+Pages   = [
+    "Bammann1990Modeling.md"]
+Depth   = 1
 ```
 
 ## Types
 ```@autodocs
 Modules = [BammannChiesaJohnsonPlasticity]
 Order   = [:type]
-Pages   = [
-    "Metals.jl",
-    "Bammann1990Modeling.jl"]
+Pages   = ["Metals.jl"]
 ```
 
 ## Functions
 ```@autodocs
 Modules = [BammannChiesaJohnsonPlasticity]
 Order   = [:function]
-Pages   = [
-    "Metals.jl",
-    "Bammann1990Modeling.jl"]
+Pages   = ["Metals.jl"]
+```
+
+## References
+```@bibliography
 ```
 
 ## Index
 ```@index
 Modules = [BammannChiesaJohnsonPlasticity]
 Order   = [:type, :function]
-Pages   = [
-    "metals.md",
-    "bammann1990modeling.md"]
+Pages   = ["Metals.md"]
 ```

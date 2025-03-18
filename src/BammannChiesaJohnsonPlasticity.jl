@@ -40,14 +40,14 @@ vonMises(tensor) = map(vonMises, eachcol(tensor))
 
 
 # module specific codes from parent, [CMB.jl](https://github.com/TRACER-LULab/ContinuumMechanicsBase.jl.git)
-"Define parent type for all BCJ-variant models."
+"Parent type for all BCJ-variant models."
 abstract type AbstractBCJModel      <: ContinuumMechanicsBase.AbstractMaterialModel end
 
-"Define parent type for all BCJ-variant tests."
+"Parent type for all BCJ-variant tests."
 abstract type AbstractBCJTest       <: ContinuumMechanicsBase.AbstractMaterialTest end
 
 """
-    $(TYPEDSIGNATURES)
+    $(SIGNATURES)
 
 Given viscoplasticity model and the current material state, update to the next material state.
 """
