@@ -3,7 +3,7 @@ module OptimizationBCJPlasticityExt
 using BammannChiesaJohnsonPlasticity
 using ContinuumMechanicsBase
 using ComponentArrays
-using Optimization
+using Optimization, LossFunctions
 
 export parameters, parameter_bounds, MaterialOptimizationProblem
 
