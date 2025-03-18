@@ -18,20 +18,29 @@ test = BCJMetalUniaxialTest(df_Tension_e002_295[!, "Strain"], df_Tension_e002_29
 bcj_loading = BCJMetalStrainControl(295.0, 2e-3, float(last(df_Tension_e002_295[!, "Strain"])), 200, :tension)
 G = 159e9   # shear modulus [Pa]
 μ = 77e9    # bulk modulus [Pa]
-ψ = DK(bcj_loading, μ)
+ψ = Bammann1990Modeling(bcj_loading, μ)
 p = ComponentVector(
-    C₁  = 35016459.896579415,       C₂  = 323.93342698083165,   # V
-    C₃  = 500340419.8337271,        C₄  = 143.08381901004486,   # Y
-    C₅  = 4.101775377562497,        C₆  = 271.0245526,          # f
-    C₇  = 1.0834796217232945e-06,   C₈  = 1023.6278003945317,   # r_s
-    C₉  = 2358205093.844017,        C₁₀ = 676421.9935474312,    # h
-    C₁₁ = 1.3465080192134937e-10,   C₁₂ = 98.35671405000001,    # r_d
-    C₁₃ = 2.533629073577668e-09,    C₁₄ = 403.2291451343492,    # R_s
-    C₁₅ = 1159915808.5023918,       C₁₆ = 959557.0948847248,    # H
-    C₁₇ = 6.204370386543724e-12,    C₁₈ = 203.95288011132806,   # R_s
-    C₁₉ = 1e-10,                    C₂₀ = 1e-10                 # Y_adj
+    C₁ = 9.1402e10,
+    C₂ = 258.417,
+    C₃ = 1.62805e8,
+    C₄ = 363.053,
+    C₅ = 1.28544,
+    C₆ = 236.047,
+    C₇ = 1.04959e-6,
+    C₈ = 0.0920373,
+    C₉ = 4.07014e-10,
+    C₁₀ = 1000.0,
+    C₁₁ = 7.07701e-12,
+    C₁₂ = 18.6325,
+    C₁₃ = 5.07815e-12,
+    C₁₄ = 38.7783,
+    C₁₅ = 3.77314e7,
+    C₁₆ = 0.0111427,
+    C₁₇ = 7.87311e6,
+    C₁₈ = 0.0155747,
 )
 res = ContinuumMechanicsBase.predict(ψ, test, p)
+@show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
 # plt = scatter(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, label="exp")
 # scatter!(plt, [first(x) for x in eachcol(res.data.ϵ)], [symmetricvonMises(x) for x in eachcol(res.data.σ)], label="DK")
 # # scatter!(plt, [x[1, 1] for x in res.data.ϵ], [vonMises(x) for x in res.data.σ], label="DK")

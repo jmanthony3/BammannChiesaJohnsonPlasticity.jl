@@ -9,6 +9,13 @@ using Optimization, OptimizationOptimJL, LossFunctions
 
 using Test
 
+"""
+(x, y): Actual value
+
+(x̂, ŷ): Predicted value
+"""
+rmse((x, y), (x̂, ŷ)) = √(length(x) \ sum((ŷ[map(xᵢ->(yᵢ = findfirst(xᵢ .<= x̂); !isnothing(yᵢ) ? yᵢ : findlast(xᵢ .>= x̂)), x)] - y) .^ 2.0))
+
 
 
 @testset verbose=true "BammannChiesaJohnsonPlasticity.jl" begin
@@ -18,35 +25,64 @@ using Test
     bcj_loading = BCJMetalStrainControl(295.0, 2e-3, float(last(df_Tension_e002_295[!, "Strain"])), 200, :tension)
     G = 159e9   # shear modulus [Pa]
     μ = 77e9    # bulk modulus [Pa]
-    function testmodel(ψ, p, q)
-        prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(); ui=q)
+    function testmodel(ψ, test, p, q)
+        prob = ContinuumMechanicsBase.MaterialOptimizationProblem(
+            ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(); ui=q)
         return solve(prob, LBFGS())
     end
     @testset "Bammann1990Modeling" begin
         ψ = Bammann1990Modeling(bcj_loading, μ)
         p = ComponentVector(
-            C₁  = 3.78679e7,                C₂  = 352.303,      # V
-            C₃  = 4.44448e8,                C₄  = 118.644,      # Y
-            C₅  = 1.17097,                  C₆  = 644.065,      # f
-            C₇  = 1.07958e-8,               C₈  = 5094.6,       # r_s
-            C₉  = 9.97698e-10,              C₁₀ = 196.07,       # r_d
-            C₁₁ = 7.82595e-10,              C₁₂ = 14102.4,      # R_s
-            C₁₃ = 4.37044e-12,              C₁₄ = 7.75843e-12,  # R_d
-            C₁₅ = 5.91094e7,                C₁₆ = 0.0022459,    # h
-            C₁₇ = 5.27401e8,                C₁₈ = 0.00142715,   # H
+            C₁ = 9.98748e10,
+            C₂ = 1483.14,
+            C₃ = 1.61687e8,
+            C₄ = 382.443,
+            C₅ = 1.65237,
+            C₆ = 1320.97,
+            C₇ = 0.000195306,
+            C₈ = 1504.62,
+            C₉ = 4.04209e-10,
+            C₁₀ = 993.109,
+            C₁₁ = 7.02824e-12,
+            C₁₂ = 18.5041,
+            C₁₃ = 5.04316e-9,
+            C₁₄ = 2153.13,
+            C₁₅ = 3.75749e7,
+            C₁₆ = 0.0192042,
+            C₁₇ = 7.75065e6,
+            C₁₈ = 0.0149159,
         )
+        pred = ContinuumMechanicsBase.predict(ψ, test, p)
+        # @show [vonMises(x) for x in eachcol(pred.data.σ)] ./ 1e6
+        @test isapprox(30.241, rmse(
+            (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
+            ([first(x) for x in eachcol(pred.data.ϵ)], [vonMises(x) for x in eachcol(pred.data.σ)] ./ 1e6)); atol=1e-3)
         q = ComponentVector(
-            C₁  = NaN,      C₂  = NaN,      # V
-            C₃  = p.C₃,     C₄  = p.C₄,     # Y
-            C₅  = p.C₅,     C₆  = p.C₆,     # f
-            C₇  = p.C₇,     C₈  = p.C₈,     # r_s
-            C₉  = p.C₉,     C₁₀ = p.C₁₀,    # r_d
-            C₁₁ = p.C₁₁,    C₁₂ = p.C₁₂,    # R_s
-            C₁₃ = p.C₁₃,    C₁₄ = p.C₁₄,    # R_s
-            C₁₅ = p.C₁₅,    C₁₆ = p.C₁₆,    # h
-            C₁₇ = p.C₁₇,    C₁₈ = p.C₁₈,    # H
+            C₁ = NaN,
+            C₂ = NaN,
+            C₃ = NaN,
+            C₄ = NaN,
+            C₅ = NaN,
+            C₆ = NaN,
+            C₇ = p.C₇,
+            C₈ = p.C₈,
+            C₉ = p.C₉,
+            C₁₀ = p.C₁₀,
+            C₁₁ = p.C₁₁,
+            C₁₂ = p.C₁₂,
+            C₁₃ = p.C₁₃,
+            C₁₄ = p.C₁₄,
+            C₁₅ = p.C₁₅,
+            C₁₆ = p.C₁₆,
+            C₁₇ = p.C₁₇,
+            C₁₈ = p.C₁₈,
         )
-        @test testmodel(ψ, p, q).retcode == SciMLBase.ReturnCode.Success
+        sol = testmodel(ψ, test, p, q)
+        @test sol.retcode == SciMLBase.ReturnCode.Success
+        calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
+        @test isapprox(30.379, rmse(
+            (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
+            ([first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6)); atol=1e-3)
     end
 
     # # bcj_loading = BCJ_metal(295., 570., 0.15, 200, 1, p)

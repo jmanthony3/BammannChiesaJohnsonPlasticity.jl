@@ -60,7 +60,7 @@ begin
 			
 			inputs = [
 				md""" $(parameter): $(
-					Child(parameter, Slider(value .* logrange(0.1, 10.0, length=1000), default=value))
+					Child(parameter, Slider(value .* logrange(1e-3, 1e3, length=1000), default=value))
 				)"""
 				
 				for (parameter, value) in zip(parameters, values)
@@ -181,24 +181,24 @@ Now we can make a group of sliders for the pre-defined model `parameters`.
 
 # ╔═╡ 45ed6284-590e-40ee-93f2-439f264fa032
 p0 = ComponentVector(
-	C₁  = 3.78679e7,
-	C₂  = 352.303,      # V
-	C₃  = 4.44448e8,
-	C₄  = 118.644,      # Y
-	C₅  = 1.17097,
-	C₆  = 644.065,      # f
-	C₇  = 1.07958e-8,
-	C₈  = 5094.6,       # r_s
-	C₉  = 9.97698e-10,
-	C₁₀ = 196.07,       # r_d
-	C₁₁ = 7.82595e-10,
-	C₁₂ = 14102.4,      # R_s
-	C₁₃ = 4.37044e-12,
-	C₁₄ = 7.75843e-12,  # R_d
-	C₁₅ = 5.91094e7,
-	C₁₆ = 0.0022459,    # h
-	C₁₇ = 5.27401e8,
-	C₁₈ = 0.00142715,   # H
+	C₁ = 100567805581.449005127,
+	C₂ = 1493.432680374,
+	C₃ = 162809350.500710130,
+	C₄ = 385.096810454,
+	C₅ = 1.663838836,
+	C₆ = 1330.136471316,
+	C₇ = 0.000196661,
+	C₈ = 1515.064799827,
+    C₉ = 4.07014e-10,
+    C₁₀ = 1000.0,
+    C₁₁ = 7.07701e-12,
+    C₁₂ = 18.6325,
+    C₁₃ = 5.07815e-9,
+    C₁₄ = 2168.07,
+	C₁₅ = 37835616.035294607,
+	C₁₆ = 0.019337458,
+	C₁₇ = 7804427.836321943,
+	C₁₈ = 0.015019383,
 )
 
 # ╔═╡ 2494657a-bdaa-48c5-8209-a36585697975
@@ -226,7 +226,6 @@ end
 @bind p_checkboxes confirm(MultiCheckBox(String.(collect(parameters(ψ)))))
 
 # ╔═╡ df492d79-2a80-4fb2-ad59-f57f4e2b99e9
-# ╠═╡ show_logs = false
 begin
 	q = parameters_selection(ComponentVector(p), p_checkboxes)
 	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(), ui=q)
@@ -242,10 +241,10 @@ begin
 end
 
 # ╔═╡ ac027691-ae47-4450-b9d6-b814b5be79d5
-i, r = 1, deepcopy(q); for (key, value) in zip(keys(p), q)
+@show sol.retcode; i, r = 1, deepcopy(q); for (key, value) in zip(keys(p), q)
 	if isnan(value)
 		r[key] = sol.u[i]
-		@printf("%s: %.9f\n", key, r[key])
+		@printf("\t%s = %.9f,\n", key, r[key])
 	end
 	global i += 1
 end; r
@@ -265,7 +264,7 @@ end; r
 # ╠═45ed6284-590e-40ee-93f2-439f264fa032
 # ╠═2494657a-bdaa-48c5-8209-a36585697975
 # ╠═d4836c95-8b9d-4c0e-bcf3-29abdc551967
-# ╠═65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
+# ╟─65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
 # ╠═22a08ebd-2461-4625-8f9b-3ec72cbb5a05
 # ╠═df492d79-2a80-4fb2-ad59-f57f4e2b99e9
 # ╠═ac027691-ae47-4450-b9d6-b814b5be79d5
