@@ -33,7 +33,7 @@ makedocs(;
         ],
         "Extensions" => [
             "Extending Functionality" => "extensions.md",
-            "Optimization.jl" => "ext/OptimizationBCJPlasticityExt.md"
+            "Optimization.jl" => "ext/OptimizationBCJPlasticityExt.jl/OptimizationBCJPlasticityExt.md"
         ]
     ],
     plugins = [bib],
