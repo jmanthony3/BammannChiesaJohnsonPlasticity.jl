@@ -15,14 +15,16 @@ Depth   = 1
 ```@autodocs
 Modules = [BammannChiesaJohnsonPlasticity]
 Order   = [:type]
-Pages   = ["Metals.jl"]
+Pages   = [
+    "Bammann1990Modeling.md"]
 ```
 
 ## Functions
 ```@autodocs
 Modules = [BammannChiesaJohnsonPlasticity]
 Order   = [:function]
-Pages   = ["Metals.jl"]
+Pages   = [
+    "Bammann1990Modeling.md"]
 ```
 
 ## References
@@ -33,5 +35,6 @@ Pages   = ["Metals.jl"]
 ```@index
 Modules = [BammannChiesaJohnsonPlasticity]
 Order   = [:type, :function]
-Pages   = ["Metals.md"]
+Pages   = [
+    "Bammann1990Modeling.md"]
 ```
