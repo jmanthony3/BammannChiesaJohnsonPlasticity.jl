@@ -60,8 +60,8 @@ function Bammann1990Modeling(conditions::BCJMetalStrainControl, μ::AbstractFloa
 end
 
 """
-Using the equations and constants from [Bammann (1990)]([bammannModelingTemperatureStrain1990](@cite)), this kernel function maps the current material state and ISVs onto the next configuration.
-Note: though not explicitly listed in paper, temperature equations `h = C₁₅ * exp(C₁₆ * θ)` and `H = C₁₇ * exp(C₁₈ * θ)` are included (c. f. [DYNA3D User Manual (1993)]([whirley1993dyna3d](@cite))).
+Using the equations and constants from [Bammann (1990)](@cite bammannModelingTemperatureStrain1990), this kernel function maps the current material state and ISVs onto the next configuration.
+Note: though not explicitly listed in paper, temperature equations `h = C₁₅ * exp(C₁₆ * θ)` and `H = C₁₇ * exp(C₁₈ * θ)` are included (c. f. [DYNA3D User Manual (1993)](@cite whirley1993dyna3d)).
 """
 function update(ψ::Bammann1990Modeling, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
             C₁,     C₂,     # V

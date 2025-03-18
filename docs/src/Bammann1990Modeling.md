@@ -4,9 +4,9 @@
 CurrentModule = BammannChiesaJohnsonPlasticity
 ```
 
-The following equations are those employed in the [Bammann (1990)]([bammannModelingTemperatureStrain1990](@cite)) paper that are implemented in the `Bammann1990Modeling` type, constructor, and that method of the kernel function, `update` associate with this type.
+The following equations are those employed in the [Bammann (1990)](@cite bammannModelingTemperatureStrain1990) paper that are implemented in the `Bammann1990Modeling` type, constructor, and that method of the kernel function, `update` associate with this type.
 As such, the internal equations use the same nomenclature for plastic strain rate, $\mathbf{D}^{p} \equiv \dot{\epsilon}^{(p)}$; the second-rank, deviatoric tensors for Cauchy stress, $\mathbf{\sigma}'$ and kinematic hardening, $\mathbf{\alpha}'$ which is an ISV; the scalar isotropic hardening, $\kappa$, and the constants associated with the dynamic and static recovery temperature equations.
-Of major importance is that, although not explicitly listed in the publication, the equations for $h$ and $H$ are included in this implementation (c. f. [DYNA3D User Manual (1993)]([whirley1993dyna3d](@cite))).
+Of major importance is that, although not explicitly listed in the publication, the equations for $h$ and $H$ are included in this implementation (c. f. [DYNA3D User Manual (1993)](@cite whirley1993dyna3d)).
 
 $$
 \begin{align}

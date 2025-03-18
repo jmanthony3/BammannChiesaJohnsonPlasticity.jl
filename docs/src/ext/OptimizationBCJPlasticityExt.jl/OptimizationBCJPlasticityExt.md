@@ -10,14 +10,18 @@ This extension is meant to provide additional functionality to the base package 
 ```@autodocs
 Modules = [Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)]
 Order   = [:type]
-Pages   = ["OptimizationBCJPlasticityExt.jl"]
+Pages   = ["OptimizationBCJPlasticityExt.jl",
+    "Metals.jl",
+        "Bammann1990Modeling.jl]
 ```
 
 ## Functions
 ```@autodocs
 Modules = [Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)]
 Order   = [:function]
-Pages   = ["OptimizationBCJPlasticityExt.jl"]
+Pages   = ["OptimizationBCJPlasticityExt.jl",
+    "Metals.jl",
+        "Bammann1990Modeling.jl]
 ```
 
 ## Index
