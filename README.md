@@ -1,4 +1,4 @@
-# BammannChiesaJohnsonPlasticity
+# BammannChiesaJohnsonPlasticity.jl
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://jmanthony3.github.io/BammannChiesaJohnsonPlasticity.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://jmanthony3.github.io/BammannChiesaJohnsonPlasticity.jl/dev/)

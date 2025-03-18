@@ -1,29 +1,32 @@
 name = "BammannChiesaJohnsonPlasticity"
 uuid = "056ed34d-f5e1-4b0f-b3f6-c7e5e8ee168e"
-authors = ["Joby M. Anthony III", "Julian Tse Lop Kun"]
+authors = ["Joby M. Anthony III"]
 version = "0.0.0-dev"
 
 [deps]
-CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
-Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
-LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
-OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
-PlasticityBase = "4061fbf7-9440-4a1d-9a5e-b99f9d96b3d3"
+ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
+ContinuumMechanicsBase = "3a778109-d974-46c8-ac54-09f30d605bdf"
+DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
+Tensors = "48a634ad-e948-5137-8d70-aa71f2a747f4"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [weakdeps]
-PlasticityCalibratinator = "a89bb55e-884e-48c3-ba05-e3917bd289c9"
+LossFunctions = "30fc2ffe-d236-52d8-8643-a9d8f7c094a7"
+Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
+OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
 
 [extensions]
-PlasticityCalibratinatorExt = "PlasticityCalibratinator"
+OptimizationBCJPlasticityExt = ["Optimization", "OptimizationOptimJL", "LossFunctions"]
 
 [compat]
-Documenter = "1"
-OrderedCollections = "1.8.0"
-PlasticityBase = "0"
+ComponentArrays = "0.15.24"
+ContinuumMechanicsBase = "0.2.2"
+DocStringExtensions = "0.9.3"
+LinearAlgebra = "1.11.0"
+StructArrays = "0.7.0"
+Tensors = "1.16.1"
 Test = "1.11.0"
 julia = "1.11"
 

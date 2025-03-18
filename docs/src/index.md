@@ -4,14 +4,19 @@ Documentation for [BammannChiesaJohnsonPlasticity](https://github.com/jmanthony3
 ```@contents
 Modules = [BammannChiesaJohnsonPlasticity]
 Pages   = [
-]
+    "bcjplasticity.md",
+    "metals.md"]
 Depth   = 1
+```
+
+## References
+```@bibliography
 ```
 
 ## Index
 ```@index
-Modules = [
-    BammannChiesaJohnsonPlasticity]
+Modules = [BammannChiesaJohnsonPlasticity]
 Pages   = [
-]
+    "bcjplasticity.md",
+    "metals.md"]
 ```

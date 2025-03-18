@@ -1,4 +1,4 @@
-export Bammann1990Modeling
+export Bammann1993Failure
 export update, predict
 
 using ContinuumMechanicsBase
@@ -9,8 +9,8 @@ using ComponentArrays, StructArrays
 Structure for viscoplasticity model with loading conditions and material properties.
 Here, uses the effective strain rate based on applied strain rate and loading direction.
 """
-struct Bammann1990Modeling{T<:AbstractFloat} <: AbstractBCJMetalModel
-# struct Bammann1990Modeling{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
+struct Bammann1993Failure{T<:AbstractFloat} <: AbstractBCJMetalModel
+# struct Bammann1993Failure{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
     θ       ::T         # applied temperature
     ϵ̇_eff   ::T         # strain rate (effective)
     ϵₙ      ::T         # final strain
@@ -26,7 +26,7 @@ end
 Use loading conditions and material properties to construct viscoplasticity model which assumes a Poisson's Ratio of 0.5.
 Here, `μ` is the shear modulus.
 """
-function Bammann1990Modeling(conditions::BCJMetalStrainControl, μ::AbstractFloat)
+function Bammann1993Failure(conditions::BCJMetalStrainControl, μ::AbstractFloat)
     θ       = conditions.θ
     ϵ̇       = conditions.ϵ̇
     ϵₙ      = conditions.ϵₙ
@@ -56,23 +56,20 @@ function Bammann1990Modeling(conditions::BCJMetalStrainControl, μ::AbstractFloa
         # Δt  = Δϵ[1, 2] / ϵ_dot      # timestep
         2ϵ̇ / √3.
     end
-    return Bammann1990Modeling{T}(θ, ϵ̇_eff, ϵₙ, N, Δϵ, Δt, μ)
+    return Bammann1993Failure{T}(θ, ϵ̇_eff, ϵₙ, N, Δϵ, Δt, μ)
 end
 
-"""
-Use the equations from [bammannModelingTemperatureStrain1990](@cite).
-Note: though not explicitly listed in paper, temperature equations `h = C₁₅ * exp(C₁₆ * θ)` and `H = C₁₇ * exp(C₁₈ * θ)` are included.
-"""
-function update(ψ::Bammann1990Modeling, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
+"Use the equations from [bammannFailureDuctileMaterials1993](@cite)."
+function update(ψ::Bammann1993Failure, σ̲̲, α̲̲, κ, ϕ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
             C₁,     C₂,     # V
             C₃,     C₄,     # Y
             C₅,     C₆,     # f
             C₇,     C₈,     # r_d
-            C₉,     C₁₀,    # r_s
-            C₁₁,    C₁₂,    # R_d
-            C₁₃,    C₁₄,    # R_s
-            C₁₅,    C₁₆,    # h
-            C₁₇,    C₁₈     # H
+            C₉,     C₁₀,    # h
+            C₁₁,    C₁₂,    # r_s
+            C₁₃,    C₁₄,    # R_d
+            C₁₅,    C₁₆,    # H
+            C₁₇,    C₁₈     # R_s
         ))
     θ       = ψ.θ
     ϵ̇_eff   = ψ.ϵ̇_eff
@@ -96,11 +93,11 @@ function update(ψ::Bammann1990Modeling, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽�
     f   = C₅    * exp( -C₆ / θ )
     β   = Y + (V * asinh( ϵ̇_eff / f ))
     r_d = C₇    * exp( -C₈  / θ )
-    r_s = C₉    * exp( -C₁₀ / θ )
-    R_d = C₁₁   * exp( -C₁₂ / θ )
-    R_s = C₁₃   * exp( -C₁₄ / θ )
-    h   = C₁₅   * exp(  C₁₆ * θ )
-    H   = C₁₇   * exp(  C₁₈ * θ )
+    h   = C₉    * exp(  C₁₀ * θ )
+    r_s = C₁₁   * exp( -C₁₂ / θ )
+    R_d = C₁₃   * exp( -C₁₄ / θ )
+    H   = C₁₅   * exp(  C₁₆ * θ )
+    R_s = C₁₇   * exp( -C₁₈ / θ )
 
 
     # trial guesses
@@ -113,7 +110,7 @@ function update(ψ::Bammann1990Modeling, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽�
     # α̲̲⁽ᵗʳ⁾       = α̲̲   * (1 - recovery)
     κ⁽ᵗʳ⁾       = κ     * (1 - Recovery)
     σ̲̲⁽ᵗʳ⁾       = σ̲̲ + (2μ * Δϵ)                         # deviatoric stress (trial)
-    ξ̲̲⁽ᵗʳ⁾       = σ̲̲⁽ᵗʳ⁾ - α̲̲⁽ᵗʳ⁾                         # over-stress (trial)
+    ξ̲̲⁽ᵗʳ⁾       = σ̲̲⁽ᵗʳ⁾ - (2.0 / 3.0 * α̲̲⁽ᵗʳ⁾)           # over-stress (trial)
     ξ_mag       = norm_symvec(ξ̲̲⁽ᵗʳ⁾)
     # ξ_mag       = norm(ξ__)
 
@@ -139,7 +136,7 @@ function update(ψ::Bammann1990Modeling, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽�
         # α̲̲           = @. α̲̲⁽ᵗʳ⁾ + ( h * Δγ) * n̂
         κ           = κ⁽ᵗʳ⁾   + (H * Δγ)  # original
         ϵ̲̲⁽ᵖ⁾       += @. (Δϵ - ((σ̲̲ - σ̲̲_prev) ./ 2μ))
-        # ϵₚ__       += @. (Δϵ - ((σ̲̲ - σ̲̲_prev) / 2μ))
+        # ϵ̲̲⁽ᵖ⁾       += @. (Δϵ - ((σ̲̲ - σ̲̲_prev) / 2μ))
         ϵ̲̲          += @. Δϵ
     end
     # ϵ_dot_plastic__  = @. (f * sinh(V \ (ξ_mag - κ - Y)) / ξ_mag) * ξ__
@@ -149,15 +146,15 @@ function update(ψ::Bammann1990Modeling, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽�
 end
 
 function ContinuumMechanicsBase.predict(
-            ψ   ::Bammann1990Modeling{T}, # , S},
+            ψ   ::Bammann1993Failure{T}, # , S},
             test::AbstractBCJMetalTest{T},
             p;
             kwargs...,
         ) where {T<:AbstractFloat} # , S<:SymmetricTensor{2, 3, T}}
     M = ψ.N + 1
     σ̲̲       = zeros(T, 6)   # deviatoric stress
-    ϵ̲̲       = zeros(T, 6)   # total strain
     ϵ̲̲⁽ᵖ⁾    = zeros(T, 6)   # plastic strain
+    ϵ̲̲       = zeros(T, 6)   # total strain
     α̲̲       = fill(1e-7, 6) # kinematic hardening
     κ       = 0.0           # isotropic hardening
     ϵ⃗ = []
@@ -172,10 +169,10 @@ function ContinuumMechanicsBase.predict(
     end
     return (data=(ϵ=hcat(ϵ⃗...), σ=hcat(σ⃗...)),)
     # σ__     = zeros(T, 6)   # deviatoric stress
-    # ϵ__     = zeros(T, 6)   # total strain
     # ϵₚ__    = zeros(T, 6)   # plastic strain
-    # α__     = fill(1e-7, 6) # kinematic hardening
-    # κ       = 0.0           # isotropic hardening
+    # ϵ__     = zeros(T, 6)   # total strain
+    # α__     = fill(1e-7, 6) # alpha: kinematic hardening
+    # κ       = 0.0           # kappa: isotropic hardening
     # ϵ⃗ = zeros(T, (6, M))
     # σ⃗ = zeros(T, (6, M))
     # for i ∈ range(2, M)
