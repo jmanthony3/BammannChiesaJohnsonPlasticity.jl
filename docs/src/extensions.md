@@ -7,6 +7,6 @@ Future work may include an extension for the [`Ferrite.jl`](https://github.com/F
 Modules = [
     Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)]
 Pages   = [
-    "OptimizationBCJPlasticityExt.md"]
+    "ext/OptimizationBCJPlasticityExt.md"]
 Depth   = 1
 ```
