@@ -24,11 +24,17 @@ makedocs(;
     ),
     pages   = [
         "Home" => "index.md",
-        "Bammann-Chiesa-Johnson Plasticity" => "BammannChiesaJohnsonPlasticity.md",
-        "Metals" => ["Metals.md",
-            "Bammann1990Modeling" => "Bammann1990Modeling.md",
+        "Bammann-Chiesa-Johnson Plasticity" => [
+            "Base Package" => "BammannChiesaJohnsonPlasticity.md",
+            "Metals" => [
+                "Metal Specific Types" => "Metals.md",
+                "Bammann1990Modeling" => "Bammann1990Modeling.md",
+            ]
         ],
-        "Extensions" => "extensions.md"
+        "Extensions" => [
+            "Extending Functionality" => "extensions.md",
+            "Optimization.jl" => "ext/OptimizationBCJPlasticityExt.md"
+        ]
     ],
     plugins = [bib],
 )
