@@ -81,6 +81,5 @@ struct BCJMetalUniaxialTest{T, S} <: AbstractBCJMetalTest{T}
 end
 
 include("Bammann1990Modeling.jl")
-include("DK.jl")
 
 # end # end of module
