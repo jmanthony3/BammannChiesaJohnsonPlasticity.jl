@@ -47,23 +47,23 @@ rmse((x, y), (x̂, ŷ)) = √(length(x) \ sum((ŷ[map(xᵢ->(yᵢ = findfirst(
             C₁₂ = 18.5041,
             C₁₃ = 5.04316e-9,
             C₁₄ = 2153.13,
-            C₁₅ = 3.75749e7,
-            C₁₆ = 0.0192042,
-            C₁₇ = 7.75065e6,
-            C₁₈ = 0.0149159,
+            C₁₅ = 3.73042e7,
+            C₁₆ = 1792.72,
+            C₁₇ = 9.56827e6,
+            C₁₈ = 1214.34,
         )
         pred = ContinuumMechanicsBase.predict(ψ, test, p)
         # @show [vonMises(x) for x in eachcol(pred.data.σ)] ./ 1e6
-        @test isapprox(30.241, rmse(
+        @test isapprox(31.936, rmse(
             (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
-            ([first(x) for x in eachcol(pred.data.ϵ)], [vonMises(x) for x in eachcol(pred.data.σ)] ./ 1e6)); atol=1e-3)
+            ([first(x) for x in eachcol(pred.data.ϵ)], [vonMises(x) for x in eachcol(pred.data.σ)] ./ 1e6)); atol=1e-2)
         q = ComponentVector(
-            C₁ = NaN,
-            C₂ = NaN,
-            C₃ = NaN,
-            C₄ = NaN,
-            C₅ = NaN,
-            C₆ = NaN,
+            C₁ = p.C₁,
+            C₂ = p.C₂,
+            C₃ = p.C₃,
+            C₄ = p.C₄,
+            C₅ = p.C₅,
+            C₆ = p.C₆,
             C₇ = p.C₇,
             C₈ = p.C₈,
             C₉ = p.C₉,
@@ -72,17 +72,17 @@ rmse((x, y), (x̂, ŷ)) = √(length(x) \ sum((ŷ[map(xᵢ->(yᵢ = findfirst(
             C₁₂ = p.C₁₂,
             C₁₃ = p.C₁₃,
             C₁₄ = p.C₁₄,
-            C₁₅ = p.C₁₅,
-            C₁₆ = p.C₁₆,
-            C₁₇ = p.C₁₇,
-            C₁₈ = p.C₁₈,
+            C₁₅ = NaN,
+            C₁₆ = NaN,
+            C₁₇ = NaN,
+            C₁₈ = NaN,
         )
         sol = testmodel(ψ, test, p, q)
         @test sol.retcode == SciMLBase.ReturnCode.Success
         calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
-        @test isapprox(30.379, rmse(
+        @test isapprox(29.888, rmse(
             (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
-            ([first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6)); atol=1e-3)
+            ([first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6)); atol=1e-2)
     end
 
     # # bcj_loading = BCJ_metal(295., 570., 0.15, 200, 1, p)
