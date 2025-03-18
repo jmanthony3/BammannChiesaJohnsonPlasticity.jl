@@ -1,7 +1,7 @@
 using Documenter
 using DocumenterCitations
 using BammannChiesaJohnsonPlasticity
-using Optimization, OptimizationOptimJL, LossFunctions
+using Optimization, LossFunctions
 
 DocMeta.setdocmeta!(BammannChiesaJohnsonPlasticity, :DocTestSetup, :(using BammannChiesaJohnsonPlasticity); recursive=true)
 
