@@ -21,9 +21,7 @@ end
 begin
 	using Pkg
 	Pkg.activate(".") # activate project in current directory
-	# this package is only needed until BCJPlasticity.jl#CMB is merged/registered
-	Pkg.add(url="https://github.com/jmanthony3/PlasticityBase.jl.git")
-	Pkg.add(url="https://github.com/jmanthony3/BammannChiesaJohnsonPlasticity.jl.git", rev="CMB")
+	Pkg.add(url="https://github.com/jmanthony3/BammannChiesaJohnsonPlasticity.jl.git", rev="main")
 	Pkg.add("ContinuumMechanicsBase")
 	Pkg.add("ComponentArrays")
 	Pkg.add("CSV")
