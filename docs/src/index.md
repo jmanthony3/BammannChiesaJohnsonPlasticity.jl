@@ -15,7 +15,7 @@ This package employs the [`ContinuumMechanicsBase.jl`](https://github.com/TRACER
 Currently, the package acts as a point simulator to update the material states and assumes a Poisson's ratio of 0.5.
 Although the package can be used out-of-the-box to plot the specified BCJ model with the appropriate loading conditions, material properties, and model constants, the package can be extended to calibrate the constants against experimental data via the [`Optimization.jl`](https://github.com/SciML/Optimization.jl.git) package.
 For an example of interacting with and calibrating BCJ model constants, the reader is referred to the notebooks folder for a set of [`Pluto.jl`](https://github.com/fonsp/Pluto.jl.git) notebooks as examples.
-Furthermore, in that folder contains a notebook for interacting with the [Johnson and Cook (1983)](@cite johnsonCONSTITUTIVEMODELDATA1983a model).
+Furthermore, in that folder contains a notebook for interacting with the [Johnson and Cook (1983)](@cite johnsonCONSTITUTIVEMODELDATA1983a).
 This `JohnsonCook.jl` notebook `include`s a neighboring script (`JohnsonCook-functions.jl`) which defines all the necessary types and functions if one wants to create or modify a viscoplasticity model for interaction or calibration as in a Pluto notebook.
 The empirical Johnson-Cook model is included as an example given that its widespread recognition might minimize the learning curve for encoding a material model into a Julian implementation appropriate for calibration with `Optimization.jl` or interaction in a Pluto notebook.
 
