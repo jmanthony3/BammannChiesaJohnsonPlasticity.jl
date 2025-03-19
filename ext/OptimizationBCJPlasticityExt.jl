@@ -16,8 +16,8 @@ end
 
 "Dispatch for BCJ-specific types and functions."
 function ContinuumMechanicsBase.MaterialOptimizationProblem(
-    ψ   ::AbstractBCJModel{T},  # , S},
-    test::AbstractBCJTest{T},
+    ψ   ::AbstractBCJModel,  # , S},
+    test::AbstractBCJTest,
     u₀,
     model_ps,
     ad_type,
