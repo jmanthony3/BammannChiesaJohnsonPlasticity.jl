@@ -28,5 +28,5 @@ Pages   = ["OptimizationBCJPlasticityExt.jl",
 ```@index
 Modules = [Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)]
 Order   = [:type, :function]
-Pages   = ["OptimizationBCJPlasticityExt.md"]
+Pages   = [@__FILE__]
 ```

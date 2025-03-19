@@ -25,10 +25,10 @@ makedocs(;
     pages   = [
         "Home" => "index.md",
         "Bammann-Chiesa-Johnson Plasticity" => [
-            "Base Package" => "BammannChiesaJohnsonPlasticity.md",
+            "Base Package" => "base/BammannChiesaJohnsonPlasticity.md",
             "Metals" => [
-                "Metal Specific Types" => "Metals.md",
-                "Bammann1990Modeling" => "Bammann1990Modeling.md",
+                "base/Metals.md",
+                "Bammann1990Modeling" => "base/Bammann1990Modeling.md",
             ]
         ],
         "Extensions" => [
