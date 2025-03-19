@@ -25,10 +25,6 @@ Order   = [:function]
 Pages   = ["Metals.jl"]
 ```
 
-## References
-```@bibliography
-```
-
 ## Index
 ```@index
 Modules = [BammannChiesaJohnsonPlasticity]
