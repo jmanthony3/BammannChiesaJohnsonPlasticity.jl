@@ -20,7 +20,8 @@ bib = CitationBibliography(
 )
 
 makedocs(;
-    modules = [BammannChiesaJohnsonPlasticity, Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)],
+    modules = [BammannChiesaJohnsonPlasticity, ContinuumMechanicsBase,
+        Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)],
     authors = "Joby M. Anthony III",
     repo    = "https://github.com/jmanthony3/BammannChiesaJohnsonPlasticity.jl/blob/{commit}{path}#{line}",
     sitename= "BammannChiesaJohnsonPlasticity.jl",

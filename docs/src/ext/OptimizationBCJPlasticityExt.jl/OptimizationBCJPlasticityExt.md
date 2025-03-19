@@ -12,3 +12,17 @@ This interface with `Optimization.jl` is largely accomplished by overloading thr
 - `MaterialOptimizationProblem`
 
 Most significant of these overloads is that for `parameter_bounds` wherein the default value for `lb` of the returned tuple, which represents the lower bounds of possible values during optimization, is constrained to be ``[0, \infty)`` to maintain physical admissibility and self-consistency in the constitutive and ISV rate equations.
+
+## Functions
+```@docs; canonical=false
+ContinuumMechanicsBase.parameters(::Bammann1990Modeling)
+ContinuumMechanicsBase.parameter_bounds(::Bammann1990Modeling, ContinuumMechanicsBase.AbstractMaterialTest)
+ContinuumMechanicsBase.MaterialOptimizationProblem(::Bammann1990Modeling{AbstractFloat}, ::BCJMetalUniaxialTest{AbstractFloat}, ::Any, ::Any, ::Any, ::Any)
+```
+
+## Index
+```@index
+Modules = [Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)]
+Order   = [:type, :function]
+Pages   = [@__FILE__]
+```
