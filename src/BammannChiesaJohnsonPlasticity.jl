@@ -3,7 +3,7 @@ module BammannChiesaJohnsonPlasticity
 
 
 # export triu_vec, δ, vonMises # uncomment when we can work with Tensors.jl (#5)
-export norm_symvec, vonMises
+export norm_symvec, vonMises, rmse
 export AbstractBCJModel, AbstractBCJTest, update
 
 
@@ -36,6 +36,17 @@ end
 # symmetricvonMises(tensor::Matrix{<:Real})::Vector{AbstractFloat} = map(symmetricvonMises, eachcol(tensor))
 "von Mises (equivalent) scalar for symmetric tensor."
 vonMises(tensor) = map(vonMises, eachcol(tensor))
+
+"""
+    $(TYPEDSIGNATURES)
+
+Calculate the Root Mean Squared Error (RMSE) between actual (experimental) and predicted data sets.
+
+(x, y): Actual value
+
+(x̂, ŷ): Predicted value
+"""
+rmse((x::Vector{T}, y::Vector{T}), (x̂::Vector{T}, ŷ::Vector{T})) where {T<:AbstractFloat} = √(length(x) \ sum((ŷ[map(xᵢ->(yᵢ = findfirst(xᵢ .<= x̂); !isnothing(yᵢ) ? yᵢ : findlast(xᵢ .>= x̂)), x)] - y) .^ 2.0))
 
 
 

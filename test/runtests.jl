@@ -9,13 +9,6 @@ using Optimization, OptimizationOptimJL, LossFunctions
 
 using Test
 
-"""
-(x, y): Actual value
-
-(x̂, ŷ): Predicted value
-"""
-rmse((x, y), (x̂, ŷ)) = √(length(x) \ sum((ŷ[map(xᵢ->(yᵢ = findfirst(xᵢ .<= x̂); !isnothing(yᵢ) ? yᵢ : findlast(xᵢ .>= x̂)), x)] - y) .^ 2.0))
-
 
 
 @testset verbose=true "BammannChiesaJohnsonPlasticity.jl" begin
