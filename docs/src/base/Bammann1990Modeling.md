@@ -5,19 +5,19 @@ CurrentModule = BammannChiesaJohnsonPlasticity
 ```
 
 The following equations are those employed in the [Bammann (1990)](@cite bammannModelingTemperatureStrain1990) paper that are implemented in the `Bammann1990Modeling` type, constructor, and that method of the kernel function, `update` associate with this type.
-As such, the internal equations use the same nomenclature for plastic strain rate, $\mathbf{D}^{p} \equiv \dot{\epsilon}^{(p)}$; the second-rank, deviatoric tensors for Cauchy stress, $\boldmath{\sigma}'$ and kinematic hardening, $\boldmath{\alpha}'$ which is an ISV; the scalar isotropic hardening, $\kappa$, and the constants associated with the dynamic and static recovery temperature equations.
-Of major importance is that, although not explicitly listed in the publication, the equations for $h$ and $H$ are included in this implementation (c. f. [DYNA3D User Manual (1993)](@cite whirley1993dyna3d)).
+As such, the internal equations use the same nomenclature for plastic strain rate, ``\mathbf{D}^{p} \equiv \dot{\epsilon}^{(p)}``; the second-rank, deviatoric tensors for Cauchy stress, ``\underset{\sim}{\sigma}'`` and kinematic hardening, ``\underset{\sim}{\alpha}'`` which is an ISV; the scalar isotropic hardening, ``\kappa``, and the constants associated with the dynamic and static recovery temperature equations.
+Of major importance is that, although not explicitly listed in the publication, the equations for ``h`` and ``H`` are included in this implementation (c. f. [DYNA3D User Manual (1993)](@cite whirley1993dyna3d)).
 
 ```math
 \begin{aligned}
     % plastic strain rate
-    \mathbf{D}^{p} &= f(\theta)\sinh\left[ \frac{ |\boldmath{\xi}| - \kappa - Y(\theta) }{ V(\theta) } \right]\frac{\boldmath{\xi}'}{|\boldmath{\xi}'|}\text{, let }\boldmath{\xi}' = \boldmath{\sigma}' - \boldmath{\alpha}' \\
+    \mathbf{D}^{p} &= f(\theta)\sinh\left[ \frac{ |\underset{\sim}{\xi}| - \kappa - Y(\theta) }{ V(\theta) } \right]\frac{\underset{\sim}{\xi}'}{|\underset{\sim}{\xi}'|}\text{, let }\underset{\sim}{\xi}' = \underset{\sim}{\sigma}' - \underset{\sim}{\alpha}' \\
     % kinematic hardening
-    \dot{\boldmath{\alpha}} &= h\mu(\theta)\mathbf{D}^{p} - [r_{d}(\theta)|\mathbf{D}^{p}| + r_{s}(\theta)]|\boldmath{\alpha}|\boldmath{\alpha} \\
+    \dot{\underset{\sim}{\alpha}} &= h\mu(\theta)\mathbf{D}^{p} - [r_{d}(\theta)|\mathbf{D}^{p}| + r_{s}(\theta)]|\underset{\sim}{\alpha}|\underset{\sim}{\alpha} \\
     % isotropic hardening
     \dot{\kappa} &= H\mu(\theta)\mathbf{D}^{p} - [R_{d}(\theta)|\mathbf{D}^{p}| + R_{s}(\theta)]\kappa^{2} \\
     % flow rule
-    F &= |\sigma - \alpha| - \kappa - \beta(|\mathbf{D}^{p}|, \theta) \\
+    F &= |\underset{\sim}{\sigma}' - \underset{\sim}{\alpha}'| - \kappa - \beta(|\mathbf{D}^{p}|, \theta) \\
     % initial yield stress beta
     \beta(\mathbf{D}^{p}, \theta) &= Y(\theta) + V(\theta)\sinh^{-1}\left(\frac{|\mathbf{D}^{p}|}{f(\theta)}\right) \\
     V(\theta)       &= C_{ 1} \exp\left( -\frac{ C_{ 2} }{ \theta } \right) \\
