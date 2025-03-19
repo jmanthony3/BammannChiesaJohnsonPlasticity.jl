@@ -7,7 +7,7 @@ CurrentModule = BammannChiesaJohnsonPlasticity
 ```@contents
 Modules = [BammannChiesaJohnsonPlasticity]
 Pages   = [
-    "Bammann1990Modeling.md"]
+    "base/Bammann1990Modeling.md"]
 Depth   = 1
 ```
 
@@ -25,13 +25,9 @@ Order   = [:function]
 Pages   = ["Metals.jl"]
 ```
 
-## References
-```@bibliography
-```
-
 ## Index
 ```@index
 Modules = [BammannChiesaJohnsonPlasticity]
 Order   = [:type, :function]
-Pages   = ["Metals.md"]
+Pages   = [@__FILE__]
 ```

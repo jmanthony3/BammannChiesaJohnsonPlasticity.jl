@@ -5,15 +5,15 @@ CurrentModule = BammannChiesaJohnsonPlasticity
 ```
 
 The following equations are those employed in the [Bammann (1990)](@cite bammannModelingTemperatureStrain1990) paper that are implemented in the `Bammann1990Modeling` type, constructor, and that method of the kernel function, `update` associate with this type.
-As such, the internal equations use the same nomenclature for plastic strain rate, $\mathbf{D}^{p} \equiv \dot{\epsilon}^{(p)}$; the second-rank, deviatoric tensors for Cauchy stress, $\mathbf{\sigma}'$ and kinematic hardening, $\mathbf{\alpha}'$ which is an ISV; the scalar isotropic hardening, $\kappa$, and the constants associated with the dynamic and static recovery temperature equations.
+As such, the internal equations use the same nomenclature for plastic strain rate, $\mathbf{D}^{p} \equiv \dot{\epsilon}^{(p)}$; the second-rank, deviatoric tensors for Cauchy stress, $\boldmath{\sigma}'$ and kinematic hardening, $\boldmath{\alpha}'$ which is an ISV; the scalar isotropic hardening, $\kappa$, and the constants associated with the dynamic and static recovery temperature equations.
 Of major importance is that, although not explicitly listed in the publication, the equations for $h$ and $H$ are included in this implementation (c. f. [DYNA3D User Manual (1993)](@cite whirley1993dyna3d)).
 
-$$
-\begin{align}
+```math
+\begin{aligned}
     % plastic strain rate
-    \mathbf{D}^{p} &= f(\theta)\sinh\left[ \frac{ |\mathbf{\xi}| - \kappa - Y(\theta) }{ V(\theta) } \right]\frac{\mathbf{\xi}'}{|\mathbf{\xi}'|}\text{, let }\mathbf{\xi}' = \mathbf{\sigma}' - \mathbf{\alpha}' \\
+    \mathbf{D}^{p} &= f(\theta)\sinh\left[ \frac{ |\boldmath{\xi}| - \kappa - Y(\theta) }{ V(\theta) } \right]\frac{\boldmath{\xi}'}{|\boldmath{\xi}'|}\text{, let }\boldmath{\xi}' = \boldmath{\sigma}' - \boldmath{\alpha}' \\
     % kinematic hardening
-    \dot{\mathbf{\alpha}} &= h\mu(\theta)\mathbf{D}^{p} - [r_{d}(\theta)|\mathbf{D}^{p}| + r_{s}(\theta)]|\mathbf{\alpha}|\mathbf{\alpha} \\
+    \dot{\boldmath{\alpha}} &= h\mu(\theta)\mathbf{D}^{p} - [r_{d}(\theta)|\mathbf{D}^{p}| + r_{s}(\theta)]|\boldmath{\alpha}|\boldmath{\alpha} \\
     % isotropic hardening
     \dot{\kappa} &= H\mu(\theta)\mathbf{D}^{p} - [R_{d}(\theta)|\mathbf{D}^{p}| + R_{s}(\theta)]\kappa^{2} \\
     % flow rule
@@ -29,30 +29,35 @@ $$
     R_{s}(\theta)   &= C_{13} \exp\left( -\frac{ C_{14} }{ \theta } \right) \\
     h(\theta)       &= C_{15} \exp\left(  \frac{ C_{16} }{ \theta } \right) \\
     H(\theta)       &= C_{17} \exp\left(  \frac{ C_{18} }{ \theta } \right) \\
-\end{align}
-$$
+\end{aligned}
+```
 
 ## Types
 ```@autodocs
-Modules = [BammannChiesaJohnsonPlasticity]
+Modules = [BammannChiesaJohnsonPlasticity, ContinuumMechanicsBase]
 Order   = [:type]
 Pages   = ["Bammann1990Modeling.jl"]
 ```
 
 ## Functions
 ```@autodocs
-Modules = [BammannChiesaJohnsonPlasticity]
+Modules = [BammannChiesaJohnsonPlasticity, ContinuumMechanicsBase]
 Order   = [:function]
 Pages   = ["Bammann1990Modeling.jl"]
 ```
 
 ## References
 ```@bibliography
+Pages = []
+Canonical = false
+
+bammannModelingTemperatureStrain1990
+whirley1993dyna3d
 ```
 
 ## Index
 ```@index
-Modules = [BammannChiesaJohnsonPlasticity]
+Modules = [BammannChiesaJohnsonPlasticity, ContinuumMechanicsBase]
 Order   = [:type, :function]
-Pages   = ["Bammann1990Modeling.md"]
+Pages   = [@__FILE__]
 ```

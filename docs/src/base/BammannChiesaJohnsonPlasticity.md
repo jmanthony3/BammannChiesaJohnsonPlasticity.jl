@@ -14,7 +14,7 @@ Currently, the package includes support for the following categories of material
 ```@contents
 Modules = [BammannChiesaJohnsonPlasticity]
 Pages   = [
-    "Metals.md"]
+    "base/Metals.md"]
 Depth   = 1
 ```
 
@@ -36,5 +36,5 @@ Pages   = ["BammannChiesaJohnsonPlasticity.jl"]
 ```@index
 Modules = [BammannChiesaJohnsonPlasticity]
 Order   = [:type, :function]
-Pages   = ["BammannChiesaJohnsonPlasticity.md"]
+Pages   = [@__FILE__]
 ```
