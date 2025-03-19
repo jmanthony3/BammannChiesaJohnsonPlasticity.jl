@@ -17,13 +17,13 @@ Most significant of these overloads is that for `parameter_bounds` wherein the d
 Two functions are overloaded for any sub-type of `AbstractBCJModel` and `AbstractBCJTest`: `parameter_bounds` and `MaterialOptimizationProblem`.
 
 ```@docs
-ContinuumMechanicsBase.parameter_bounds(::AbstractBCJModel, ::AbstractBCJTest{AbstractFloat})
-ContinuumMechanicsBase.MaterialOptimizationProblem(::AbstractBCJTest{AbstractFloat}, ::AbstractBCJTest{AbstractFloat}, ::Any, ::Any, ::Any, ::Any)
+ContinuumMechanicsBase.parameter_bounds(::AbstractBCJModel, ::AbstractBCJTest)
+ContinuumMechanicsBase.MaterialOptimizationProblem(::AbstractBCJTest, ::AbstractBCJTest, ::Any, ::Any, ::Any, ::Any)
 ```
 
 The overload for `parameter_bounds`, by default, calls on `parameters` which must be overloaded for the appropriate BCJ model.
 ```@docs
-ContinuumMechanicsBase.parameters(::Bammann1990Modeling)
+ContinuumMechanicsBase.parameters(::Bammann1990Modeling{AbstractFloat})
 ```
 
 ## Index

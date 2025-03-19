@@ -30,7 +30,7 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
     ucons   = nothing,
     sense   = nothing,
     kwargs...,
-) where {T<:AbstractFloat} #, S<:SymmetricTensor{2, 3, T}}
+) # where {T<:AbstractFloat} #, S<:SymmetricTensor{2, 3, T}}
     function f(ps, p)
         ψ, test, qs, loss, ad_type, kwargs = p
         function g(ps, qs)
