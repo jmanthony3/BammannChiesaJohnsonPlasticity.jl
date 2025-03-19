@@ -5,7 +5,7 @@ The model assumes that for any continuum mechanics configuration each material p
 The ISVs in the current configuration intrinsically represent their evolution because of the material history afforded by the rate equations.
 These ISVs and their rate equations are used to increment the current configuration from the previous configuration by a trial guess that the material deforms elastically and correcting this trial guess for any plastic deformation accrued in the increment: this is the scheme of the _Radial-Return Method_ from [Krieg and Krieg (1977)](@cite kriegAccuraciesNumericalSolution1977).
 Using ISVs to model inelastic deformation is not unique to BCJ-plasticity model.
-For a broader review of modeling inelastic deformation with ISVs, as well as, a history of the BCJ-plasticity model, the reader is directed Dr. Horstemeyer's 2010 review paper [horstemeyerHistoricalReviewInternal2010](@cite).
+For a broader review of modeling inelastic deformation with ISVs, as well as, a history of the BCJ-plasticity model, the reader is directed to this review paper: [Horstemeyer and Bammann (2010)](@cite horstemeyerHistoricalReviewInternal2010).
 
 ## References
 ```@bibliography
