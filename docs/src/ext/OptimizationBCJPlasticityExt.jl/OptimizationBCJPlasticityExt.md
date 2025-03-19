@@ -15,15 +15,20 @@ Most significant of these overloads is that for `parameter_bounds` wherein the d
 
 ## Functions
 Two functions are overloaded for any sub-type of `AbstractBCJModel` and `AbstractBCJTest`: `parameter_bounds` and `MaterialOptimizationProblem`.
+The overload for `parameter_bounds`, by default, calls on `parameters` which must be overloaded for the appropriate BCJ model.
 
-```@docs
-ContinuumMechanicsBase.parameter_bounds(::AbstractBCJModel, ::AbstractBCJTest)
-ContinuumMechanicsBase.MaterialOptimizationProblem(::AbstractBCJTest, ::AbstractBCJTest, ::Any, ::Any, ::Any, ::Any)
+```@autodocs
+Modules = [Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)]
+Order   = [:function]
+Pages   = ["OptimizationBCJPlasticityExt.jl"]
 ```
 
-The overload for `parameter_bounds`, by default, calls on `parameters` which must be overloaded for the appropriate BCJ model.
-```@docs
-ContinuumMechanicsBase.parameters(::Bammann1990Modeling{AbstractFloat})
+### Metals
+```@autodocs
+Modules = [Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)]
+Order   = [:function]
+Pages   = ["Metals.jl",
+    "Bammann1990Modeling.jl"]
 ```
 
 ## Index
