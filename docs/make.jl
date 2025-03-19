@@ -5,6 +5,15 @@ using Optimization, LossFunctions
 
 DocMeta.setdocmeta!(BammannChiesaJohnsonPlasticity, :DocTestSetup, :(using BammannChiesaJohnsonPlasticity); recursive=true)
 
+mathengine = MathJax3(Dict(
+    :loader => Dict("load" => ["[tex]/physics"]),
+    :tex => Dict(
+        "inlineMath" => [["\$","\$"], ["\\(","\\)"]],
+        "tags" => "ams",
+        "packages" => ["base", "ams", "autoload", "physics"],
+    ),
+))
+
 bib = CitationBibliography(
     joinpath(@__DIR__, "src", "references.bib"),
     style=:numeric
@@ -21,6 +30,7 @@ makedocs(;
         canonical   = "https://jmanthony3.github.io/BammannChiesaJohnsonPlasticity.jl",
         edit_link   = "main",
         assets      = String[],
+        mathengine  = mathengine,
     ),
     pages   = [
         "Home" => "index.md",

@@ -8,7 +8,7 @@ This extension is meant to provide additional functionality to the base package 
 
 ## Types
 ```@autodocs
-Modules = [Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)]
+Modules = [Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt), ContinuumMechanicsBase]
 Order   = [:type]
 Pages   = ["OptimizationBCJPlasticityExt.jl",
     "Metals.jl",
@@ -17,7 +17,7 @@ Pages   = ["OptimizationBCJPlasticityExt.jl",
 
 ## Functions
 ```@autodocs
-Modules = [Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)]
+Modules = [Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt), ContinuumMechanicsBase]
 Order   = [:function]
 Pages   = ["OptimizationBCJPlasticityExt.jl",
     "Metals.jl",
@@ -26,7 +26,7 @@ Pages   = ["OptimizationBCJPlasticityExt.jl",
 
 ## Index
 ```@index
-Modules = [Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)]
+Modules = [Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt), ContinuumMechanicsBase]
 Order   = [:type, :function]
 Pages   = [@__FILE__]
 ```
