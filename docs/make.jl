@@ -35,6 +35,7 @@ makedocs(;
     ),
     pages   = [
         "Home" => "index.md",
+        "Primer" => "primer.md",
         "Bammann-Chiesa-Johnson Plasticity" => [
             "Base Package" => "base/BammannChiesaJohnsonPlasticity.md",
             "Metals" => [

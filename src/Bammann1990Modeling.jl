@@ -26,12 +26,12 @@ end
 Outer constructor for loading conditions and material properties which assumes a Poisson's ratio of 0.5.
 Here, `μ` is the shear modulus.
 """
-function Bammann1990Modeling(conditions::BCJMetalStrainControl, μ::AbstractFloat)
-    θ       = conditions.θ
-    ϵ̇       = conditions.ϵ̇
-    ϵₙ      = conditions.ϵₙ
-    N       = conditions.N
-    loaddir = conditions.loaddir
+function Bammann1990Modeling(Ω::BCJMetalStrainControl, μ::AbstractFloat)
+    θ       = Ω.θ
+    ϵ̇       = Ω.ϵ̇
+    ϵₙ      = Ω.ϵₙ
+    N       = Ω.N
+    loaddir = Ω.loaddir
     M       = N + 1
     T       = typeof(float(θ))
     Δϵ      = zeros(T, 6)       # strain increment

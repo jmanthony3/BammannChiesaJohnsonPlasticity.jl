@@ -8,7 +8,7 @@ using Optimization, LossFunctions
 export parameter_bounds, MaterialOptimizationProblem
 
 "Set lower bounds to zero for physical admissibility."
-function ContinuumMechanicsBase.parameter_bounds(ψ::AbstractBCJModel, Ω::AbstractBCJTest)
+function ContinuumMechanicsBase.parameter_bounds(ψ::AbstractBCJModel, test::AbstractBCJTest)
     lb = NamedTuple(Symbol.(parameters(ψ)) .=> 0.0)
     ub = nothing
     return (lb = lb, ub = ub)
