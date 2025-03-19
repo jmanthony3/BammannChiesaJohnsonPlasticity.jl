@@ -46,7 +46,7 @@ Calculate the Root Mean Squared Error (RMSE) between actual (experimental) and p
 
 (x̂, ŷ): Predicted value
 """
-function rmse((x::Vector{T}, y::Vector{T}), (x̂::Vector{T}, ŷ::Vector{T})) where {T<:AbstractFloat}
+function rmse((x, y)::NTuple{2, Vector{T}}, (x̂, ŷ)::NTuple{2, Vector{T}}) where {T<:AbstractFloat}
     return √(length(x) \ sum((ŷ[map(xᵢ->(yᵢ = findfirst(xᵢ .<= x̂); !isnothing(yᵢ) ? yᵢ : findlast(xᵢ .>= x̂)), x)] - y) .^ 2.0))
 end
 
