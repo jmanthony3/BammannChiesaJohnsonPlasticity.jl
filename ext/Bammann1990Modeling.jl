@@ -2,7 +2,8 @@ export parameters
 
 """
 Constants for temperature equations from [Bammann (1990)](@cite bammannModelingTemperatureStrain1990).
-Note: though not explicitly listed in paper, temperature equations `h = C₁₅ * exp(C₁₆ * θ)` and `H = C₁₇ * exp(C₁₈ * θ)` are included (c. f. [DYNA3D User Manual (1993)](@cite whirley1993dyna3d))."""
+Note: though not explicitly listed in paper, temperature equations `h = C₁₅ * exp(C₁₆ / θ)` and `H = C₁₇ * exp(C₁₈ / θ)` are included (c. f. [DYNA3D User Manual (1993)](@cite whirley1993dyna3d)).
+"""
 ContinuumMechanicsBase.parameters(::Bammann1990Modeling) = (
     :C₁,    :C₂,    # V
     :C₃,    :C₄,    # Y

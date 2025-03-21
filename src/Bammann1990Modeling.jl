@@ -61,7 +61,7 @@ end
 
 """
 Using the equations and constants from [Bammann (1990)](@cite bammannModelingTemperatureStrain1990), this kernel function maps the current material state and ISVs onto the next configuration.
-Note: though not explicitly listed in paper, temperature equations `h = C₁₅ * exp(C₁₆ * θ)` and `H = C₁₇ * exp(C₁₈ * θ)` are included (c. f. [DYNA3D User Manual (1993)](@cite whirley1993dyna3d)).
+Note: though not explicitly listed in paper, temperature equations `h = C₁₅ * exp(C₁₆ / θ)` and `H = C₁₇ * exp(C₁₈ / θ)` are included (c. f. [DYNA3D User Manual (1993)](@cite whirley1993dyna3d)).
 """
 function update(ψ::Bammann1990Modeling, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
             C₁,     C₂,     # V
@@ -109,8 +109,8 @@ function update(ψ::Bammann1990Modeling, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽�
     # trial guesses: ISVs (from recovery) and stress
     recovery    = Δt * (r_d * ϵ̇_eff + r_s) * α_mag      # recovery for alpha (kinematic hardening)
     Recovery    = Δt * (R_d * ϵ̇_eff + R_s) * κ          # recovery for kappa (isotropic hardening)
-    α̲̲⁽ᵗʳ⁾       = α̲̲   .* (1 - recovery)
-    # α̲̲⁽ᵗʳ⁾       = α̲̲   * (1 - recovery)
+    α̲̲⁽ᵗʳ⁾       = α̲̲    .* (1 - recovery)
+    # α̲̲⁽ᵗʳ⁾       = α̲̲     * (1 - recovery)
     κ⁽ᵗʳ⁾       = κ     * (1 - Recovery)
     σ̲̲⁽ᵗʳ⁾       = σ̲̲ + (2μ * Δϵ)                         # deviatoric stress (trial)
     ξ̲̲⁽ᵗʳ⁾       = σ̲̲⁽ᵗʳ⁾ - α̲̲⁽ᵗʳ⁾                         # over-stress (trial)
@@ -119,28 +119,28 @@ function update(ψ::Bammann1990Modeling, σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽�
 
 
     # yield criterion
-    flow_rule = ξ_mag - κ⁽ᵗʳ⁾ - β
-    if flow_rule <= 0.0     # elastic
+    F = ξ_mag - κ⁽ᵗʳ⁾ - β
+    if F <= 0.0     # elastic
         # trial guesses are correct
-        σ̲̲           = @. σ̲̲⁽ᵗʳ⁾
-        α̲̲           = @. α̲̲⁽ᵗʳ⁾
-        κ           = κ⁽ᵗʳ⁾
-        ϵ̲̲          += @. Δϵ
+        σ̲̲       = @. σ̲̲⁽ᵗʳ⁾
+        α̲̲       = @. α̲̲⁽ᵗʳ⁾
+        κ       = κ⁽ᵗʳ⁾
+        ϵ̲̲      += @. Δϵ
         # state.ϵ_dot_plastic__    .= 0.
-    else                    # plastic
+    else            # plastic
         # Radial Return
-        Δγ          = flow_rule / (2μ + 2(h + H) / 3)     # original
-        n̂           = ξ̲̲⁽ᵗʳ⁾ ./ ξ_mag
-        # n̂           = ξ__ / ξ_mag
-        σ̲̲_prev      = σ̲̲
-        σ̲̲           = @. σ̲̲⁽ᵗʳ⁾ - (2μ * Δγ) .* n̂
-        α̲̲           = @. α̲̲⁽ᵗʳ⁾ + ( h * Δγ) .* n̂
-        # σ̲̲           = @. σ̲̲⁽ᵗʳ⁾ - (2μ * Δγ) * n̂
-        # α̲̲           = @. α̲̲⁽ᵗʳ⁾ + ( h * Δγ) * n̂
-        κ           = κ⁽ᵗʳ⁾   + (H * Δγ)  # original
-        ϵ̲̲⁽ᵖ⁾       += @. (Δϵ - ((σ̲̲ - σ̲̲_prev) ./ 2μ))
-        # ϵₚ__       += @. (Δϵ - ((σ̲̲ - σ̲̲_prev) / 2μ))
-        ϵ̲̲          += @. Δϵ
+        Δγ      = F / (2μ + 2(h + H) / 3)
+        n̂       = ξ̲̲⁽ᵗʳ⁾ ./ ξ_mag
+        # n̂       = ξ__ / ξ_mag
+        σ̲̲_prev  = σ̲̲
+        σ̲̲       = @. σ̲̲⁽ᵗʳ⁾ - (2μ * Δγ) .* n̂
+        α̲̲       = @. α̲̲⁽ᵗʳ⁾ + ( h * Δγ) .* n̂
+        # σ̲̲       = @. σ̲̲⁽ᵗʳ⁾ - (2μ * Δγ) * n̂
+        # α̲̲       = @. α̲̲⁽ᵗʳ⁾ + ( h * Δγ) * n̂
+        κ       =    κ⁽ᵗʳ⁾ + ( H * Δγ)
+        ϵ̲̲⁽ᵖ⁾   += @. (Δϵ - ((σ̲̲ - σ̲̲_prev) ./ 2μ))
+        # ϵₚ__   += @. (Δϵ - ((σ̲̲ - σ̲̲_prev) / 2μ))
+        ϵ̲̲      += @. Δϵ
     end
     # ϵ_dot_plastic__  = @. (f * sinh(V \ (ξ_mag - κ - Y)) / ξ_mag) * ξ__
     return σ̲̲, α̲̲, κ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾
