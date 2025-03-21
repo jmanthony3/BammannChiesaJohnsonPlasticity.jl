@@ -38,7 +38,7 @@ begin
 			
 			inputs = [
 				md""" $(parameter): $(
-					Child(parameter, Slider(value .* logrange(0.1, 10.0, length=1000), default=value))
+					Child(parameter, Slider(value .* logrange(0.1, 10.0, length=1001), default=value))
 				)"""
 				
 				for (parameter, value) in zip(parameters, values)

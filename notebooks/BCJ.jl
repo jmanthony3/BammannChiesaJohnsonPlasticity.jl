@@ -58,7 +58,7 @@ begin
 			
 			inputs = [
 				md""" $(parameter): $(
-					Child(parameter, Slider(value .* logrange(1e-3, 1e3, length=1000), default=value))
+					Child(parameter, Slider(value .* logrange(1e-3, 1e3, length=1001), default=value))
 				)"""
 				
 				for (parameter, value) in zip(parameters, values)
@@ -95,17 +95,6 @@ begin
 		end
 		return ComponentVector(parameters)
 	end
-
-	"""
-	(x, y): Actual value
-	
-	(x̂, ŷ): Predicted value
-	"""
-	rmse((x, y), (x̂, ŷ)) = √(length(x) \ sum((ŷ[map(xᵢ->(yᵢ = findfirst(xᵢ .<= x̂); !isnothing(yᵢ) ? yᵢ : findlast(xᵢ .>= x̂)), x)] - y) .^ 2.0))
-
-	md"""
-	First, we start by loading the required packages and defining some helper functions.
-	"""
 end
 
 # ╔═╡ d534bf54-4c83-43d6-a62c-8e4a34f8f74d
@@ -119,6 +108,7 @@ This notebook expands on the `BCJPlasticity.jl` package with sliders, checkboxes
 What follows is an example of loading experimental data from a tension test of 4340 stainless steel at room temperature ($295 [K]$) and $2 \times 10^{-3} [mm/mm/s]$ strain rate and constructing the appropriate BCJ model from test conditions and material properties.
 
 ## Initialize Project Environment
+First, we start by loading the required packages and defining some helper functions.
 """
 
 # ╔═╡ 156a860c-e8a5-4dd8-b234-0a0e4419b5a5
@@ -143,7 +133,7 @@ begin
 		df_Tension_e002_295[!, "Strain"],
 		df_Tension_e002_295[!, "Stress"] .* 1e6,
 		name="exp")
-	bcj_loading = BCJMetalStrainControl( # loading conditions
+	Ω = BCJMetalStrainControl( # loading conditions
 		295.0, 											# temperature
 		2e-3, 											# strain-rate
 		float(last(df_Tension_e002_295[!, "Strain"])), 	# final strain
@@ -170,7 +160,7 @@ Construct the model type given the loading conditions and material properties.
 """
 
 # ╔═╡ 1b83b3e8-9593-483b-a690-fe06aa48aeb5
-ψ = Bammann1990Modeling(bcj_loading, μ)
+ψ = Bammann1990Modeling(Ω, μ)
 
 # ╔═╡ bd66c9a7-cf0a-4d34-884b-f369722801a8
 md"""
@@ -248,7 +238,7 @@ end
 end; r
 
 # ╔═╡ Cell order:
-# ╠═d534bf54-4c83-43d6-a62c-8e4a34f8f74d
+# ╟─d534bf54-4c83-43d6-a62c-8e4a34f8f74d
 # ╠═5cacf487-3916-4b7a-8fbf-04c8b4c9a6d9
 # ╟─156a860c-e8a5-4dd8-b234-0a0e4419b5a5
 # ╟─398fa1e3-1d11-4285-ad23-b11a4d8628c5
