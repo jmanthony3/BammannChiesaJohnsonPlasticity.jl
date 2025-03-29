@@ -6,20 +6,20 @@ using ComponentArrays, StructArrays
 # using Tensors # uncomment when we can work with Tensors.jl
 using DocStringExtensions
 
-# """
-# Structure for viscoplasticity model with loading conditions and material properties.
-# Here, uses the effective strain rate based on applied strain rate and loading direction.
-# """
-# struct Bammann1993Failure{T<:AbstractFloat} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
-# # struct Bammann1993Failure{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
-#     θ       ::T         # applied temperature
-#     ϵ̇_eff   ::T         # strain rate (effective)
-#     ϵₙ      ::T         # final strain
-#     N       ::Integer   # number of strain increments
-#     Δϵ      ::Vector{T} # S         # total strain tensor step
-#     Δt      ::T         # time step
-#     μ       ::T         # shear modulus at temperature, θ
-# end
+"""
+Structure for viscoplasticity model with loading conditions and material properties.
+Here, uses the effective strain rate based on applied strain rate and loading direction.
+"""
+struct Bammann1993Failure{T<:AbstractFloat} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
+# struct Bammann1993Failure{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
+    θ       ::T         # applied temperature
+    ϵ̇_eff   ::T         # strain rate (effective)
+    ϵₙ      ::T         # final strain
+    N       ::Integer   # number of strain increments
+    Δϵ      ::Vector{T} # S         # total strain tensor step
+    Δt      ::T         # time step
+    μ       ::T         # shear modulus at temperature, θ
+end
 
 """
     $(SIGNATURES)
@@ -66,7 +66,7 @@ Though not explicitly listed in paper, temperature equations `h = C₁₅ * exp(
 Important: `ϕ` is included in the list of arguments, but is presently, internally set to zero.
 This is a limitation of the point simulator causing infinite stress triaxiality, χ.
 """
-function BammannChiesaJohnsonPlasticity.update(ψ::Bammann1993Failure, σ̲̲, α̲̲, κ, ϕ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
+function update(ψ::Bammann1993Failure, σ̲̲, α̲̲, κ, ϕ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
             C₁,     C₂,     # V
             C₃,     C₄,     # Y
             C₅,     C₆,     # f
@@ -164,7 +164,7 @@ function BammannChiesaJohnsonPlasticity.update(ψ::Bammann1993Failure, σ̲̲, �
         α̲̲       = @. α̲̲⁽ᵗʳ⁾ + ( h * Δγ) .* n̂
         # σ̲̲       = @. σ̲̲⁽ᵗʳ⁾ - (2μ * Δγ) * n̂
         # α̲̲       = @. α̲̲⁽ᵗʳ⁾ + ( h * Δγ) * n̂
-        # κ       =    κ⁽ᵗʳ⁾ + ( H * Δγ * sqrt23)
+        κ       =    κ⁽ᵗʳ⁾ + ( H * Δγ * sqrt23)
         # χ       = sinh(#=[=#  ( 2(2m̄ - 1) * p(σ̲̲) ) / ( (2m̄ + 1) * vonMises(σ̲̲) )  #=]=#)
         # ϕ       =    1 - (#={=#
         #         1 + (#=[=#   (1 - ϕ) ^ (1 + m̄) - 1   #=]=#) * exp(#=[=#
@@ -261,4 +261,5 @@ ContinuumMechanicsBase.parameters(::Bammann1993Failure) = (
     :m̄              # ϕ
 )
 
+nothing
 # end # end of module
