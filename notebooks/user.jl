@@ -156,8 +156,8 @@ Now we define some material properties for the desired model.
 
 # ╔═╡ b63e916b-4601-4b61-97ae-9aa07515050c
 begin
-	G 	= 159e9 	# shear modulus [Pa]
-	μ 	= 77e9 		# bulk modulus [Pa]
+	K 	= 159e9 	# bulk modulus [Pa]
+	μ 	= 77e9 		# shear modulus [Pa]
 	nothing
 end
 
