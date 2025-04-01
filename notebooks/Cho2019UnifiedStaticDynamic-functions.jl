@@ -349,14 +349,14 @@ function update(ψ::Cho2019Unified, σ̲̲, α̲̲, κ, κₛ, ϕ, X, Xd, Xs, XR
                 Ch      = Cx5 * KAlMu1
                 CC      = 0.5(Cd + Cs)
                 k1      = CC   *   (  X ^ Cxa  )   *   (  ( 1.0-X ) ^ Cxb  )
-                k1      = k1 - 0.5(  Ch * ( X^Cxc )  )
-                k2      = CC   *   (  ( X +    (dt*k1) ) ^ Cxa  )   *   (  ( 1.0 - (X +    (dt*k1)) ) ^ Cxb  )
-                k2      = k2 - 0.5(  Ch * ( X +    (dt*k1) ) ^ Cxc  )
-                k3      = CC   *   (  ( X +    (dt*k2) ) ^ Cxa  )   *   (  ( 1.0 - (X +    (dt*k2)) ) ^ Cxb  )
-                k3      = k3 - 0.5(  Ch * ( X +    (dt*k2) ) ^ Cxc  )
-                k4      = CC   *   (  ( X + 2.0(dt*k3) ) ^ Cxa  )   *   (  ( 1.0 - (X + 2.0(dt*k3)) ) ^ Cxb  )
-                k4      = k4 - 0.5(  Ch * ( X + 2.0(dt*k3) ) ^ Cxc  )
-                xx      = X   +   (  1.0 / 3.0  )   *   (  ( k1  +  2.0(k2+k3)  +  k4 )  *  dt  )
+                k1      = k1 - 0.5(   Ch   *   (    X                 ^  Cxc  )   )
+                k2      = CC    *    (   (  X  +     ( dt * k1 )  )   ^   Cxa   )    *    (   (  1.0  -  ( X +    (dt*k1) )  )   ^   Cxb   )
+                k2      = k2 - 0.5(   Ch   *   (  ( X +    (dt*k1) )  ^  Cxc  )   )
+                k3      = CC    *    (   (  X  +     ( dt * k2 )  )   ^   Cxa   )    *    (   (  1.0  -  ( X +    (dt*k2) )  )   ^   Cxb   )
+                k3      = k3 - 0.5(   Ch   *   (  ( X +    (dt*k2) )  ^  Cxc  )   )
+                k4      = CC    *    (   (  X  +  2.0( dt * k3 )  )   ^   Cxa   )    *    (   (  1.0  -  ( X + 2.0(dt*k3) )  )   ^   Cxb   )
+                k4      = k4 - 0.5(   Ch   *   (  ( X + 2.0(dt*k3) )  ^  Cxc  )   )
+                xx      = X   +   (  1.0  /  3.0  )   *   (  ( k1 + 2.0(k2+k3) + k4 )  *  dt  )
                 Cd     *= dt
                 Cs     *= dt
                 Ch     *= dt
@@ -371,69 +371,70 @@ function update(ψ::Cho2019Unified, σ̲̲, α̲̲, κ, κₛ, ϕ, X, Xd, Xs, XR
                 xx     = 0.5
                 for k in range(0, Nitmax)
                     if     iREXmethod == 3 # Euler Method (implicit)
-                        KAlMu   = μ \ ( (κ^2.0) + (α_mag^2.0) )
-                        dAlpha  = (   h * ddd   )    -    (   (  ( sqrt_twothirds*rd *ddd ) + rs  )   *   (  α_mag^2.0  )   )
+                        KAlMu   = μ  \  ( (κ^2.0) + (α_mag^2.0) )
+                        dAlpha  = (  h  *  ddd  )   -   (  ( (sqrt_twothirds* rd*ddd) + rs )  *   ( α_mag ^ 2.0 )  )
                         dAlpha  = max(0.0, dAlpha)
-                        dKappa  = (   H * ddd   )    -    (   (  ( sqrt_twothirds*Rdc*ddd ) + Rs  )   *   (  κ^2.0  )   )
+                        dKappa  = (  H  *  ddd  )   -   (  ( (sqrt_twothirds*Rdc*ddd) + Rs )  *   (     κ ^ 2.0 )  )
                         dKappa  = max(0.0, dKappa)
-                        KAlMu1  = μ \ (dKappa + dAlpha)
-                        Cd      = Cx1    *    exp(   -(  Cx2 + (P*Cdp)  )  /  θ   )    *    (   KAlMu*ddd*dt   )
-                        Cs      = Cx3    *    exp(   -(  Cx4 + (P*Csp)  )  /  θ   )    *    (   KAlMu*dt   )
+                        KAlMu1  = μ  \  ( dKappa + dAlpha )
+                        Cd      = Cx1   *   exp(  -( Cx2 + (P*Cdp) )  /  θ  )   *   (  KAlMu  *  ddd  *  dt  )
+                        Cs      = Cx3   *   exp(  -( Cx4 + (P*Csp) )  /  θ  )   *   (  KAlMu          *  dt  )
                         Ch      = Cx5 * KAlMu1 * dt
                         # TODO [20250331T1119] (JMA3): come back to decrement this section instead
                         f       = X  +   (  ( Cd + Cs )  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )  )
                         f       = f  - ( Ch * (xx^Cxc) ) - xx
                         df      =    - ( Cd + Cs )  *  Cxb  *  ( (1.0-xx) ^ (Cxb-1.0) )  *  ( xx ^  Cxa )
-                        df      = df + ( Cd + Cs )  *  Cxa  *  ( (1.0-xx) ^  Cxb        )  *  ( xx ^ (Cxa-1.0))
-                        df      = df - (  Ch   *   Cxc   *   ( xx  ^  (Cxc-1.0) )  )
+                        df      = df + ( Cd + Cs )  *  Cxa  *  ( (1.0-xx) ^  Cxb      )  *  ( xx ^ (Cxa-1.0))
+                        df      = df - (      Ch    *  Cxc  *  ( xx ^ (Cxc-1.0) )  )
                         df      = df - 1.0
                     elseif iREXmethod == 4 # exponential integration algorithm (asymptotic)
-                        KAlMu   = μ \ ( (κ^2.0) + (α_mag^2.0) )
-                        dAlpha  = (   h * ddd   )    -    (   (  ( sqrt_twothirds*rd *ddd ) + rs  )   *   (  α_mag^2.0  )   )
+                        KAlMu   = μ  \  ( (κ^2.0) + (α_mag^2.0) )
+                        dAlpha  = (  h  *  ddd  )   -   (  ( (sqrt_twothirds* rd*ddd) + rs )  *  ( α_mag ^ 2.0 )  )
                         dAlpha  = max(0.0, dAlpha)
-                        dKappa  = (   H * ddd   )    -    (   (  ( sqrt_twothirds*Rdc*ddd ) + Rs  )   *   (  κ^2.0  )   )
+                        dKappa  = (  H  *  ddd  )   -   (  ( (sqrt_twothirds*Rdc*ddd) + Rs )  *  (     κ ^ 2.0 )  )
                         dKappa  = max(0.0, dKappa)
-                        KAlMu1  = μ \ (dKappa + dAlpha)
-                        Cd      = Cx1    *    exp(   -(  Cx2 + (P*Cdp)  )  /  θ   )    *    (   KAlMu*ddd*dt   )
-                        Cs      = Cx3    *    exp(   -(  Cx4 + (P*Csp)  )  /  θ   )    *    (   KAlMu*dt   )
+                        KAlMu1  = μ  \  ( dKappa + dAlpha )
+                        Cd      = Cx1   *   exp(  -( Cx2 + (P*Cdp) )  /  θ  )   *   (  KAlMu  *  ddd  *  dt  )
+                        Cs      = Cx3   *   exp(  -( Cx4 + (P*Csp) )  /  θ  )   *   (  KAlMu          *  dt  )
                         Ch      = Cx5 * KAlMu1 * dt
-                        Udt     = (  Cd + Cs  )   *   (  xx ^ Cxa  )   *   (  ( 1.0-xx )  ^  ( Cxb-1.0 )  )
-                        Udt     = Udt    +    (   Ch  *  (  xx ^ (Cxc-1.0)  )   )
-                        Vdt     = (  Cd + Cs  )   *   (  xx ^ Cxa  )   *   (  ( 1.0-xx )  ^  ( Cxb-1.0 )  )
-                        f       = (   X * exp(-Udt)   )    +    (   Vdt  *  (  ( 1.0-exp(-Udt) ) / Udt  )   )    -    xx
-                        dUdt    = ( Cxc-1.0 )  *  Ch  *  ( xx ^ (Cxc-2.0) )
-                        dUdt    = dUdt   +   (  (Cd + Cs)   *    Cxa          *   (xx ^ (Cxa-1.0))   *   ( (1.0-xx) ^ (Cxb-1.0) )  )
-                        dUdt    = dUdt   -   (  (Cd + Cs)   *   (Cxb - 1.0)   *   (xx ^  Cxa       )   *   ( (1.0-xx) ^ (Cxb-2.0) )  )
-                        dVdt    =            (  (Cd + Cs)   *    Cxa          *   (xx ^ (Cxa-1.0))   *   ( (1.0-xx) ^ (Cxb-1.0) )  )
-                        dVdt    = dVdt   -   (  (Cd + Cs)   *   (Cxb - 1.0)   *   (xx ^  Cxa       )   *   ( (1.0-xx) ^ (Cxb-2.0) )  )
-                        df      = -X * dUdt * exp(-Udt)
-                        df      = df   +   (   (  ( dVdt/Udt )  -  ( (Vdt*dUdt) / (Udt^2.0) )  )   *   (  1.0 - exp(-Udt)  )   )
-                        df      = df   +   (                           (Vdt/ Udt)                      *   ( dUdt*exp(-Udt)  )   ) - 1.0
-                    elseif iREXmethod == 5 # exponential integration algorithm (trapezoidal)
-                        KAlMu   = μ \ ( (κ^2.0) + (α_mag^2.0) )
-                        dAlpha  = (   h * ddd   )    -    (   (  ( sqrt_twothirds*rd *ddd ) + rs  )   *   (  α_mag^2.0  )   )
-                        dAlpha  = max(0.0, dAlpha)
-                        dKappa  = (   H * ddd   )    -    (   (  ( sqrt_twothirds*Rdc*ddd ) + Rs  )   *   (  κ^2.0  )   )
-                        dKappa  = max(0.0, dKappa)
-                        KAlMu1  = μ \ (dKappa + dAlpha)
-                        Cd      = Cx1    *    exp(   -(  Cx2 + (P*Cdp)  )  /  θ   )    *    (   KAlMu*ddd*dt   )
-                        Cs      = Cx3    *    exp(   -(  Cx4 + (P*Csp)  )  /  θ   )    *    (   KAlMu*dt   )
-                        Ch      = Cx5 * KAlMu1 * dt
-                        Udt     = (  Cd + Cs  )   *   (  xx ^ Cxa  )   *   (  ( 1.0-xx ) ^ ( Cxb-1.0 )  )
-                        Udt     = Udt    +    (   Ch  *  (  xx ^ (Cxc-1.0)  )   )
-                        U0dt    = (  Cd + Cs  )   *   (   X^Cxa  )   *   (  ( 1.0- X ) ^ ( Cxb-1.0 )  )
-                        U0dt    = U0dt   +    (   Ch  *  (   X ^ (Cxc-1.0)  )   )
-                        Vdt     = (  Cd + Cs  )   *   (  xx ^ Cxa  )   *   (  ( 1.0-xx )  ^  ( Cxb-1.0 )  )
-                        V0dt    = (  Cd + Cs  )   *   (   X ^ Cxa  )   *   (  ( 1.0- X )  ^  ( Cxb-1.0 )  )
-                        f       =                X * exp( -0.5(U0dt+Udt) )
-                        f       =  f   +   0.5(             V0dt * exp( -0.5(U0dt+Udt) )  +   Vdt  )   -   xx
+                        Udt     = ( Cd + Cs )  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ (Cxb-1.0) )
+                        Udt     = Udt    +    (  Ch  *  ( xx ^ (Cxc-1.0) )  )
+                        Vdt     = ( Cd + Cs )  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ (Cxb-1.0) )
+                        f       = (   X * exp(-Udt)   )    +    (   Vdt   *   (  ( 1.0-exp(-Udt) )  /  Udt  )   )    -    xx
                         dUdt    = ( Cxc - 1.0 )  *  Ch  *  ( xx ^ (Cxc-2.0) )
-                        dUdt    = dUdt   +   (  (Cd + Cs)   *    Cxa          *   (xx ^ (Cxa-1.0))   *   ( (1.0-xx) ^ (Cxb-1.0) )  )
-                        dUdt    = dUdt   -   (  (Cd + Cs)   *   (Cxb - 1.0)   *   (xx ^  Cxa       )   *   ( (1.0-xx) ^ (Cxb-2.0) )  )
-                        dVdt    =            (  (Cd + Cs)   *    Cxa          *   (xx ^ (Cxa-1.0))   *   ( (1.0-xx) ^ (Cxb-1.0) )  )
-                        dVdt    = dVdt   -   (  (Cd + Cs)   *   (Cxb - 1.0)   *   (xx ^  Cxa       )   *   ( (1.0-xx) ^ (Cxb-2.0) )  )
-                        df      = -0.5dUdt * X * exp( -0.5(U0dt+Udt) )
-                        df      = df   +   0.5(  -0.5dUdt * V0dt * exp( -0.5(U0dt+Udt) )  +  dVdt  )
+                        dUdt    = dUdt   +   (  ( Cd + Cs )  *    Cxa          *  ( xx ^ (Cxa-1.0) )  *  ( (1.0-xx) ^ (Cxb-1.0) )  )
+                        dUdt    = dUdt   -   (  ( Cd + Cs )  *  ( Cxb - 1.0 )  *  ( xx ^  Cxa      )  *  ( (1.0-xx) ^ (Cxb-2.0) )  )
+                        dVdt    =            (  ( Cd + Cs )  *    Cxa          *  ( xx ^ (Cxa-1.0) )  *  ( (1.0-xx) ^ (Cxb-1.0) )  )
+                        dVdt    = dVdt   -   (  ( Cd + Cs )  *  ( Cxb - 1.0 )  *  ( xx ^  Cxa      )  *  ( (1.0-xx) ^ (Cxb-2.0) )  )
+                        df      = -X * dUdt * exp(-Udt)
+                        df      = df    +    (   (  ( dVdt/Udt )  -  ( (Vdt*dUdt) / (Udt^2.0) )  )   *   (   1.0  -  exp(-Udt)  )   )
+                        df      = df    +    (   (                      Vdt       /  Udt         )   *   (  dUdt  *  exp(-Udt)  )   )
+                        df     -= 1.0
+                    elseif iREXmethod == 5 # exponential integration algorithm (trapezoidal)
+                        KAlMu   = μ  \  ( (κ^2.0) + (α_mag^2.0) )
+                        dAlpha  = (  h  *  ddd  )   -   (  ( (sqrt_twothirds* rd*ddd) + rs )  *  ( α_mag ^ 2.0 )  )
+                        dAlpha  = max(0.0, dAlpha)
+                        dKappa  = (  H  *  ddd  )   -   (  ( (sqrt_twothirds*Rdc*ddd) + Rs )  *  (     κ ^ 2.0 )  )
+                        dKappa  = max(0.0, dKappa)
+                        KAlMu1  = μ  \  ( dKappa + dAlpha )
+                        Cd      = Cx1   *   exp(  -( Cx2 + (P*Cdp) )  /  θ  )   *   (  KAlMu  *  ddd  *  dt  )
+                        Cs      = Cx3   *   exp(  -( Cx4 + (P*Csp) )  /  θ  )   *   (  KAlMu          *  dt  )
+                        Ch      = Cx5 * KAlMu1 * dt
+                        Udt     = ( Cd + Cs )  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ (Cxb-1.0) )
+                        Udt     = Udt   +   (  Ch  *  ( xx ^ (Cxc-1.0) )  )
+                        U0dt    = ( Cd + Cs )  *  (  X ^ Cxa )  *  ( (1.0- X) ^ (Cxb-1.0) )
+                        U0dt    = U0dt  +   (  Ch  *  (  X ^ (Cxc-1.0) )  )
+                        Vdt     = ( Cd + Cs )  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ (Cxb-1.0) )
+                        V0dt    = ( Cd + Cs )  *  (  X ^ Cxa )  *  ( (1.0- X) ^ (Cxb-1.0) )
+                        f       =                   X  *  exp( -0.5(U0dt+Udt) )
+                        f       =  f   +   0.5(  V0dt  *  exp( -0.5(U0dt+Udt) )  +  Vdt  )   -   xx
+                        dUdt    = ( Cxc - 1.0 )  *  Ch  *  ( xx ^ (Cxc-2.0) )
+                        dUdt    = dUdt   +   (  ( Cd + Cs )  *    Cxa          *  ( xx ^ (Cxa-1.0) )  *  ( (1.0-xx) ^ (Cxb-1.0) )  )
+                        dUdt    = dUdt   -   (  ( Cd + Cs )  *  ( Cxb - 1.0 )  *  ( xx ^  Cxa      )  *  ( (1.0-xx) ^ (Cxb-2.0) )  )
+                        dVdt    =            (  ( Cd + Cs )  *    Cxa          *  ( xx ^ (Cxa-1.0) )  *  ( (1.0-xx) ^ (Cxb-1.0) )  )
+                        dVdt    = dVdt   -   (  ( Cd + Cs )  *  ( Cxb - 1.0 )  *  ( xx ^  Cxa      )  *  ( (1.0-xx) ^ (Cxb-2.0) )  )
+                        df      = -0.5dUdt  *  X  *  exp( -0.5(U0dt+Udt) )
+                        df      = df   +   0.5(  -0.5dUdt  *  V0dt  *  exp( -0.5(U0dt+Udt) )  +  dVdt  )
                         df      = df   -   1.0
                     end
 
@@ -443,7 +444,7 @@ function update(ψ::Cho2019Unified, σ̲̲, α̲̲, κ, κₛ, ϕ, X, Xd, Xs, XR
 
                     pX0    = Cd + Cs
                     dXR    = pX0  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )
-                    dXH    = Ch   *  ( xx ^ Cxc )
+                    dXH    =  Ch  *  ( xx ^ Cxc )
 
                     if abs(dxx) <= Ntol
                         break
@@ -476,7 +477,7 @@ function update(ψ::Cho2019Unified, σ̲̲, α̲̲, κ, κₛ, ϕ, X, Xd, Xs, XR
             if     iGSmethod == 0 # Forward Euler (explicit)
                 # static grain growth rate
                 dr      = di1
-                dsgk    = sxk   *   exp(  -( sxE + (1e6P*sxV) )  /  ( R * θ )  )
+                dsgk    =  sxk   *   exp(  -( sxE + (1e6P*sxV) )  /  ( R * θ )  )
                 dsgg    = dsgk   /   (  sxn  *  ( dr ^ (sxn-1.0) )  )
                 # dynamic grain size reduction rate (new version: EPSL2020)
                 dred    = Cg1 * X * ddd * (dr^Cg2)
@@ -495,15 +496,15 @@ function update(ψ::Cho2019Unified, σ̲̲, α̲̲, κ, κₛ, ϕ, X, Xd, Xs, XR
                 dsgk    = sxk   *   exp(  -( sxE + (1e6P*sxV) )  /  ( R * θ )  )   *   tscl
                 xx      = dr
                 for k in range(0, Nitmax)
-                    f   = dr      + #={=#(     dsgk     *     dt     / #=[=#(    sxn    *    (
+                    f   = dr      +      (#={=#     dsgk     *     dt     /     (#=[=#    sxn    *    (
                             (  ( 1.0 - a )  *  ( dr ^ (sxn-1.0) )  )   +   (  a  *  ( xx ^ (sxn-1.0) )  )
-                        )    )#=]=#)#=}=#
+                        )    #=]=#)     #=}=#)
                     f  -= Cg1   *   X   *   ddd   *   dt   *   (
                             ( (1.0-a) * (dr^Cg2) )  +  ( a * (xx^Cg2) )  )
                     f  -= xx
-                    df  = (  ( dsgk * dt * a * (1.0-sxn) / sxn )  *  (xx ^ -sxn)  )   -   1.0
-                    df -= Cg1   *   X   *   ddd   *   dt   *   (
-                            ( Cg2 * a * (xx ^ (Cg2-1.0)) )  )
+                    df  = (  ( dsgk * dt * a * (1.0-sxn) / sxn )  *  ( xx ^ -sxn )  )   -   1.0
+                    df -= Cg1    *    X    *    ddd    *    dt    *    (
+                            (  Cg2 * a * ( xx ^ (Cg2-1.0) )  )   )
                     dxx = -f / df
                     xx += dxx
 
@@ -516,13 +517,13 @@ function update(ψ::Cho2019Unified, σ̲̲, α̲̲, κ, κₛ, ϕ, X, Xd, Xs, XR
                 end
                 d       = xx
                 prefct  = ( sxk * tscl / (Cg1*sxn*X) )  ^  ( 1.0 / (sxn-1.0+Cg2) )
-                dsss    = prefct    *    (   #=[=#(
-                        ddd * exp(  ( sxE + (1e6P*sxV) ) / ( R * θ )  )
-                    )#=]=#   ^   (  -1.0 / (sxn-1.0+Cg2)  )   )
+                dsss    = prefct     *     (    (#=[=#
+                        ddd   *   exp(  ( sxE + (1e6P*sxV) ) / ( R * θ )  )
+                    #=]=#)    ^    (   -1.0   /   (  sxn  -  1.0  +  Cg2  )   )    )
             elseif iGSmethod == 2 # analytical solution
                 # static grain growth
                 dsgk    = sxk   *   exp(  -( sxE + (1e6P*sxV) )  /  ( R * θ )  )
-                d       = d0    +    (   dsgk * t * (  t  ^  ( (sxn/4.0) - 1.0 )  )   )    ^    (   1.0   /   sxn   )
+                d       = d0    +    (   dsgk   *   t   *   (  t  ^  ( (sxn/4.0) - 1.0 )  )   )    ^    (   1.0   /   sxn   )
             elseif iGSmethod == 3 # original version of DRX grain size kinetics model
                 P1      = 300.0
                 P2      = 0.18
@@ -530,10 +531,10 @@ function update(ψ::Cho2019Unified, σ̲̲, α̲̲, κ, κₛ, ϕ, X, Xd, Xs, XR
                 dr      = di1
                 tscl    = t  ^  ( (sxn/4.0) - 1.0 )
                 dsgk    = sxk   *   exp(  -( sxE + (1e6P*sxV) )  /  ( R * θ )  )   *   tscl
-                dssmax  = ( (dsgk*dt) + (dr^sxn) )  ^  ( 1.0/sxn )
+                dssmax  = ( (dsgk*dt) + (dr^sxn) )  ^  ( 1.0 / sxn )
                 # ? [20250331T1347] (JMA3): what even is this if-statement?
                 if ddd * dt == 0.0
-                    dssr = ( (dsgk*dt) + (dr^sxn) )  ^  (1.0/sxn)
+                    dssr = ( (dsgk*dt) + (dr^sxn) )  ^  ( 1.0 / sxn )
                     dssr = dr
                 else
                     dss0 = ddd   *   exp(  ( sxE + (1e6P*sxV) )  /  ( R * θ )  )
@@ -553,11 +554,11 @@ function update(ψ::Cho2019Unified, σ̲̲, α̲̲, κ, κₛ, ϕ, X, Xd, Xs, XR
         ## Hall-Petch effect
             idzz = 0
             dzz1, dzz0 = if idzz == 0
-                ( (d0/d) ^ zz ,    1.0           )
+                ( (d0/d) ^ zz,            1.0 )
             elseif idzz == 1
-                ( 1.0           ,   (di1/d) ^ zz )
+                (         1.0,   (di1/d) ^ zz )
             elseif idzz == 2
-                ( (d0/d)      ,   (di1/d)      ) .^ zz
+                ( (d0/d)     ,   (di1/d)      ) .^ zz
             else
                 error("idzz > 2 which is not supported.")
             end
@@ -616,7 +617,7 @@ function update(ψ::Cho2019Unified, σ̲̲, α̲̲, κ, κₛ, ϕ, X, Xd, Xs, XR
         # Al_mag = Al[0][i-1]^2 + Al[1][i-1]^2 + Al[2][i-1]^2 \
         #        +(Al[3][i-1]^2 + Al[4][i-1]^2 + Al[5][i-1]^2)*2.
         # Al_mag = sqrt(Al_mag)*sqrt_threehalves
-        rdrsa   = 1.0   +   (  ( rs + (sqrt_twothirds* rd*ddd) )  *  dt  *  Al_mag              *  dzz1  )
+        rdrsa   = 1.0   +   (  ( rs + (sqrt_twothirds* rd*ddd) )  *  dt  *  Al_mag            *  dzz1  )
         for k in range(0, 6)
             Altr[k] = Al[k][i-1] * X0 * dzz0 / rdrsa
         end
@@ -675,20 +676,20 @@ function update(ψ::Cho2019Unified, σ̲̲, α̲̲, κ, κₛ, ϕ, X, Xd, Xs, XR
         dPhi[i] = 0.0
 
         Alsat = 0.0
-        Ksat  = (H*Hir*ddd/(sqrt_twothirds*Rdc*ddd + Rs))^(1./NK)
+        Ksat  = (  (H * Hir * ddd )  /  ( (sqrt_twothirds*Rdc*ddd) + Rs )  )   ^   (  1.0  /  NK  )
         ddp   = ddd
         vMsat = Be + YT + Yp + Alsat + Ksat
     else # plastic solution (Radial return starts)
         EPflag = 2
         #--- Plastic strain increment solution
         if     iNewton == 0 # analytical solution for DG
-            DG = (    Xi_mag    -    (   sqrt_twothirds   *   ak   *   dam1  )    )     /     (
-                (   dam1   *   twoμ   )    +    (   dam1   *   (  2.0/3.0  )   *   (
-                        ( (1.0-X[i]) ^ NK ) *  dzz1  *  ( (h/rdrsa)  +  (H*Hir/rdrsk) )  )   )    )
+            DG = (    Xi_mag    -    (   sqrt_twothirds   *   ak   *   dam1   )    )     /     (
+                (   dam1   *   twoμ   )    +    (   dam1   *   (  2.0  /  3.0  )   *   (
+                        ( (1.0-X[i]) ^ NK )  *  dzz1  *  ( (h/rdrsa) + (H*Hir/rdrsk) )  )   )    )
         elseif iNewton == 1 # Newton-Rapson for DG and Kappa
-            DG = (    Xi_mag    -    (   sqrt_twothirds   *   ak   *   dam1  )    )     /     (
-                (   dam1   *   twoμ   )    +    (   dam1   *   (  2.0 / 3.0  )   *   (
-                        ( (1.0-X[i]) ^ NK ) *  dzz1  *  ( (h/rdrsa)  +  (H*Hir/rdrsk) )  )   )    )
+            DG = (    Xi_mag    -    (   sqrt_twothirds   *   ak   *   dam1   )    )     /     (
+                (   dam1   *   twoμ   )    +    (   dam1   *   (  2.0  /  3.0  )   *   (
+                        ( (1.0-X[i]) ^ NK )  *  dzz1  *  ( (h/rdrsa) + (H*Hir/rdrsk) )  )   )    )
 
             Nitmax  = 20
             Ntol    = 1e-6
@@ -711,7 +712,7 @@ function update(ψ::Cho2019Unified, σ̲̲, α̲̲, κ, κₛ, ϕ, X, Xd, Xs, XR
                 dF2dx1  = (  Rx  *  H  *  Hir  /  Rdxx1Rsdt  )   -   (
                     ( K0 + (Rx*H*Hir*xx1) )  *  sqrt_twothirds  *  Rdc  *  thK0thK  /  ( Rdxx1Rsdt ^ 2.0 )  )
                 dF2dx2  = -( K0 + (Rx*H*Hir*xx1) )  *  (
-                    (sqrt_twothirds*Rdc*xx1) + (Rs*dt) )  *  th  *  ( NK - 1.0 ) * ( xx2 ^ (NK-2.0) )
+                    (sqrt_twothirds*Rdc*xx1) + (Rs*dt) )  *  th  *  ( NK - 1.0 )  *  ( xx2 ^ (NK-2.0) )
                 dF2dx2  = ( dF2dx2 / (Rdxx1Rsdt^2.0) )  -  1.0
 
                 a11    = dF1dx1
@@ -719,7 +720,7 @@ function update(ψ::Cho2019Unified, σ̲̲, α̲̲, κ, κₛ, ϕ, X, Xd, Xs, XR
                 a21    = dF2dx1
                 a22    = dF2dx2
                 dxx2   = ( (-F2*a11/a21) + F1 )  /  ( (a22 * (a11/a21)) - a12 )
-                dxx1   = ( (-a12*dxx2) - F1 )  /  a11
+                dxx1   = ( (-a12*dxx2)   - F1 )  /  a11
 
                 xx1n   = xx1
                 xx2n   = xx2
@@ -763,16 +764,16 @@ function update(ψ::Cho2019Unified, σ̲̲, α̲̲, κ, κₛ, ϕ, X, Xd, Xs, XR
         VE[i] = VE[i-1] + (3.0 * davg)
         #--- alpha solution
         for k in range(0, 6)
-            Al[k][i] = Altr[k]  +  (
-                ((1.0-X[i]) ^ NK) * dzz1 * dam1 * h * DG * N[k] / rdrsa )
+            Al[k][i] = Altr[k]   +   (
+                ( (1.0-X[i]) ^ NK )  *  dzz1  *  dam1  *  h  *  DG  *  N[k]  /  rdrsa  )
         end
         #--- kappa solution
-        K[i] = (  iNewton   !=   0  )   ?   (  xx2  )   :   (  Ktr  +  (
-            ((1.0-X[i]) ^ NK) * sqrt_twothirds * dzz1 * dam1 * H * Hir * DG / rdrsk )  )
+        K[i] = (   iNewton   !=   0   )    ?    (   xx2   )    :    (#=[=#   Ktr   +   (
+            ( (1.0-X[i]) ^ NK )  *  sqrt_twothirds  *  dzz1  *  dam1  *  H  *  Hir  *  DG  /  rdrsk  )   #=]=#)
         #--- irradiation hardening solution in isotropic hardening
         Sir   = Si^2
-        Ks[i] = Kstr  +  (
-            ((1.0-X[i]) ^ NK) * sqrt_twothirds * dzz1 * dam1 * H * Sir * DG / rdrssk )
+        Ks[i] = Kstr   +   (
+            ( (1.0-X[i]) ^ NK )  *  sqrt_twothirds  *  dzz1  *  dam1  *  H  *  Sir  *  DG  /  rdrssk  )
         #--- damage
             for k in range(0, 3)
                 ds[k] = S[k][i]
@@ -793,17 +794,17 @@ function update(ψ::Cho2019Unified, σ̲̲, α̲̲, κ, κₛ, ϕ, X, Xd, Xs, XR
             # here I controlled stress triaxiality to 1 (tension (Horstemeyer et al., 2000))
             JJ3  = 1.
         ##--- nucleation (RK4 integration)
-            ddff = (pdd ^ 0.5) / (pff ^ (1.0/3.0))
-            dnuc0= ddd  *  ddff  /  pKic  *  ( paa * ((4.0/27.0) - JJ1) + (pbb * JJ2) + (
-                pcc * damirr * abs(JJ3)) )  *  exp( pTnuc / θ )
+            ddff = ( pdd ^ 0.5 )  /  ( pff ^ (1.0/3.0) )
+            dnuc0= ddd   *   ddff   /   pKic   *   (  paa  *  ( (4.0/27.0) - JJ1 )  +  ( pbb * JJ2 )  +  (
+                pcc * damirr * abs(JJ3) )  )   *   exp(  pTnuc  /  θ  )
                 #+ pcc*(1.+sinh(kp1*Si))*abs(JJ3))*exp(pTnuc/θ)
-            k1   = dnuc0 *   Nuc[i-1]
-            k2   = dnuc0 * ( Nuc[i-1] + (0.5k1*dt) )
-            k3   = dnuc0 * ( Nuc[i-1] + (0.5k2*dt) )
-            k4   = dnuc0 * ( Nuc[i-1] + (   k3*dt) )
-            Nuc[i] = Nuc[i-1]  +  ( 1.0 / 6.0 * dt * (k1 + 2.0(k2+k3) + k4) )
-            dnuc = Nuc[i] * ddd * ddff / pKic * ( paa * ((4.0/27.0) -JJ1) + (pbb * JJ2) + (
-                pcc * damirr * abs(JJ3)) )  *  exp( pTnuc / θ )
+            k1   = dnuc0  *    Nuc[i-1]
+            k2   = dnuc0  *  ( Nuc[i-1] + (0.5k1*dt) )
+            k3   = dnuc0  *  ( Nuc[i-1] + (0.5k2*dt) )
+            k4   = dnuc0  *  ( Nuc[i-1] + (   k3*dt) )
+            Nuc[i] = Nuc[i-1]   +   (  1.0  /  6.0  *  dt  *  ( k1 + 2.0(k2+k3) + k4 )  )
+            dnuc = Nuc[i]   *   ddd   *   ddff   /   pKic   *   (  paa  *  ( (4.0/27.0) - JJ1 )  +  ( pbb * JJ2 )  +  (
+                pcc * damirr * abs(JJ3) )  )   *   exp(  pTnuc  /  θ  )
 
             ### Implementation (Horstemeyer et al., 2000)
             #Nuc[i] = pCnuc*exp(TEm[i-1]*ddff/pKic*(paa*(4./27.-JJ1) + pbb*(JJ2) \
@@ -821,7 +822,7 @@ function update(ψ::Cho2019Unified, σ̲̲, α̲̲, κ, κₛ, ϕ, X, Xd, Xs, XR
 
             ### Implementation (Horstemeyer et al., 2000)
             Vod[i] = (    4.0    /    3.0    )     *     (#={=#    (   prr0   *   exp(#=[=#
-                    TEm[i-1]  *  sqrt( 3.0 )  /  ( 2.0 * (1.0-pnn) ) * sinh(
+                    TEm[i-1]  *  sqrt( 3.0 )  /  ( 2.0 * (1.0-pnn) )  *  sinh(
                         sqrt(3.0) * (1.0-pnn) * sqrt(2.0) / 3.0 * JJ3 )  *  exp( pTgrw * θ )
                 #=]=#)   )    ^    3.0    #=}=#)
             dvod = Vod[i] - Vod[i-1]
