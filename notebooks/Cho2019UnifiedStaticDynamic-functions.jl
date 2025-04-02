@@ -3,6 +3,7 @@
 using BammannChiesaJohnsonPlasticity
 using ContinuumMechanicsBase
 using ComponentArrays, StructArrays
+using LinearAlgebra
 # using Tensors # uncomment when we can work with Tensors.jl
 using DocStringExtensions
 
@@ -23,29 +24,29 @@ hydrostatic(x::Vector{<:Real})  = I₁(x) / 3.0
 "Returns the deviatoric of the flat vector representation of a second-rank tensor."
 deviatoric(x::Vector{<:Real})   = x - volumetric(hydrostatic(x))
 
-"""
-Structure for viscoplasticity model with loading conditions and material properties.
-Here, uses the effective strain rate based on applied strain rate and loading direction.
-"""
-struct Cho2019Unified{T<:AbstractFloat} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
-# struct Bammann1993Failure{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
-    θ       ::T         # applied temperature
-    E⁺      ::T
-    V⁺      ::T
-    R       ::T
-    d₀      ::T
-    Kic     ::T
-    𝒹       ::T
-    𝒻       ::T
-    η₀      ::T
-    R₀      ::T
-    P       ::T         # pressure
-    ϵ̇_eff   ::T         # strain rate (effective)
-    ϵₙ      ::T         # final strain
-    N       ::Integer   # number of strain increments
-    Δϵ̲̲      ::Vector{T} # S         # total strain tensor step
-    Δt      ::T         # time step
-end
+# """
+# Structure for viscoplasticity model with loading conditions and material properties.
+# Here, uses the effective strain rate based on applied strain rate and loading direction.
+# """
+# struct Cho2019Unified{T<:AbstractFloat} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
+# # struct Bammann1993Failure{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
+#     θ       ::T         # applied temperature
+#     E⁺      ::T
+#     V⁺      ::T
+#     R       ::T
+#     d₀      ::T
+#     Kic     ::T
+#     𝒹       ::T
+#     𝒻       ::T
+#     η₀      ::T
+#     R₀      ::T
+#     P       ::T         # pressure
+#     ϵ̇_eff   ::T         # strain rate (effective)
+#     ϵₙ      ::T         # final strain
+#     N       ::Integer   # number of strain increments
+#     Δϵ̲̲      ::Vector{T} # S         # total strain tensor step
+#     Δt      ::T         # time step
+# end
 
 """
     $(SIGNATURES)
@@ -149,7 +150,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             pCnuc, Tnuc, nn, Tgrw,
             ## irradiation hardening
             kr1, krt, kr2, kr3, kp1, kpt, kp2
-        ); iYS=0, tanβ₀=0.0, iREXmethod=0, iGSmethod=0)
+        ); imat=0, iYS=0, tanβ₀=0.0, iREXmethod=0, iGSmethod=0)
     # get fields from model
         θ       = ψ.θ
         # n       = ψ.n
@@ -248,9 +249,11 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 dF2 = dF2 * (  ( 7.0 / 3.0 )  *  ( RRT0 ^ (4.0/3.0) )  -  ( 5.0 / 3.0 )  *  ( RRT0 ^ (2.0/3.0) )  )
                 dF2 = dF2 * (  ( 3.0 / 4.0 )  *  ( dKdP - 4.0 )  *  ( RRT023 - 1.0 )  +  1.0)
                 dF  = -(dF1+dF2)
-                # Update Solution
-                RRT0 -= FF / dF
-                # Convergence Check
+                # find Corrector
+                dRRT0 = -FF/dF
+                # update Solution
+                RRT0 -= dRRT0
+                # convergence Check
                 err = abs(dRRT0)
                 err <= convg ? break : Niter += 1
                 Niter >= (itmax - 1) ? println("BM convergence issue! ", err) : nothing
@@ -644,11 +647,11 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             idzz = 0
             # ? [20250401T1206] (JMA3): what is `d0`
             dzz1, dzz0 = if idzz == 0
-                ( (ψ.d₀/d) ^ zz,            1.0 )
+                ( (ψ.d₀/d) ^ z,            1.0 )
             elseif idzz == 1
-                (         1.0,   (di1/d) ^ zz )
+                (         1.0,   (di1/d) ^ z )
             elseif idzz == 2
-                ( (ψ.d₀/d)     ,   (di1/d)      ) .^ zz
+                ( (ψ.d₀/d)     ,   (di1/d)      ) .^ z
             else
                 error("idzz > 2 which is not supported.")
             end
@@ -895,7 +898,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         ϵ̲̲′ += Δϵ̲̲′
         #--- total plastic strain
         # PE[i] = PE[i-1] + (sqrt_twothirds * DG)
-        ϵ̲̲⁽ᵖ⁾ += sqrt_twothirds * Δγ # ! update ISV
+        ϵ̲̲⁽ᵖ⁾ += ( (sqrt_twothirds*Δγ) .* n̂′ ) # ! update ISV
         #--- total volumetric strain
         # VE[i] = VE[i-1] + (3.0 * davg)
         ϵ̲̲⁽ᴴ⁾ += 3.0Δϵ̲̲⁽ᴴ⁾
@@ -1026,7 +1029,7 @@ function ContinuumMechanicsBase.predict(
         ) where {T<:AbstractFloat} # , S<:SymmetricTensor{2, 3, T}}
     M = ψ.N + 1
     # irradiation before damage
-    Tirr = pres
+    Tirr = ψ.P
     M0, Si, damirr = 0.0, 0.0, 1.0
     if Tirr != 0.0
         kr = kr1 * exp(krt/Tirr)
@@ -1044,7 +1047,7 @@ function ContinuumMechanicsBase.predict(
     κₛ      = M0            # irradiation hardening
     ## damage
     ϕ       = 1.0e-5        # damage
-    η       = ψ.η           # void nucleation
+    η       = ψ.η₀          # void nucleation
     νᵥ      = 0.0           # void growth
     ϕ̇       = 1.0e-5        # damage rate
     ## recrystallization
@@ -1061,7 +1064,8 @@ function ContinuumMechanicsBase.predict(
     t       = 0.0
     for i ∈ range(2, M)
         t += ψ.Δt
-        σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d = update(ψ, t, ψ.P, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, damirr, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d)
+        #                                                         update(ψ, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, η, damirr, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, (;
+        σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d = update(ψ, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, damirr, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, p)
         # update!(ψ, σ__, α__, κ, ϵ__, ϵₚ__, p)
         push!(ϵ⃗, ϵ̲̲)
         push!(σ⃗, σ̲̲)
@@ -1104,16 +1108,46 @@ Constants for temperature equations from [Bammann et. al. (1993)](@cite bammannF
 Note: though not explicitly listed in paper, temperature equations `h = C₁₅ * exp(-C₁₆ / θ)` and `H = C₁₇ * exp(-C₁₈ / θ)` are included (and their constants renumbered) from (c. f. [Horstemeyer (1994)](@cite horstemeyerPredictingFormingLimit1994)).
 """
 ContinuumMechanicsBase.parameters(::Cho2019Unified) = (
-    :C₁,    :C₂,    # V
-    :C₃,    :C₄,    # Y
-    :C₅,    :C₆,    # f
-    :C₇,    :C₈,    # r_d
-    :C₉,    :C₁₀,   # r_s
-    :C₁₁,   :C₁₂,   # R_d
-    :C₁₃,   :C₁₄,   # R_s
-    :C₁₅,   :C₁₆,   # h
-    :C₁₇,   :C₁₈,   # H
-    :m̄              # ϕ
+    # BCJ-plasticity
+    ## yield surface
+    # base, exponent
+    :C₁,     :C₂,             # V
+    :C₃,     :C₄,             # Y
+    :C₅,     :C₆,             # f
+    ## pressure-dependent yield surface
+    :Pₖ₁, :Pₖ₂, :Pₖ₃,
+    ## kinematic hardening
+    # base, exponent, pressure
+    :C₇,     :C₈,     :C₂₁,    # r_d
+    :C₉,     :C₁₀,    :C₂₂,    # h
+    :C₁₁,    :C₁₂,    :C₂₃,    # r_s
+    ## isotropic hardening
+    # base, exponent, pressure
+    :C₁₃,    :C₁₄,    :C₂₄,    # R_d
+    :C₁₅,    :C₁₆,    :C₂₅,    # H
+    :C₁₇,    :C₁₈,    :C₂₆,    # R_s
+                    :NK,     # * [20250402T1521] (JMA3): I think this is the modifier for finding the k-root
+                            # *                         (see Eq. 4.22 in HEC dissertation)
+                            # *                         (c. f. `optimize.py` that NK=2.0 by default)
+    ## torsion, tension/compression
+    :ca, :cb,
+    ## dynamic recrystallization
+    :Cx1, :Cx2, :Cdp,
+    :Cx3, :Cx4, :Csp,
+    :Cx5, :Cxa, :Cxb, :Cxc,
+    ## static RX (grain growth)
+    :n, :ω₀, # E⁺, V⁺, R,
+    ## grain size
+    # d₀, Cg1, Cg2, Cg3, z,
+    :Cg1, :Cg2, :Cg3, :z,
+    ## damage
+    ### nucleation
+    # 𝒹, 𝒻, Kic, a, b, c,
+    :a, :b, :c,
+    # Cnuc, Tnuc, R₀, nn, Tgrw,
+    :pCnuc, :Tnuc, :nn, :Tgrw,
+    ## irradiation hardening
+    :kr1, :krt, :kr2, :kr3, :kp1, :kpt, :kp2
 )
 
 nothing
