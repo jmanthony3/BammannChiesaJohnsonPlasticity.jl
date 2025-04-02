@@ -110,9 +110,9 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             Pₖ₁, Pₖ₂, Pₖ₃,
             ## kinematic hardening
             # base, exponent, pressure
-            C₇,     C₈,             # r_d
-            C₉,     C₁₀,            # h
-            C₁₁,    C₁₂,            # r_s
+            C₇,     C₈,     C₂₁,    # r_d
+            C₉,     C₁₀,    C₂₂,    # h
+            C₁₁,    C₁₂,    C₂₃,    # r_s
             ## isotropic hardening
             # base, exponent, pressure
             C₁₃,    C₁₄,    C₂₄,    # R_d
