@@ -30,11 +30,20 @@ Here, uses the effective strain rate based on applied strain rate and loading di
 struct Cho2019Unified{T<:AbstractFloat} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
 # struct Bammann1993Failure{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
     θ       ::T         # applied temperature
+    E⁺      ::T
+    V⁺      ::T
+    R       ::T
+    d₀      ::T
+    Kic     ::T
+    𝒹       ::T
+    𝒻       ::T
+    η₀      ::T
+    R₀      ::T
     P       ::T         # pressure
     ϵ̇_eff   ::T         # strain rate (effective)
     ϵₙ      ::T         # final strain
     N       ::Integer   # number of strain increments
-    Δϵ      ::Vector{T} # S         # total strain tensor step
+    Δϵ̲̲      ::Vector{T} # S         # total strain tensor step
     Δt      ::T         # time step
 end
 
@@ -88,7 +97,7 @@ function Cho2019Unified(Ω::BammannChiesaJohnsonPlasticity.BCJMetalStrainControl
         # Δt  = Δϵ[1, 2] / ϵ_dot      # timestep
         ϵ̇
     end
-    return Cho2019Unified{T}(θ, #=n,=# #=ω₀,=# E⁺, V⁺, R, d₀, #=z,=# η₀, Kic, 𝒹, 𝒻, R₀, P, ϵ̇_eff, ϵₙ, N, Δϵ̲̲, Δt)
+    return Cho2019Unified{T}(θ, #=n,=# #=ω₀,=# E⁺, V⁺, R, d₀, #=z,=# Kic, 𝒹, 𝒻, η₀, R₀, P, ϵ̇_eff, ϵₙ, N, Δϵ̲̲, Δt)
 end
 
 """
