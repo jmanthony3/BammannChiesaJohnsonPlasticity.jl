@@ -44,14 +44,27 @@ end
 Outer constructor for loading conditions and material properties which assumes a Poisson's ratio of 0.5.
 Here, `μ` is the shear modulus.
 """
-function Cho2019Unified(Ω::BammannChiesaJohnsonPlasticity.BCJMetalStrainControl, P::AbstractFloat)
+function Cho2019Unified(Ω::BammannChiesaJohnsonPlasticity.BCJMetalStrainControl,
+        # n   ::T,
+        # ω₀  ::T,
+        E⁺  ::T,        # activation energy for grain growth
+        V⁺  ::T,        # activation volume for grain growth
+        R   ::T,        # gas constant
+        d₀  ::T,        # initial grain size
+        # z   ::T,
+        η₀  ::T=0.0,    # initial void nucleation density
+        Kic ::T,        # fracture toughness
+        𝒹   ::T,        # average size of second phase particles
+        𝒻   ::T,        # volume fraction of second phase particles
+        R₀  ::T=0.0,    # initial void radius
+        P   ::T=0.0) where {T<:AbstractFloat}
     θ       = Ω.θ
     ϵ̇       = Ω.ϵ̇
     ϵₙ      = Ω.ϵₙ
     N       = Ω.N
     loaddir = Ω.loaddir
     M       = N + 1
-    T       = typeof(float(θ))
+    # T       = typeof(float(θ))
     Δϵ̲̲      = zeros(T, 6)       # strain increment
     # S       = SymmetricTensor{2, 3, T}
     # Δϵ      = zero(S) # strain increment
@@ -75,7 +88,7 @@ function Cho2019Unified(Ω::BammannChiesaJohnsonPlasticity.BCJMetalStrainControl
         # Δt  = Δϵ[1, 2] / ϵ_dot      # timestep
         ϵ̇
     end
-    return Cho2019Unified{T}(θ, P, ϵ̇_eff, ϵₙ, N, Δϵ̲̲, Δt)
+    return Cho2019Unified{T}(θ, #=n,=# #=ω₀,=# E⁺, V⁺, R, d₀, #=z,=# η₀, Kic, 𝒹, 𝒻, R₀, P, ϵ̇_eff, ϵₙ, N, Δϵ̲̲, Δt)
 end
 
 """
@@ -86,7 +99,7 @@ This is a limitation of the point simulator causing infinite stress triaxiality,
 """
 # σ̲̲, α̲̲, κ, κₛ, ϕ, ..., ϕ̇, ..., ϵ̲̲, ϵ̲̲⁽ᵖ⁾, t
 # function update(ψ::Cho2019Unified, Sig, Al, K, Ks, Phi, Nuc, Vod, dPhi, X, XR, XH, Xd, Xs, d, TE, PE, VE, Alm, t, (;
-function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, (;
+function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, η, damirr, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, (;
             # BCJ-plasticity
             ## yield surface
             # base, exponent
@@ -94,7 +107,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             C₃,     C₄,             # Y
             C₅,     C₆,             # f
             ## pressure-dependent yield surface
-            tanB0, Pₖ₁, Pₖ₂, Pₖ₃, β₂,
+            Pₖ₁, Pₖ₂, Pₖ₃,
             ## kinematic hardening
             # base, exponent, pressure
             C₇,     C₈,             # r_d
@@ -105,7 +118,9 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             C₁₃,    C₁₄,    C₂₄,    # R_d
             C₁₅,    C₁₆,    C₂₅,    # H
             C₁₇,    C₁₈,    C₂₆,    # R_s
-                            NK,
+                            NK,     # * [20250402T1521] (JMA3): I think this is the modifier for finding the k-root
+                                    # *                         (see Eq. 4.22 in HEC dissertation)
+                                    # *                         (c. f. `optimize.py` that NK=2.0 by default)
             ## torsion, tension/compression
             ca, cb,
             ## dynamic recrystallization
@@ -113,17 +128,33 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             Cx3, Cx4, Csp,
             Cx5, Cxa, Cxb, Cxc,
             ## static RX (grain growth)
-            sxn, sk0, sxE, sxV, R,
+            n, ω₀, # E⁺, V⁺, R,
             ## grain size
-            d0, Cg1, Cg2, Cg3, z,
+            # d₀, Cg1, Cg2, Cg3, z,
+            Cg1, Cg2, Cg3, z,
             ## damage
-            dd, ff, Kic, aa, bb, cc,
-            Cnuc, Tnuc, rr0, nn, Tgrw,
+            ### nucleation
+            # 𝒹, 𝒻, Kic, a, b, c,
+            a, b, c,
+            # Cnuc, Tnuc, R₀, nn, Tgrw,
+            pCnuc, Tnuc, nn, Tgrw,
             ## irradiation hardening
             kr1, krt, kr2, kr3, kp1, kpt, kp2
-        ); iYS=0, iREXmethod=0, iGSmethod=0)
+        ); iYS=0, tanβ₀=0.0, iREXmethod=0, iGSmethod=0)
     # get fields from model
         θ       = ψ.θ
+        # n       = ψ.n
+        # ω₀      = ψ.ω₀
+        E⁺      = ψ.E⁺
+        V⁺      = ψ.V⁺
+        R       = ψ.R
+        # z       = ψ.z
+        # d₀      = ψ.d₀
+        # η₀      = ψ.η₀
+        Kic     = ψ.Kic
+        𝒹       = ψ.𝒹
+        𝒻       = ψ.𝒻
+        R₀      = ψ.R₀
         pres    = ψ.P
         P, P_H  = 0.0, 0.0
         ϵ̇_eff   = ψ.ϵ̇_eff
@@ -134,7 +165,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         Δϵ      = ψ.Δϵ̲̲
         ϵ̲̲′      = deviatoric(ϵ̲̲)
         ϵ̲̲′_mag  = norm_symvec(ϵ̲̲′)
-        ϵ̲̲′⁽ᵖ⁾   = deviatoric(ϵ̲̲⁽ᵖ⁾)
+        # ϵ̲̲′⁽ᵖ⁾   = deviatoric(ϵ̲̲⁽ᵖ⁾)
         ϵ̲̲⁽ᴴ⁾    = hydrostatic(ϵ̲̲)
         # dt      = ψ.Δt
         Δt      = ψ.Δt
@@ -144,15 +175,16 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
     # calculation constants/functions
         sqrt_twothirds = √(2.0/3.0)
         sqrt_threehalves = √(3.0/2.0)
-    # irradiation before damage
-        Tirr = pres
-        M0, Si, damirr = 0.0, 0.0, 1.0
-        if Tirr != 0.0
-            kr = kr1 * exp(krt/Tirr)
-            Si = (kr*flu) ^ (1.0/kr2)
-            M0 = Kr3 * Si
-            damirr = exp(  ( kp1 * exp(kpt/Tirr) * flu )  ^  ( 1.0 / kp2 )  )
-        end
+    # * [20250402T1345] (JMA3): Moved to `predict`
+    # # irradiation before damage
+    #     Tirr = pres
+    #     M0, Si, damirr = 0.0, 0.0, 1.0
+    #     if Tirr != 0.0
+    #         kr = kr1 * exp(krt/Tirr)
+    #         Si = (kr*flu) ^ (1.0/kr2)
+    #         M0 = Kr3 * Si
+    #         damirr = exp(  ( kp1 * exp(kpt/Tirr) * flu )  ^  ( 1.0 / kp2 )  )
+    #     end
     # pressure-temperature dependent reference density
         #--- Olivine paramters
             ttop    = 300.0
@@ -227,16 +259,16 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         F   = 0.5(  ( (ρ/RT0) ^ (2.0/3.0) )  -  1.0  )
         μ   = max(  0.01,  ( (1.0+2.0F) ^ 2.5 )  *  ( GT0 + (b1*F) + 0.5b2 * (F^2.0) )  )
         ν   = 0.3
-        κ   = (2.0/3.0) * μ * (1.0+ν) / (1.0-2ν)
+        K   = (2.0/3.0) * μ * (1.0+ν) / (1.0-2ν)
         if     imat == 1    # OFHC Cu (irradation-ISV model)
            μ = 5.47e4    - (34.1*θ)
-           κ = 70000.0
+           K = 70000.0
         elseif imat == 2    # T91 ferritic steel (Barrett et al., 2018)
            μ = 1.01e5    - (65.0*θ)
-           κ = 170000.0
+           K = 170000.0
         elseif imat == 3    # Ti6Al4V (Hukuhara&Sanpei,1993)
            μ = 4.5e4     - (20.0*θ)
-           κ = 85000.0
+           K = 85000.0
         end
     # deviatoric strain and effective strain rate
         # davg    = hydrostatic(Δϵ)
@@ -255,7 +287,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         if pres > 0.0
             P = pres
         else
-            P_H = (hydrostatic(σ̲̲)*ϕ₂⁽ᵗʳ⁾) + (3.0κ*Δϵ̲̲⁽ᴴ⁾*ϕ₁⁽ᵗʳ⁾)
+            P_H = (hydrostatic(σ̲̲)*ϕ₂⁽ᵗʳ⁾) + (3.0K*Δϵ̲̲⁽ᴴ⁾*ϕ₁⁽ᵗʳ⁾)
         end
     # deviatoric stress and invariants
         # σ̲̲′
@@ -297,7 +329,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         if     iYS == 0
             Yₚ = 0.
         elseif iYS == 1
-            tanB = tanB0
+            tanB = tanβ₀
             Pa = Pₖ₁   *   (  ( 1.0 + exp(-Pₖ₂/θ) )  ^  ( -Pₖ₃ )  )
             Pc = 0.0Pa
             Pd = Pa - Pc
@@ -354,9 +386,15 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 dXR     = dXd + dXs
                 dXH     = Ch  *  ( X ^ Cxc )
                 dX      = dXR - dXH
+                # ? [20250402T1149] (JMA3): Maybe this (v) should be included? It's not originally...
+                # * ========================================================================
+                # * [20250402T1151] (JMA3): Maybe this section of reassignment is redundant
+                # *                         since these get updated at the end anyway.
+                # XR     += dXR # ! update ISV
+                XH     += dXH # ! update ISV
                 Xd     += dXd # ! update ISV
                 Xs     += dXs # ! update ISV
-                XH     += dXH # ! update ISV
+                # * ========================================================================
                 # dX      = dXR - dXH
                 xx      = X + dX
             elseif iREXmethod == 1 # explicit exponential integration algorithm
@@ -512,13 +550,13 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         ## Grain size kinetics (SGG and grain refinement rate)
             # Grain size rate integration method
             # 0-explicit; 1-implicit; 2-analytic; 3-earlier model (IJP,2019)
-            iGSmethod = 0
+            # iGSmethod = 0 # [20250402T1523] (JMA3): I commented this out to let the positional argument have precedence
             di1 = d
             if     iGSmethod == 0 # Forward Euler (explicit)
                 # static grain growth rate
                 dr      = di1
-                dsgk    =  sxk   *   exp(  -( sxE + (1e6P*sxV) )  /  ( R * θ )  )
-                dsgg    = dsgk   /   (  sxn  *  ( dr ^ (sxn-1.0) )  )
+                dsgk    =  ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )
+                dsgg    = dsgk   /   (  n  *  ( dr ^ (n-1.0) )  )
                 # dynamic grain size reduction rate (new version: EPSL2020)
                 dred    = Cg1 * X * ϵ̲̲̇′_mag * (dr^Cg2)
                 # total grain size change rate
@@ -526,25 +564,25 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 # Z       = ddd*exp((sxE + P[i]*1.e6*sxV)/(R*θ))
                 # dss     = (sxk/(Cg3*sxn*0.3))^(1./(sxn-1.+Cg2))*Z^(-(1./(sxn-1.+Cg2)))
             elseif iGSmethod == 1 # Backward Euler: a = 1 (implicit); a = 0.5 (Crank-Nicholson)
-                a       = 1.0
+                λ       = 1.0
                 Nitmax  = 20
                 Convg   = 1e-6
                 dr      = di1
                 # dsgk    = sxk*exp(-(sxE + P[i]*1.e6*sxV)/(R*θ))
                 # time downscaling factor for matching to n=4
-                tscl    = t  ^  ( (sxn/4.0) - 1.0 )
-                dsgk    = sxk   *   exp(  -( sxE + (1e6P*sxV) )  /  ( R * θ )  )   *   tscl
+                tscl    = t  ^  ( (n/4.0) - 1.0 )
+                dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )   *   tscl
                 xx      = dr
                 for k in range(0, Nitmax)
-                    F   = dr      +      (#={=#     dsgk     *     Δt     /     (#=[=#    sxn    *    (
-                            (  ( 1.0 - a )  *  ( dr ^ (sxn-1.0) )  )   +   (  a  *  ( xx ^ (sxn-1.0) )  )
+                    F   = dr      +      (#={=#     dsgk     *     Δt     /     (#=[=#    n    *    (
+                            (  ( 1.0 - λ )  *  ( dr ^ (n-1.0) )  )   +   (  λ  *  ( xx ^ (n-1.0) )  )
                         )    #=]=#)     #=}=#)
                     F  -= Cg1   *   X   *   ϵ̲̲̇′_mag   *   Δt   *   (
-                            ( (1.0-a) * (dr^Cg2) )  +  ( a * (xx^Cg2) )  )
+                            ( (1.0-λ) * (dr^Cg2) )  +  ( λ * (xx^Cg2) )  )
                     F  -= xx
-                    dF  = (  ( dsgk * Δt * a * (1.0-sxn) / sxn )  *  ( xx ^ -sxn )  )   -   1.0
+                    dF  = (  ( dsgk * Δt * λ * (1.0-n) / n )  *  ( xx ^ -n )  )   -   1.0
                     dF -= Cg1    *    X    *    ϵ̲̲̇′_mag    *    Δt    *    (
-                            (  Cg2 * a * ( xx ^ (Cg2-1.0) )  )   )
+                            (  Cg2 * λ * ( xx ^ (Cg2-1.0) )  )   )
                     dxx = -F / dF
                     xx += dxx
 
@@ -556,34 +594,34 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                     end
                 end
                 d       = xx # ! update ISV
-                prefct  = ( sxk * tscl / (Cg1*sxn*X) )  ^  ( 1.0 / (sxn-1.0+Cg2) )
+                prefct  = ( ω₀ * tscl / (Cg1*n*X) )  ^  ( 1.0 / (n-1.0+Cg2) )
                 dsss    = prefct     *     (    (#=[=#
-                        ϵ̲̲̇′_mag   *   exp(  ( sxE + (1e6P*sxV) ) / ( R * θ )  )
-                    #=]=#)    ^    (   -1.0   /   (  sxn  -  1.0  +  Cg2  )   )    )
+                        ϵ̲̲̇′_mag   *   exp(  ( E⁺ + (1e6P*V⁺) ) / ( R * θ )  )
+                    #=]=#)    ^    (   -1.0   /   (  n  -  1.0  +  Cg2  )   )    )
             elseif iGSmethod == 2 # analytical solution
                 # static grain growth
-                dsgk    = sxk   *   exp(  -( sxE + (1e6P*sxV) )  /  ( R * θ )  )
+                dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )
                 # ! update ISV
                 # ? [20250401T1206] (JMA3): what is `d0`
-                d       = d0    +    (   dsgk   *   t   *   (  t  ^  ( (sxn/4.0) - 1.0 )  )   )    ^    (   1.0   /   sxn   )
+                d       = ψ.d₀    +    (   dsgk   *   t   *   (  t  ^  ( (n/4.0) - 1.0 )  )   )    ^    (   1.0   /   n   )
             elseif iGSmethod == 3 # original version of DRX grain size kinetics model
                 P1      = 300.0
                 P2      = 0.18
                 P3      = 2.0
                 dr      = di1
-                tscl    = t  ^  ( (sxn/4.0) - 1.0 )
-                dsgk    = sxk   *   exp(  -( sxE + (1e6P*sxV) )  /  ( R * θ )  )   *   tscl
-                dssmax  = ( (dsgk*Δt) + (dr^sxn) )  ^  ( 1.0 / sxn )
+                tscl    = t  ^  ( (n/4.0) - 1.0 )
+                dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )   *   tscl
+                dssmax  = ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )
                 # ? [20250331T1347] (JMA3): what even is this if-statement?
                 if ϵ̲̲̇′_mag * Δt == 0.0
-                    dssr = ( (dsgk*Δt) + (dr^sxn) )  ^  ( 1.0 / sxn )
+                    dssr = ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )
                     dssr = dr
                 else
-                    dss0 = ϵ̲̲̇′_mag   *   exp(  ( sxE + (1e6P*sxV) )  /  ( R * θ )  )
+                    dss0 = ϵ̲̲̇′_mag   *   exp(  ( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )
                     dssr = P1 * (dss0^-P2)
                 end
                 # ? [20250331T1350] (JMA3): why the addition, subtraction, and increment?
-                ddgrw   = (  ( (dsgk*Δt) + (dr^sxn) )  ^  (1.0/sxn)  )   -   dr
+                ddgrw   = (  ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )  )   -   dr
                 dr     += dr + ddgrw
                 dss     = min(dssr, dr)
                 ddred   = -P3 * X * ϵ̲̲̇′_mag * Δt * dr * (dr-dss)
@@ -597,11 +635,11 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             idzz = 0
             # ? [20250401T1206] (JMA3): what is `d0`
             dzz1, dzz0 = if idzz == 0
-                ( (d0/d) ^ zz,            1.0 )
+                ( (ψ.d₀/d) ^ zz,            1.0 )
             elseif idzz == 1
                 (         1.0,   (di1/d) ^ zz )
             elseif idzz == 2
-                ( (d0/d)     ,   (di1/d)      ) .^ zz
+                ( (ψ.d₀/d)     ,   (di1/d)      ) .^ zz
             else
                 error("idzz > 2 which is not supported.")
             end
@@ -722,8 +760,12 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         # end
         # α̲̲ = α̲̲⁽ᵗʳ⁾
         α̲̲ = α̲̲⁽ᵗʳ⁾ # ! update ISV
+        # [20250402T1156] (JMA3):   This (v) may not be needed since `ϵ̲̲′` is evaluated
+        #                           at the top and should be updated in `predict()`.
         ϵ̲̲′ += Δϵ̲̲′
         # kinematic hardening update
+        # [20250402T1156] (JMA3):   This (v) may not be needed since `ϵ̲̲′` is evaluated
+        #                           at the top and should be updated in `predict()`.
         # Alm[i] = Al[0][i]^2 + Al[1][i]^2 + Al[2][i]^2 \
         #         +(Al[3][i]^2 + Al[4][i]^2 + Al[5][i]^2)*2.
         # Alm[i] = sqrt(Alm[i])*sqrt_threehalves
@@ -735,9 +777,13 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         # Ks[i]  = Kstr
         κₛ = κₛ⁽ᵗʳ⁾ # ! update ISV
         # total equivalent strain update
+        # [20250402T1156] (JMA3):   This (v) may not be needed since `ϵ̲̲′` is evaluated
+        #                           at the top and should be updated in `predict()`.
         # TEm[i] = TEm[i-1] + (ddd*dt)
         ϵ̲̲′_mag += ϵ̲̲̇′_mag*Δt
         # volumetric strain update
+        # [20250402T1156] (JMA3):   This (v) may not be needed since `ϵ̲̲′` is evaluated
+        #                           at the top and should be updated in `predict()`.
         # VE[i]  = VE[i-1] + (3.0*davg)
         ϵ̲̲⁽ᴴ⁾ += 3.0Δϵ̲̲⁽ᴴ⁾
         # damage update
@@ -753,7 +799,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         # [20250401T1450] (JMA3): I'm not really sure what this is doing; maybe TERRAfit?
         α̲̲ₛₐₜ_mag    = 0.0
         κₛₐₜ        = (  (H * Hir * ϵ̲̲̇′_mag )  /  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  )   ^   (  1.0  /  NK  )
-        ϵ̲̲̲̇′⁽ᵖ⁾_mag   = ϵ̲̲̇′_mag
+        ϵ̲̲̲̇′⁽ᵖ⁾_mag   = ϵ̲̲̇′_mag # [20250402T1207] (JMA3): 
         vMₛₐₜ       = Be + Y + Yₚ + α̲̲ₛₐₜ_mag + κₛₐₜ
     else # plastic solution (Radial return starts)
         EPflag = 2
@@ -840,7 +886,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         ϵ̲̲′ += Δϵ̲̲′
         #--- total plastic strain
         # PE[i] = PE[i-1] + (sqrt_twothirds * DG)
-        ϵ̲̲′⁽ᵖ⁾ += sqrt_twothirds * Δγ # ! update ISV
+        ϵ̲̲⁽ᵖ⁾ += sqrt_twothirds * Δγ # ! update ISV
         #--- total volumetric strain
         # VE[i] = VE[i-1] + (3.0 * davg)
         ϵ̲̲⁽ᴴ⁾ += 3.0Δϵ̲̲⁽ᴴ⁾
@@ -883,17 +929,17 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             # here I controlled stress triaxiality to 1 (tension (Horstemeyer et al., 2000))
             JJ3 = 1.0
         ##--- nucleation (RK4 integration)
-            ddff= ( pdd ^ 0.5 )  /  ( pff ^ (1.0/3.0) )
-            Δη₀ = ϵ̲̲̇′_mag   *   ddff   /   pKic   *   (  paa  *  ( (4.0/27.0) - JJ1 )  +  ( pbb * JJ2 )  +  (
-                pcc * damirr * abs(JJ3) )  )   *   exp(  pTnuc  /  θ  )
+            ddff= ( 𝒹 ^ 0.5 )  /  ( 𝒻 ^ (1.0/3.0) )
+            Δη₀ = ϵ̲̲̇′_mag   *   ddff   /   Kic   *   (  a  *  ( (4.0/27.0) - JJ1 )  +  ( b * JJ2 )  +  (
+                c * damirr * abs(JJ3) )  )   *   exp(  Tnuc  /  θ  )
                 #+ pcc*(1.+sinh(kp1*Si))*abs(JJ3))*exp(pTnuc/θ)
             k₁  = Δη₀  *    η
             k₂  = Δη₀  *  ( η + (0.5k₁*Δt) )
             k₃  = Δη₀  *  ( η + (0.5k₂*Δt) )
             k₄  = Δη₀  *  ( η + (   k₃*Δt) )
             η  += 6.0  \  Δt  *  ( k₁ + 2.0(k₂+k₃) + k₄ ) # ! update ISV
-            Δη  = η   *   ϵ̲̲̇′_mag   *   ddff   /   pKic   *   (  paa  *  ( (4.0/27.0) - JJ1 )  +  ( pbb * JJ2 )  +  (
-                pcc * damirr * abs(JJ3) )  )   *   exp(  pTnuc  /  θ  )
+            Δη  = η   *   ϵ̲̲̇′_mag   *   ddff   /   Kic   *   (  a  *  ( (4.0/27.0) - JJ1 )  +  ( b * JJ2 )  +  (
+                c * damirr * abs(JJ3) )  )   *   exp(  Tnuc  /  θ  )
 
             ### Implementation (Horstemeyer et al., 2000)
             #Nuc[i] = pCnuc*exp(TEm[i-1]*ddff/pKic*(paa*(4./27.-JJ1) + pbb*(JJ2) \
@@ -912,9 +958,9 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             ### Implementation (Horstemeyer et al., 2000)
             νᵥ₀ = νᵥ
             # ! update ISV
-            νᵥ = (    4.0    /    3.0    )     *     (#={=#    (   prr0   *   exp(#=[=#
-                    ϵ̲̲′_mag  *  sqrt( 3.0 )  /  ( 2.0 * (1.0-pnn) )  *  sinh(
-                        sqrt(3.0) * (1.0-pnn) * sqrt(2.0) / 3.0 * JJ3 )  *  exp( pTgrw * θ )
+            νᵥ = (    4.0    /    3.0    )     *     (#={=#    (   R₀   *   exp(#=[=#
+                    ϵ̲̲′_mag  *  sqrt( 3.0 )  /  ( 2.0 * (1.0-nn) )  *  sinh(
+                        sqrt(3.0) * (1.0-nn) * sqrt(2.0) / 3.0 * JJ3 )  *  exp( Tgrw * θ )
                 #=]=#)   )    ^    3.0    #=}=#)
             Δνᵥ = νᵥ - νᵥ₀
 
@@ -970,18 +1016,43 @@ function ContinuumMechanicsBase.predict(
             kwargs...,
         ) where {T<:AbstractFloat} # , S<:SymmetricTensor{2, 3, T}}
     M = ψ.N + 1
-    σ̲̲       = zeros(T, 6)   # deviatoric stress
-    ϵ̲̲⁽ᵖ⁾    = zeros(T, 6)   # plastic strain
+    # irradiation before damage
+    Tirr = pres
+    M0, Si, damirr = 0.0, 0.0, 1.0
+    if Tirr != 0.0
+        kr = kr1 * exp(krt/Tirr)
+        Si = (kr*flu) ^ (1.0/kr2)
+        M0 = Kr3 * Si
+        damirr = exp(  ( kp1 * exp(kpt/Tirr) * flu )  ^  ( 1.0 / kp2 )  )
+    end
+    # observable state variables
+    σ̲̲       = zeros(T, 6)   # Cauchy stress
     ϵ̲̲       = zeros(T, 6)   # total strain
+    # internal state variables
+    ϵ̲̲⁽ᵖ⁾    = zeros(T, 6)   # plastic strain
     α̲̲       = fill(1e-7, 6) # kinematic hardening
-    κ       = 0.0           # isotropic hardening
-    ϕ       = 0.0           # damage
-    ϵ⃗ = []
-    σ⃗ = []
-    push!(ϵ⃗, ϵ̲̲)
-    push!(σ⃗, σ̲̲)
+    κ       = M0            # isotropic hardening
+    κₛ      = M0            # irradiation hardening
+    ## damage
+    ϕ       = 1.0e-5        # damage
+    η       = ψ.η           # void nucleation
+    νᵥ      = 0.0           # void growth
+    ϕ̇       = 1.0e-5        # damage rate
+    ## recrystallization
+    X       = 1.0e-10       # total dislocation-free volume fraction
+    XR      = 0.0           # total recrystallized volume fraction
+    XH      = 0.0           # total reduction of recrystallized volume fraction
+    Xd      = 0.5e-10       # total dynamically recrystallized volume fraction
+    Xs      = 0.5e-10       # total statically recrystallized volume fraction
+    d       = ψ.d₀          # average grain size
+
+    # begin prediction
+    σ⃗ = []; push!(σ⃗, σ̲̲)
+    ϵ⃗ = []; push!(ϵ⃗, ϵ̲̲)
+    t       = 0.0
     for i ∈ range(2, M)
-        σ̲̲, α̲̲, κ, ϕ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾ = update(ψ, σ̲̲, α̲̲, κ, ϕ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, p)
+        t += ψ.Δt
+        σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d = update(ψ, t, ψ.P, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, damirr, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d)
         # update!(ψ, σ__, α__, κ, ϵ__, ϵₚ__, p)
         push!(ϵ⃗, ϵ̲̲)
         push!(σ⃗, σ̲̲)
