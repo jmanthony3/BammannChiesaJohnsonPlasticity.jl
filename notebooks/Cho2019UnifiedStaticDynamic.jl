@@ -21,7 +21,7 @@ end
 begin
 	using Pkg
 	Pkg.activate(".") # activate project in current directory
-	Pkg.add(url="https://github.com/jmanthony3/BammannChiesaJohnsonPlasticity.jl.git", rev="main")
+	Pkg.add(url="https://github.com/jmanthony3/BammannChiesaJohnsonPlasticity.jl.git", rev="cho2019unified")
 	Pkg.add("ContinuumMechanicsBase")
 	Pkg.add("ComponentArrays")
 	Pkg.add("CSV")
@@ -102,7 +102,7 @@ begin
 end
 
 # ╔═╡ 5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
-include("user-functions.jl")
+include("Cho2019UnifiedStaticDynamic-functions.jl")
 
 # ╔═╡ d534bf54-4c83-43d6-a62c-8e4a34f8f74d
 md"""
@@ -137,13 +137,13 @@ Using the experimental data, we construct the loading conditions for the initial
 # ╔═╡ bd3a90e7-8896-4553-bbd8-bf72c8f60eaf
 begin
 	test = BCJMetalUniaxialTest( # (x, y) data from experiment for calibration
-		df_Tension_e002_295[!, "Strain"],
-		df_Tension_e002_295[!, "Stress"] .* 1e6,
+		filter(!ismissing, df_Tension_e002_295[!, 1]),
+		filter(!ismissing, df_Tension_e002_295[!, 2]) .* 1e6,
 		name="exp")
 	Ω = BCJMetalStrainControl( # loading conditions
-		295.0, 											# temperature
-		2e-3, 											# strain-rate
-		float(last(df_Tension_e002_295[!, "Strain"])), 	# final strain
+		298.0, 											# temperature
+		4e-4, 											# strain-rate
+		float(last(filter(!ismissing, df_Tension_e002_295[!, 1]))), 		# final strain
 		200, 											# number of strain increments
 		:tension) 										# load direction
 	nothing
@@ -156,8 +156,17 @@ Now we define some material properties for the desired model.
 
 # ╔═╡ b63e916b-4601-4b61-97ae-9aa07515050c
 begin
-	G 	= 159e9 	# shear modulus [Pa]
-	μ 	= 77e9 		# bulk modulus [Pa]
+	n 	= 2.0
+	ω₀ 	= 3.6e4
+	R 	= 8.31446261815324 # universal gas constant
+	E⁺ 	= 82.0e3
+	z 	= 0.65
+	d₀ 	= 10.0 # μm (Ghauri et al., 1990)
+	η₀ 	= 0.0
+	Kic = 1000.0
+	𝒹 	= 0.0
+	𝒻 	= 0.001
+	R₀ 	= 0.0
 	nothing
 end
 
@@ -167,7 +176,7 @@ Construct the model type given the loading conditions and material properties.
 """
 
 # ╔═╡ 1b83b3e8-9593-483b-a690-fe06aa48aeb5
-ψ = Bammann1993Failure(Ω, μ)
+ψ = Cho2019Unified(Ω, E⁺, E⁺, R, d₀, Kic, 𝒹, 𝒻, η₀, R₀)
 
 # ╔═╡ bd66c9a7-cf0a-4d34-884b-f369722801a8
 md"""
@@ -176,25 +185,66 @@ Now we can make a group of sliders for the pre-defined model `parameters`.
 
 # ╔═╡ 45ed6284-590e-40ee-93f2-439f264fa032
 p0 = ComponentVector(
-	C₁ = 9.98748e10,
-	C₂ = 1483.14,
-	C₃ = 1.61687e8,
-	C₄ = 382.443,
-	C₅ = 1.65237,
-	C₆ = 1320.97,
-	C₇ = 0.000195306,
-	C₈ = 1504.62,
-	C₉ = 4.04209e-10,
-	C₁₀ = 993.109,
-	C₁₁ = 7.02824e-12,
-	C₁₂ = 18.5041,
-	C₁₃ = 5.04316e-9,
-	C₁₄ = 2153.13,
-	C₁₅ = 3.73042e7,
-	C₁₆ = 1792.72,
-	C₁₇ = 9.56827e6,
-	C₁₈ = 1214.34,
-	m̄ = 1.0,
+	C₁ = 5.637,
+	C₂ = 112.6,
+	C₃ = 8.378,
+	C₄ = 324.9,
+	C₅ = 2.971,
+	C₆ = 2548.0,
+	Pₖ₁ = 0.0,
+	Pₖ₂ = 0.0,
+	Pₖ₃ = 0.0,
+	C₇ = 0.1345,
+	C₈ = 351.1,
+	C₂₁ = 0.0,
+	C₉ = 0.02869,
+	C₁₀ = 0.0,
+	C₂₂ = 0.0,
+	C₁₁ = 0.02928,
+	C₁₂ = 4337.0,
+	C₂₃ = 0.0,
+	C₁₃ = 0.05098,
+	C₁₄ = 476.6,
+	C₂₄ = 0.0,
+	C₁₅ = 0.006924,
+	C₁₆ = 0.0,
+	C₂₅ = 0.0,
+	C₁₇ = 2.487,
+	C₁₈ = 7611.0,
+	C₂₆ = 0.0,
+	NK = 2.0,
+	ca = 0.0,
+	cb = 0.0,
+	Cx1 = 1.78e6,
+	Cx2 = 7.806e3,
+	Cdp = 0.0,
+	Cx3 = 5.401e4,
+	Cx4 = 8943.0,
+	Csp = 0.0,
+	Cx5 = 5.0,
+	Cxa = 0.8052,
+	Cxb = 3.68,
+	Cxc = 4.485,
+	n = n,
+	ω₀ = ω₀,
+	Cg1 = 7.41e4,
+	Cg2 = 0.8826,
+	Cg3 = 1.185e-3,
+	z = z,
+	a = 0.0,
+	b = 0.0,
+	c = 0.0,
+	pCnuc = 0.0,
+	Tnuc = 0.0,
+	nn = 0.0,
+	Tgrw = 0.0,
+	kr1 = 0.0,
+	krt = 0.0,
+	kr2 = 0.0,
+	kr3 = 0.0,
+	kp1 = 0.0,
+	kpt = 0.0,
+	kp2 = 0.0,
 )
 
 # ╔═╡ 2494657a-bdaa-48c5-8209-a36585697975
@@ -206,12 +256,12 @@ p
 # ╔═╡ 65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
 begin
 	res = ContinuumMechanicsBase.predict(ψ, test, p)
-	plt = scatter(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"], label="exp",
+	plt = scatter(df_Tension_e002_295[!, 1], df_Tension_e002_295[!, 2], label="exp",
 		xlabel="True Strain (ϵ) [mm/mm]",
 		ylabel="True Stress (σ) [MPa]")
 	plot!(plt, [first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6, label=@sprintf(
 			"Bammann1993Failure (RMSE:%.3f)", rmse(
-					(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
+					(df_Tension_e002_295[!, 1], df_Tension_e002_295[!, 2]),
 					([first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6))
 			),
 		linecolor=:blue
@@ -228,8 +278,8 @@ begin
 	sol = solve(prob, LBFGS())
 	calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
 	plot!(deepcopy(plt), [first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6, label=@sprintf(
-			"Bammann1993Failure (RMSE:%.3f, K:%d, T:%.3f [s])", rmse(
-				(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
+			"Cho2019Unified (RMSE:%.3f, K:%d, T:%.3f [s])", rmse(
+				(df_Tension_e002_295[!, 1], df_Tension_e002_295[!, 2]),
 				([first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6)),
 			sol.stats.iterations, sol.stats.time),
 		linecolor=:blue,
