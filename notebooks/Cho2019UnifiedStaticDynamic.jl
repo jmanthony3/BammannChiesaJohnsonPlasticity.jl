@@ -126,8 +126,10 @@ Next, we load the desired `.csv` file and configure the type of material test to
 """
 
 # ╔═╡ 398fa1e3-1d11-4285-ad23-b11a4d8628c5
-df_Tension_e002_295 = CSV.read("../test/Data_Tension_e0002_T295.csv", DataFrame;
-	header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
+# df_Tension_e002_295 = CSV.read("../test/Data_Tension_e0002_T295.csv", DataFrame;
+# 	header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
+df_Tension_e002_295 = CSV.read("Cho2019UnifiedStaticDynamic-Fig4a.csv", DataFrame;
+	header=true, delim=',', skipto=3, types=Float64)
 
 # ╔═╡ ba3e98a7-9088-48bf-abeb-110d458b3297
 md"""
