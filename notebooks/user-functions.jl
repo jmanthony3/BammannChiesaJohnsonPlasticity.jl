@@ -66,7 +66,7 @@ Though not explicitly listed in paper, temperature equations `h = C₁₅ * exp(
 Important: `ϕ` is included in the list of arguments, but is presently, internally set to zero.
 This is a limitation of the point simulator causing infinite stress triaxiality, χ.
 """
-function BammannChiesaJohnsonPlasticity.update(ψ::Bammann1993Failure, σ̲̲, α̲̲, κ, ϕ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
+function update(ψ::Bammann1993Failure, σ̲̲, α̲̲, κ, ϕ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, (;
             C₁,     C₂,     # V
             C₃,     C₄,     # Y
             C₅,     C₆,     # f
