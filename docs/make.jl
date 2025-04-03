@@ -1,9 +1,18 @@
 using Documenter
 using DocumenterCitations
 using BammannChiesaJohnsonPlasticity
-using Optimization, OptimizationOptimJL, LossFunctions
+using Optimization, LossFunctions
 
 DocMeta.setdocmeta!(BammannChiesaJohnsonPlasticity, :DocTestSetup, :(using BammannChiesaJohnsonPlasticity); recursive=true)
+
+mathengine = MathJax3(Dict(
+    :loader => Dict("load" => ["[tex]/physics"]),
+    :tex => Dict(
+        "inlineMath" => [["\$","\$"], ["\\(","\\)"]],
+        "tags" => "ams",
+        "packages" => ["base", "ams", "autoload", "physics"],
+    ),
+))
 
 bib = CitationBibliography(
     joinpath(@__DIR__, "src", "references.bib"),
@@ -11,7 +20,8 @@ bib = CitationBibliography(
 )
 
 makedocs(;
-    modules = [BammannChiesaJohnsonPlasticity, Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)],
+    modules = [BammannChiesaJohnsonPlasticity,
+        Base.get_extension(BammannChiesaJohnsonPlasticity, :OptimizationBCJPlasticityExt)],
     authors = "Joby M. Anthony III",
     repo    = "https://github.com/jmanthony3/BammannChiesaJohnsonPlasticity.jl/blob/{commit}{path}#{line}",
     sitename= "BammannChiesaJohnsonPlasticity.jl",
@@ -21,12 +31,22 @@ makedocs(;
         canonical   = "https://jmanthony3.github.io/BammannChiesaJohnsonPlasticity.jl",
         edit_link   = "main",
         assets      = String[],
+        mathengine  = mathengine,
     ),
     pages   = [
         "Home" => "index.md",
-        "Bammann-Chiesa-Johnson Plasticity" => "bcjplasticity.md",
-        "Metals" => "metals.md",
-        "Extensions" => "extensions.md"
+        "Primer" => "primer.md",
+        "Bammann-Chiesa-Johnson Plasticity" => [
+            "Base Package" => "base/BammannChiesaJohnsonPlasticity.md",
+            "Metals" => [
+                "base/Metals.md",
+                "Bammann1990Modeling" => "base/Bammann1990Modeling.md",
+            ]
+        ],
+        "Extensions" => [
+            "Extending Functionality" => "extensions.md",
+            "Optimization.jl" => "ext/OptimizationBCJPlasticityExt.jl/OptimizationBCJPlasticityExt.md"
+        ]
     ],
     plugins = [bib],
 )

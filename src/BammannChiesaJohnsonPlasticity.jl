@@ -3,7 +3,7 @@ module BammannChiesaJohnsonPlasticity
 
 
 # export triu_vec, δ, vonMises # uncomment when we can work with Tensors.jl (#5)
-export norm_symvec, vonMises
+export norm_symvec, vonMises, rmse
 export AbstractBCJModel, AbstractBCJTest, update
 
 
@@ -37,17 +37,30 @@ end
 "von Mises (equivalent) scalar for symmetric tensor."
 vonMises(tensor) = map(vonMises, eachcol(tensor))
 
+"""
+    $(TYPEDSIGNATURES)
+
+Calculate the Root Mean Squared Error (RMSE) between actual (experimental) and predicted data sets.
+
+(x, y): Actual value
+
+(x̂, ŷ): Predicted value
+"""
+function rmse((x, y)::NTuple{2, Vector{T}}, (x̂, ŷ)::NTuple{2, Vector{T}}) where {T<:AbstractFloat}
+    return √(length(x) \ sum((ŷ[map(xᵢ->(yᵢ = findfirst(xᵢ .<= x̂); !isnothing(yᵢ) ? yᵢ : findlast(xᵢ .>= x̂)), x)] - y) .^ 2.0))
+end
+
 
 
 # module specific codes from parent, [CMB.jl](https://github.com/TRACER-LULab/ContinuumMechanicsBase.jl.git)
-"Define parent type for all BCJ-variant models."
+"Parent type for all BCJ-variant models."
 abstract type AbstractBCJModel      <: ContinuumMechanicsBase.AbstractMaterialModel end
 
-"Define parent type for all BCJ-variant tests."
+"Parent type for all BCJ-variant tests."
 abstract type AbstractBCJTest       <: ContinuumMechanicsBase.AbstractMaterialTest end
 
 """
-    $(TYPEDSIGNATURES)
+    $(SIGNATURES)
 
 Given viscoplasticity model and the current material state, update to the next material state.
 """

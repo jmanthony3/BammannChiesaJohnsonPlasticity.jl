@@ -18,37 +18,64 @@ using Test
     bcj_loading = BCJMetalStrainControl(295.0, 2e-3, float(last(df_Tension_e002_295[!, "Strain"])), 200, :tension)
     G = 159e9   # shear modulus [Pa]
     μ = 77e9    # bulk modulus [Pa]
-    function testmodel(ψ, p, q)
-        prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(); ui=q)
+    function testmodel(ψ, test, p, q)
+        prob = ContinuumMechanicsBase.MaterialOptimizationProblem(
+            ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(); ui=q)
         return solve(prob, LBFGS())
     end
-    @testset "DK" begin
-        ψ = DK(bcj_loading, μ)
+    @testset "Bammann1990Modeling" begin
+        ψ = Bammann1990Modeling(bcj_loading, μ)
         p = ComponentVector(
-            C₁  = 35016459.896579415,       C₂  = 323.93342698083165,   # V
-            C₃  = 500340419.8337271,        C₄  = 143.08381901004486,   # Y
-            C₅  = 4.101775377562497,        C₆  = 271.0245526,          # f
-            C₇  = 1.0834796217232945e-06,   C₈  = 1023.6278003945317,   # r_s
-            C₉  = 2358205093.844017,        C₁₀ = 676421.9935474312,    # h
-            C₁₁ = 1.3465080192134937e-10,   C₁₂ = 98.35671405000001,    # r_d
-            C₁₃ = 2.533629073577668e-09,    C₁₄ = 403.2291451343492,    # R_s
-            C₁₅ = 1159915808.5023918,       C₁₆ = 959557.0948847248,    # H
-            C₁₇ = 6.204370386543724e-12,    C₁₈ = 203.95288011132806,   # R_s
-            C₁₉ = 1e-10,                    C₂₀ = 1e-10                 # Y_adj
+            C₁ = 9.98748e10,
+            C₂ = 1483.14,
+            C₃ = 1.61687e8,
+            C₄ = 382.443,
+            C₅ = 1.65237,
+            C₆ = 1320.97,
+            C₇ = 0.000195306,
+            C₈ = 1504.62,
+            C₉ = 4.04209e-10,
+            C₁₀ = 993.109,
+            C₁₁ = 7.02824e-12,
+            C₁₂ = 18.5041,
+            C₁₃ = 5.04316e-9,
+            C₁₄ = 2153.13,
+            C₁₅ = 3.73042e7,
+            C₁₆ = 1792.72,
+            C₁₇ = 9.56827e6,
+            C₁₈ = 1214.34,
         )
+        pred = ContinuumMechanicsBase.predict(ψ, test, p)
+        # @show [vonMises(x) for x in eachcol(pred.data.σ)] ./ 1e6
+        @test isapprox(31.936, rmse(
+            (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
+            ([first(x) for x in eachcol(pred.data.ϵ)], [vonMises(x) for x in eachcol(pred.data.σ)] ./ 1e6)); atol=1e-2)
         q = ComponentVector(
-            C₁  = NaN,      C₂  = NaN,      # V
-            C₃  = p.C₃,     C₄  = p.C₄,     # Y
-            C₅  = p.C₅,     C₆  = p.C₆,     # f
-            C₇  = p.C₇,     C₈  = p.C₈,     # r_d
-            C₉  = p.C₉,     C₁₀ = p.C₁₀,    # h
-            C₁₁ = p.C₁₁,    C₁₂ = p.C₁₂,    # r_s
-            C₁₃ = p.C₁₃,    C₁₄ = p.C₁₄,    # R_d
-            C₁₅ = p.C₁₅,    C₁₆ = p.C₁₆,    # H
-            C₁₇ = p.C₁₇,    C₁₈ = p.C₁₈,    # R_s
-            C₁₉ = p.C₁₉,    C₂₀ = p.C₂₀     # Y_adj
+            C₁ = p.C₁,
+            C₂ = p.C₂,
+            C₃ = p.C₃,
+            C₄ = p.C₄,
+            C₅ = p.C₅,
+            C₆ = p.C₆,
+            C₇ = p.C₇,
+            C₈ = p.C₈,
+            C₉ = p.C₉,
+            C₁₀ = p.C₁₀,
+            C₁₁ = p.C₁₁,
+            C₁₂ = p.C₁₂,
+            C₁₃ = p.C₁₃,
+            C₁₄ = p.C₁₄,
+            C₁₅ = NaN,
+            C₁₆ = NaN,
+            C₁₇ = NaN,
+            C₁₈ = NaN,
         )
-        @test testmodel(ψ, p, q).retcode == SciMLBase.ReturnCode.Success
+        sol = testmodel(ψ, test, p, q)
+        @test sol.retcode == SciMLBase.ReturnCode.Success
+        calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
+        @test isapprox(29.888, rmse(
+            (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
+            ([first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6)); atol=1e-2)
     end
 
     # # bcj_loading = BCJ_metal(295., 570., 0.15, 200, 1, p)

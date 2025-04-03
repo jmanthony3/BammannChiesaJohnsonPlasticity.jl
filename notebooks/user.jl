@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.4
+# v0.20.5
 
 using Markdown
 using InteractiveUtils
@@ -7,7 +7,7 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     #! format: off
-    quote
+    return quote
         local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
@@ -26,6 +26,7 @@ begin
 	Pkg.add("ComponentArrays")
 	Pkg.add("CSV")
 	Pkg.add("DataFrames")
+	Pkg.add("DocStringExtensions")
 	Pkg.add("FiniteDiff")
 	Pkg.add("ForwardDiff")
 	Pkg.add("Optimization")
@@ -37,7 +38,7 @@ begin
 	Pkg.add("Printf")
 
 
-	
+
 	using PlutoUI
 	import PlutoUI: combine
 
@@ -45,11 +46,14 @@ begin
 	using ContinuumMechanicsBase
 	using ComponentArrays
 	using CSV, DataFrames
+	using DocStringExtensions
 	using FiniteDiff
 	import ForwardDiff
 	using Optimization, OptimizationOptimJL, LossFunctions
 	using Plots
 	using Printf
+
+	# include("user-functions.jl")
 
 
 
@@ -96,6 +100,9 @@ begin
 		return ComponentVector(parameters)
 	end
 end
+
+# ╔═╡ 5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
+include("user-functions.jl")
 
 # ╔═╡ d534bf54-4c83-43d6-a62c-8e4a34f8f74d
 md"""
@@ -160,7 +167,7 @@ Construct the model type given the loading conditions and material properties.
 """
 
 # ╔═╡ 1b83b3e8-9593-483b-a690-fe06aa48aeb5
-ψ = Bammann1990Modeling(Ω, μ)
+ψ = Bammann1993Failure(Ω, μ)
 
 # ╔═╡ bd66c9a7-cf0a-4d34-884b-f369722801a8
 md"""
@@ -169,24 +176,25 @@ Now we can make a group of sliders for the pre-defined model `parameters`.
 
 # ╔═╡ 45ed6284-590e-40ee-93f2-439f264fa032
 p0 = ComponentVector(
-	C₁ = 100567805581.449005127,
-	C₂ = 1493.432680374,
-	C₃ = 162809350.500710130,
-	C₄ = 385.096810454,
-	C₅ = 1.663838836,
-	C₆ = 1330.136471316,
-	C₇ = 0.000196661,
-	C₈ = 1515.064799827,
-    C₉ = 4.07014e-10,
-    C₁₀ = 1000.0,
-    C₁₁ = 7.07701e-12,
-    C₁₂ = 18.6325,
-    C₁₃ = 5.07815e-9,
-    C₁₄ = 2168.07,
-	C₁₅ = 37563031.154610492,
-	C₁₆ = 1805.159941973,
-	C₁₇ = 9634658.446984392,
-	C₁₈ = 1222.769281462,
+	C₁ = 9.98748e10,
+	C₂ = 1483.14,
+	C₃ = 1.61687e8,
+	C₄ = 382.443,
+	C₅ = 1.65237,
+	C₆ = 1320.97,
+	C₇ = 0.000195306,
+	C₈ = 1504.62,
+	C₉ = 4.04209e-10,
+	C₁₀ = 993.109,
+	C₁₁ = 7.02824e-12,
+	C₁₂ = 18.5041,
+	C₁₃ = 5.04316e-9,
+	C₁₄ = 2153.13,
+	C₁₅ = 3.73042e7,
+	C₁₆ = 1792.72,
+	C₁₇ = 9.56827e6,
+	C₁₈ = 1214.34,
+	m̄ = 1.0,
 )
 
 # ╔═╡ 2494657a-bdaa-48c5-8209-a36585697975
@@ -202,7 +210,7 @@ begin
 		xlabel="True Strain (ϵ) [mm/mm]",
 		ylabel="True Stress (σ) [MPa]")
 	plot!(plt, [first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6, label=@sprintf(
-			"Bammann1990Modeling (RMSE:%.3f)", rmse(
+			"Bammann1993Failure (RMSE:%.3f)", rmse(
 					(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
 					([first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6))
 			),
@@ -220,7 +228,7 @@ begin
 	sol = solve(prob, LBFGS())
 	calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
 	plot!(deepcopy(plt), [first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6, label=@sprintf(
-			"Bammann1990Modeling (RMSE:%.3f, K:%d, T:%.3f [s])", rmse(
+			"Bammann1993Failure (RMSE:%.3f, K:%d, T:%.3f [s])", rmse(
 				(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
 				([first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6)),
 			sol.stats.iterations, sol.stats.time),
@@ -240,6 +248,7 @@ end; r
 # ╔═╡ Cell order:
 # ╟─d534bf54-4c83-43d6-a62c-8e4a34f8f74d
 # ╠═5cacf487-3916-4b7a-8fbf-04c8b4c9a6d9
+# ╠═5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
 # ╟─156a860c-e8a5-4dd8-b234-0a0e4419b5a5
 # ╟─398fa1e3-1d11-4285-ad23-b11a4d8628c5
 # ╟─ba3e98a7-9088-48bf-abeb-110d458b3297
