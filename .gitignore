@@ -3,4 +3,5 @@
 /docs/build/
 /notebooks/Manifest.toml
 /notebooks/*backup*.jl
+/notebooks/Cho2019UnifiedStaticDynamic-Fig4a.csv
 /test/Manifest.toml
