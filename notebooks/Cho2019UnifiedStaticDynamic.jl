@@ -263,7 +263,7 @@ begin
 		ylabel="True Stress (σ) [MPa]")
 	plot!(plt, [first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6, label=@sprintf(
 			"Bammann1993Failure (RMSE:%.3f)", rmse(
-					(df_Tension_e002_295[!, 1], df_Tension_e002_295[!, 2]),
+					(float.(filter(!ismissing, df_Tension_e002_295[!, 1])), float.(filter(!ismissing, df_Tension_e002_295[!, 2]))),
 					([first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6))
 			),
 		linecolor=:blue

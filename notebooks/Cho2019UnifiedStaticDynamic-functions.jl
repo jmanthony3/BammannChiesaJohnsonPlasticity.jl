@@ -306,12 +306,33 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         # S  = deviatoric(Sig)
         σ̲̲′  = deviatoric(σ̲̲)
         ds = σ̲̲′
+        di1 = σ̲̲[1] + σ̲̲[4] + σ̲̲[6]
+        # di1  = 3.0 * P_H
+        # [
+        #     26.643521871951265,       # [1]: σ_11
+        #     1.2074287379946301e-8,    # [2]: σ_12
+        #     1.2074287379946301e-8,    # [3]: σ_13
+        #     -13.321760917864202,      # [4]: σ_22
+        #     1.2074287379946301e-8,    # [5]: σ_23
+        #     -13.321760917864202,      # [6]: σ_33
+        # ]
+        # [
+        #     26.643521871951265,       # [0]: σ_11
+        #     -13.321760917864202,      # [1]: σ_22
+        #     -13.321760917864202,      # [2]: σ_33
+        #     1.2074287379946301e-8,    # [3]: σ_23
+        #     1.2074287379946301e-8,    # [4]: σ_13
+        #     1.2074287379946301e-8,    # [5]: σ_12
+        # ]
+        # [26.643521871951265,    -13.321760917864202,   -13.321760917864202,   1.2074287379946301e-8, 1.2074287379946301e-8, 1.2074287379946301e-8,]
+        dj2 = 0.5((sum(ds[[1, 4, 6]] .^ 2.0))
+            + 2.0(sum(ds[[2, 3, 5]] .^ 2.0)))
+        dj3 =   (ds[1]*(ds[4]*ds[6]-ds[3]*ds[3])
+                - ds[2]*(ds[2]*ds[6]-ds[3]*ds[5])
+                + ds[5]*(ds[2]*ds[3]-ds[4]*ds[5]))
         # di1 = I₁(σ̲̲)
-        # dj2 = I₂(σ̲̲)
-        # dj3 = I₃(σ̲̲)
-        di1 = I₁(σ̲̲)
-        dj2 = I₂(ds)
-        dj3 = I₃(ds)
+        # dj2 = I₂(ds)
+        # dj3 = I₃(ds)
     # temperature dependent constants
         V   = C₁ * exp(-C₂/θ)
         Y   = C₃ * exp( C₄/θ)
@@ -563,10 +584,10 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             # Grain size rate integration method
             # 0-explicit; 1-implicit; 2-analytic; 3-earlier model (IJP,2019)
             # iGSmethod = 0 # [20250402T1523] (JMA3): I commented this out to let the positional argument have precedence
-            di1 = d
+            dim1 = d
             if     iGSmethod == 0 # Forward Euler (explicit)
                 # static grain growth rate
-                dr      = di1
+                dr      = dim1
                 dsgk    =  ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )
                 dsgg    = dsgk   /   (  n  *  ( dr ^ (n-1.0) )  )
                 # dynamic grain size reduction rate (new version: EPSL2020)
@@ -579,7 +600,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 λ       = 1.0
                 Nitmax  = 20
                 Convg   = 1e-6
-                dr      = di1
+                dr      = dim1
                 # dsgk    = sxk*exp(-(sxE + P[i]*1.e6*sxV)/(R*θ))
                 # time downscaling factor for matching to n=4
                 tscl    = t  ^  ( (n/4.0) - 1.0 )
@@ -620,7 +641,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 P1      = 300.0
                 P2      = 0.18
                 P3      = 2.0
-                dr      = di1
+                dr      = dim1
                 tscl    = t  ^  ( (n/4.0) - 1.0 )
                 dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )   *   tscl
                 dssmax  = ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )
@@ -649,9 +670,9 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             dzz1, dzz0 = if idzz == 0
                 ( (ψ.d₀/d) ^ z,            1.0 )
             elseif idzz == 1
-                (         1.0,   (di1/d) ^ z )
+                (         1.0,   (dim1/d) ^ z )
             elseif idzz == 2
-                ( (ψ.d₀/d)     ,   (di1/d)      ) .^ z
+                ( (ψ.d₀/d)     ,   (dim1/d)      ) .^ z
             else
                 error("idzz > 2 which is not supported.")
             end
@@ -924,16 +945,34 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             #     ds[k] = S[k][i]
             # end
             ds .= σ̲̲′
-            # di1  = Sig[0][i] + Sig[1][i] + Sig[2][i]
-            # #di1  = 3.0 * P_H
-            # dj2  = 0.5*(ds[0]^2 + ds[1]^2 + ds[2]^2 \
-            #     + (ds[3]^2 + ds[4]^2 + ds[5]^2)*2.)
-            # dj3  = ds[0]*(ds[1]*ds[2]-ds[4]*ds[4])       \
-            #     - ds[3]*(ds[3]*ds[2]-ds[4]*ds[5])\
-            #     + ds[5]*(ds[3]*ds[4]-ds[1]*ds[5])
-            di1 = I₁(σ̲̲)
-            dj2 = I₂(ds)
-            dj3 = I₃(ds)
+            di1 = σ̲̲[1] + σ̲̲[4] + σ̲̲[6]
+            # di1  = 3.0 * P_H
+            # [
+            #     26.643521871951265,       # [1]: σ_11
+            #     1.2074287379946301e-8,    # [2]: σ_12
+            #     1.2074287379946301e-8,    # [3]: σ_13
+            #     -13.321760917864202,      # [4]: σ_22
+            #     1.2074287379946301e-8,    # [5]: σ_23
+            #     -13.321760917864202,      # [6]: σ_33
+            # ]
+            # [
+            #     26.643521871951265,       # [0]: σ_11
+            #     -13.321760917864202,      # [1]: σ_22
+            #     -13.321760917864202,      # [2]: σ_33
+            #     1.2074287379946301e-8,    # [3]: σ_23
+            #     1.2074287379946301e-8,    # [4]: σ_13
+            #     1.2074287379946301e-8,    # [5]: σ_12
+            # ]
+            # [26.643521871951265,    -13.321760917864202,   -13.321760917864202,   1.2074287379946301e-8, 1.2074287379946301e-8, 1.2074287379946301e-8,]
+            dj2 = 0.5((sum(ds[[1, 4, 6]] .^ 2.0))
+                + 2.0(sum(ds[[2, 3, 5]] .^ 2.0)))
+            dj3 =   (ds[1]*(ds[4]*ds[6]-ds[3]*ds[3])
+                  - ds[2]*(ds[2]*ds[6]-ds[3]*ds[5])
+                  + ds[5]*(ds[2]*ds[3]-ds[4]*ds[5]))
+            # di1 = I₁(σ̲̲)
+            # dj2 = I₂(ds)
+            # dj3 = I₃(ds)
+            # @show ds, di1, dj2, dj3
             JJ1 = (dj3^2.0) / (dj2^3.0)
             JJ2 = (dj3    ) / (dj2^1.5)
             JJ3 = (di1    ) / (dj2^0.5)
@@ -1017,8 +1056,8 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             vMₛₐₜ = Be + Y + Yₚ + α̲̲ₛₐₜ_mag + κₛₐₜ
             vMₛₐₜ = κₛₐₜ + Be
     end
-    return (vM,ϵ̲̲′_mag,α̲̲_mag,κ,X,d,ϕ,η,νᵥ,vMₛₐₜ,ϵ̲̲̲̇′⁽ᵖ⁾_mag,t)
-    # return σ̲̲, α̲̲, κ, ϕ, ϵ̲̲, ϵ̲̲⁽ᵖ⁾
+    # return (vM,ϵ̲̲′_mag,α̲̲_mag,κ,X,d,ϕ,η,νᵥ,vMₛₐₜ,ϵ̲̲̲̇′⁽ᵖ⁾_mag,t)
+    return σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d
 end
 
 function ContinuumMechanicsBase.predict(

@@ -101,12 +101,6 @@ begin
 	end
 end
 
-# ╔═╡ 5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
-# ╠═╡ disabled = true
-#=╠═╡
-include("user-functions.jl")
-  ╠═╡ =#
-
 # ╔═╡ d534bf54-4c83-43d6-a62c-8e4a34f8f74d
 md"""
 # Bammann-Chiesa-Johnson Plasticity Calibration
@@ -209,6 +203,12 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
     p = (ψs, tests, ui, loss, ad_type, kwargs)
     return OptimizationProblem(func, u₀, p; lb, ub, int, lcons, ucons, sense)
 end
+
+# ╔═╡ 5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
+# ╠═╡ disabled = true
+#=╠═╡
+include("user-functions.jl")
+  ╠═╡ =#
 
 # ╔═╡ 156a860c-e8a5-4dd8-b234-0a0e4419b5a5
 md"""
