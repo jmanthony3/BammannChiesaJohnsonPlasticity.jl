@@ -3,7 +3,7 @@ module OptimizationBCJPlasticityExt
 using BammannChiesaJohnsonPlasticity
 using ContinuumMechanicsBase
 using ComponentArrays
-using Optimization, LossFunctions
+using Optimization, Interpolations, LossFunctions
 
 export parameter_bounds, MaterialOptimizationProblem
 
@@ -44,14 +44,17 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
             end
             return ComponentVector(ps)
         end
-        pred = ContinuumMechanicsBase.predict(ψ, test, g(ps, qs); ad_type, kwargs...)
-        resϵ = [first(x) for x in eachcol(pred.data.ϵ)]
-        testϵ = [first(x) for x in test.data.ϵ]
+        prediction = ContinuumMechanicsBase.predict(ψ, test, g(ps, qs); ad_type, kwargs...)
+        ϵ = [first(x) for x in test.data.ϵ]
+        σ = [first(x) for x in test.data.σ]
+        ϵ̂ = [first(x) for x in eachcol(prediction.data.ϵ)]
+        σ̂ = [vonMises(x) for x in eachcol(prediction.data.σ)]
         # resϵ = [x[1, 1] for x in pred.data.ϵ]
         # testϵ = [x[1, 1] for x in test.data.ϵ]
-        s = collect([[x...] for x in eachcol(pred.data.σ)[[findlast(x .>= resϵ) for x in testϵ]]])
-        # s = collect([[x...] for x in pred.data.σ[[findlast(x .>= resϵ) for x in testϵ]]])
-        res = map(i -> loss.(vonMises(i[1]), only(i[2])), zip(s, test.data.σ)) |> mean
+        # s = collect([[x...] for x in eachcol(pred.data.σ)[[findlast(x .>= resϵ) for x in testϵ]]])
+        # # s = collect([[x...] for x in pred.data.σ[[findlast(x .>= resϵ) for x in testϵ]]])
+        ŝ = linear_interpolation(ϵ, σ, extrapolation_bc=Line()).(ϵ̂)
+        res = map(i -> loss.(only(i[1]), vonMises(i[2])), zip(ŝ, σ̂)) |> mean
         # @show res # uncomment for testing
         return res
     end
