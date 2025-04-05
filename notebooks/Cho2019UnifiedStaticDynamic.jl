@@ -101,6 +101,9 @@ begin
 	end
 end
 
+# ╔═╡ 5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
+include("Cho2019UnifiedStaticDynamic-functions.jl")
+
 # ╔═╡ d534bf54-4c83-43d6-a62c-8e4a34f8f74d
 md"""
 # Bammann-Chiesa-Johnson Plasticity Calibration
@@ -115,101 +118,6 @@ What follows is an example of loading experimental data from a tension test of 4
 First, we start by loading the required packages and defining some helper functions.
 """
 
-# ╔═╡ 8e1775ee-a0a0-4538-a606-b758cb6f302c
-function ContinuumMechanicsBase.MaterialOptimizationProblem(
-    ψs   ::Vector{<:AbstractBCJModel},  # , S},
-    tests::Vector{<:AbstractBCJTest},
-    u₀,
-    model_ps,
-    ad_type,
-    loss;
-    ui,
-    lb      = parameter_bounds(first(ψs), first(tests)).lb,
-    ub      = parameter_bounds(first(ψs), first(tests)).ub,
-    int     = nothing,
-    lcons   = nothing,
-    ucons   = nothing,
-    sense   = nothing,
-    kwargs...,
-) # where {T<:AbstractFloat} #, S<:SymmetricTensor{2, 3, T}}
-    get_data(d, f; columnate=false, concatenate=false) = (z = [[first(x) for x in (columnate ? eachcol(y.data[f]) : y.data[f])] for y in d]; concatenate ? vcat(z...) : z)
-    get_idx(d1, d2) = [[findlast(first(x) .>= get_data([d2[i]], :ϵ; columnate=true)...) for x in z] for (i, z) in enumerate([[first(x) for x in y.data.ϵ] for y in values(d1)])]
-    function f(ps, p)
-        ψs, tests, qs, loss, ad_type, kwargs = p
-        function g(ps, qs)
-            if !isnothing(qs) && any(!isnan, qs)
-                for (name, value) in zip(keys(qs), qs)
-                    if !isnan(value)
-                        # @show value
-                        ps[name] = value
-                    end
-                end
-            end
-            return ComponentVector(ps)
-        end
-        preds = [ContinuumMechanicsBase.predict(ψ, test, g(ps, qs); ad_type, kwargs...) for (ψ, test) in zip(ψs, tests)]
-        # @show preds
-        # resϵ = [first(x) for x in eachcol(pred.data.ϵ)]
-        # testϵ = [first(x) for x in test.data.ϵ]
-        # ϵ = get_data(tests, ϵ)
-        # ϵ̂ = get_data(preds, ϵ; col=true)
-        # # resϵ = [x[1, 1] for x in pred.data.ϵ]
-        # # testϵ = [x[1, 1] for x in test.data.ϵ]
-        # s = collect([[x...] for x in eachcol(pred.data.σ)[[findlast(x .>= resϵ) for x in testϵ]]])
-        # # s = collect([[x...] for x in pred.data.σ[[findlast(x .>= resϵ) for x in testϵ]]])
-        s = vcat([x[y] for (x, y) in zip(get_data(preds, :ϵ; columnate=true), get_idx(tests, preds))]...)
-        ŝ = vcat([[first(x) for x in y.data.ϵ] for y in values(tests)]...)
-        # @show length(s) == length(ŝ)
-        res = map(i -> loss.(only(i[1]), only(i[2])), zip(s, ŝ)) |> mean
-        # @show res # uncomment for testing
-        return res
-    end
-
-    u₀ = ComponentVector(u₀)
-    # pb = ContinuumMechanicsBase.parameter_bounds(ψ, test)
-    # lb, ub = pb.lb, pb.ub
-    if !isnothing(lb) && !isnothing(ub)
-        lb = ComponentVector(lb)
-        ub = ComponentVector(ub)
-    elseif !isnothing(lb)
-        lb = ComponentVector(lb)
-        ub = u₀ .* Inf
-    elseif !isnothing(ub)
-        ub = ComponentVector(ub)
-        lb = u₀ .* -Inf
-    else
-        ub = u₀ .* Inf
-        lb = u₀ .* -Inf
-    end
-
-    # model_ps = ContinuumMechanicsBase.parameters(ψ)
-    for p in model_ps
-        if !isnothing(lb)
-            if (u₀[p] < lb[p])
-                @error "Parameter $p = $(u₀[p]) is less than lower bound of $(lb[p])"
-                return nothing
-            end
-        end
-        if !isnothing(ub)
-            if (u₀[p] > ub[p])
-                @error "Parameter $p = $(u₀[p]) is greater than upper bound of $(ub[p])"
-                return nothing
-            end
-        end
-    end
-
-    func = OptimizationFunction(f, ad_type)
-    # Check for Bounds
-    p = (ψs, tests, ui, loss, ad_type, kwargs)
-    return OptimizationProblem(func, u₀, p; lb, ub, int, lcons, ucons, sense)
-end
-
-# ╔═╡ 5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
-# ╠═╡ disabled = true
-#=╠═╡
-include("user-functions.jl")
-  ╠═╡ =#
-
 # ╔═╡ 156a860c-e8a5-4dd8-b234-0a0e4419b5a5
 md"""
 ## Instantiate Calibration Model
@@ -221,12 +129,7 @@ Next, we load the desired `.csv` file and configure the type of material test to
 # df_Tension_e002_295 = CSV.read("../test/Data_Tension_e0002_T295.csv", DataFrame;
 # 	header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
 df_Fig4a = CSV.read("Cho2019UnifiedStaticDynamic-Fig4a.csv", DataFrame;
-        header=true, skipto=3, delim=',', types=Float64)
-
-# ╔═╡ ba3e98a7-9088-48bf-abeb-110d458b3297
-md"""
-Using the experimental data, we construct the loading conditions for the initial state for calibration.
-"""
+	header=true, delim=',', skipto=3, types=Float64)
 
 # ╔═╡ d6b8bf04-e1fc-41d8-93af-345953f03040
 md"""
@@ -235,19 +138,33 @@ Now we define some material properties for the desired model.
 
 # ╔═╡ b63e916b-4601-4b61-97ae-9aa07515050c
 begin
-	ϵ̇ = 4e-4
-	K = 159e9   # bulk modulus [Pa]
-	μ = 77e9    # shear modulus [Pa]
+	n 	= 2.0
+	ω₀ 	= 3.6e4
+	R 	= 8.31446261815324 # universal gas constant
+	E⁺ 	= 82.0e3
+	z 	= 0.65
+	d₀ 	= 10.0 # μm (Ghauri et al., 1990)
+	η₀ 	= 0.0
+	Kic = 1000.0
+	𝒹 	= 0.0
+	𝒻 	= 0.001
+	R₀ 	= 0.0
 	nothing
 end
+
+# ╔═╡ ba3e98a7-9088-48bf-abeb-110d458b3297
+md"""
+Using the experimental data, we construct the loading conditions for the initial state for calibration.
+"""
 
 # ╔═╡ a1e992cc-9792-4457-a653-e76d3c47c1da
 md"""
 Construct the model type given the loading conditions and material properties.
 """
 
-# ╔═╡ 1b83b3e8-9593-483b-a690-fe06aa48aeb5
+# ╔═╡ bd3a90e7-8896-4553-bbd8-bf72c8f60eaf
 begin
+	ϵ̇ = 4e-4
 	tests = Dict()
 	domains = Dict()
 	models = Dict()
@@ -258,14 +175,16 @@ begin
 	    idx_sort = sortperm(x)
 	    x = x[idx_sort]
 	    y = filter(!ismissing, df_Fig4a[!, 4(i - 1) + 2])[idx_sort] .* 1e6
-	    # @show (4(i - 1) + 1, 4(i - 1) + 2), θ_str, ϵ̇, last(x), 4length(x)
+	    @show (4(i - 1) + 1, 4(i - 1) + 2), θ_str, ϵ̇, last(x), 4length(x)
 	    tests[θ_str] = BCJMetalUniaxialTest(x, y, name="$(θ_flt)K")
 	    domains[θ_str] = BCJMetalStrainControl(θ_flt, ϵ̇, last(x), 4length(x), :tension)
-	    models[θ_str] = Bammann1990Modeling(domains[θ_str], μ)
+	    models[θ_str] = Cho2019Unified(domains[θ_str], E⁺, E⁺, R, d₀, Kic, 𝒹, 𝒻, η₀, R₀)
 	end
+	
 	tests = sort(tests; rev=false)
 	domains = sort(domains; rev=false)
 	models = sort(models; rev=false)
+	nothing
 end
 
 # ╔═╡ bd66c9a7-cf0a-4d34-884b-f369722801a8
@@ -275,24 +194,66 @@ Now we can make a group of sliders for the pre-defined model `parameters`.
 
 # ╔═╡ 45ed6284-590e-40ee-93f2-439f264fa032
 p0 = ComponentVector(
-    C₁ = 9.1402e10,
-    C₂ = 258.417,
-    C₃ = 1.62805e8,
-    C₄ = 363.053,
-    C₅ = 1.28544,
-    C₆ = 236.047,
-    C₇ = 1.04959e-6,
-    C₈ = 0.0920373,
-    C₉ = 4.07014e-10,
-    C₁₀ = 1000.0,
-    C₁₁ = 7.07701e-12,
-    C₁₂ = 18.6325,
-    C₁₃ = 5.07815e-12,
-    C₁₄ = 38.7783,
-    C₁₅ = 3.77314e7,
-    C₁₆ = 0.0111427,
-    C₁₇ = 7.87311e6,
-    C₁₈ = 0.0155747,
+	C₁ = 5.637,
+	C₂ = 112.6,
+	C₃ = 8.378,
+	C₄ = 324.9,
+	C₅ = 2.971,
+	C₆ = 2548.0,
+	Pₖ₁ = 0.0,
+	Pₖ₂ = 0.0,
+	Pₖ₃ = 0.0,
+	C₇ = 0.1345,
+	C₈ = 351.1,
+	C₂₁ = 0.0,
+	C₉ = 0.02869,
+	C₁₀ = 0.0,
+	C₂₂ = 0.0,
+	C₁₁ = 0.02928,
+	C₁₂ = 4337.0,
+	C₂₃ = 0.0,
+	C₁₃ = 0.05098,
+	C₁₄ = 476.6,
+	C₂₄ = 0.0,
+	C₁₅ = 0.006924,
+	C₁₆ = 0.0,
+	C₂₅ = 0.0,
+	C₁₇ = 2.487,
+	C₁₈ = 7611.0,
+	C₂₆ = 0.0,
+	NK = 2.0,
+	ca = 0.0,
+	cb = 0.0,
+	Cx1 = 1.78e6,
+	Cx2 = 7.806e3,
+	Cdp = 0.0,
+	Cx3 = 5.401e4,
+	Cx4 = 8943.0,
+	Csp = 0.0,
+	Cx5 = 5.0,
+	Cxa = 0.8052,
+	Cxb = 3.68,
+	Cxc = 4.485,
+	n = n,
+	ω₀ = ω₀,
+	Cg1 = 7.41e4,
+	Cg2 = 0.8826,
+	Cg3 = 1.185e-3,
+	z = z,
+	a = 0.0,
+	b = 0.0,
+	c = 0.0,
+	pCnuc = 0.0,
+	Tnuc = 0.0,
+	nn = 0.0,
+	Tgrw = 0.0,
+	kr1 = 0.0,
+	krt = 0.0,
+	kr2 = 0.0,
+	kr3 = 0.0,
+	kp1 = 0.0,
+	kpt = 0.0,
+	kp2 = 0.0,
 )
 
 # ╔═╡ 2494657a-bdaa-48c5-8209-a36585697975
@@ -338,7 +299,7 @@ begin
 	# 	linecolor=:blue,
 	# 	linestyle=:dash)
 	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(
-	    collect(Bammann1990Modeling, values(models)),
+	    collect(Cho2019Unified, values(models)),
 	    collect(BCJMetalUniaxialTest, values(tests)),
 	    p,
 	    parameters(first(values(models))),
@@ -374,20 +335,19 @@ end; r
 # ╔═╡ Cell order:
 # ╟─d534bf54-4c83-43d6-a62c-8e4a34f8f74d
 # ╠═5cacf487-3916-4b7a-8fbf-04c8b4c9a6d9
-# ╠═8e1775ee-a0a0-4538-a606-b758cb6f302c
 # ╠═5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
 # ╟─156a860c-e8a5-4dd8-b234-0a0e4419b5a5
 # ╟─398fa1e3-1d11-4285-ad23-b11a4d8628c5
-# ╟─ba3e98a7-9088-48bf-abeb-110d458b3297
 # ╟─d6b8bf04-e1fc-41d8-93af-345953f03040
 # ╠═b63e916b-4601-4b61-97ae-9aa07515050c
+# ╟─ba3e98a7-9088-48bf-abeb-110d458b3297
 # ╟─a1e992cc-9792-4457-a653-e76d3c47c1da
-# ╠═1b83b3e8-9593-483b-a690-fe06aa48aeb5
+# ╠═bd3a90e7-8896-4553-bbd8-bf72c8f60eaf
 # ╟─bd66c9a7-cf0a-4d34-884b-f369722801a8
 # ╠═45ed6284-590e-40ee-93f2-439f264fa032
 # ╠═2494657a-bdaa-48c5-8209-a36585697975
 # ╠═d4836c95-8b9d-4c0e-bcf3-29abdc551967
-# ╠═65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
+# ╟─65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
 # ╠═22a08ebd-2461-4625-8f9b-3ec72cbb5a05
 # ╠═df492d79-2a80-4fb2-ad59-f57f4e2b99e9
 # ╠═ac027691-ae47-4450-b9d6-b814b5be79d5

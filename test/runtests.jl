@@ -5,7 +5,7 @@ using ComponentArrays
 using CSV, DataFrames
 using FiniteDiff
 import ForwardDiff
-using Optimization, OptimizationOptimJL, LossFunctions
+using Optimization, OptimizationOptimJL, Interpolations, LossFunctions
 
 using Test
 
@@ -16,8 +16,8 @@ using Test
         header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
     test = BCJMetalUniaxialTest(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, name="exp")
     bcj_loading = BCJMetalStrainControl(295.0, 2e-3, float(last(df_Tension_e002_295[!, "Strain"])), 200, :tension)
-    G = 159e9   # shear modulus [Pa]
-    μ = 77e9    # bulk modulus [Pa]
+    K = 159e9   # bulk modulus [Pa]
+    μ = 77e9    # shear modulus [Pa]
     function testmodel(ψ, test, p, q)
         prob = ContinuumMechanicsBase.MaterialOptimizationProblem(
             ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(); ui=q)
@@ -45,11 +45,14 @@ using Test
             C₁₇ = 9.56827e6,
             C₁₈ = 1214.34,
         )
-        pred = ContinuumMechanicsBase.predict(ψ, test, p)
+        prediction = ContinuumMechanicsBase.predict(ψ, test, p)
+        ŝ = linear_interpolation(ϵ, σ, extrapolation_bc=Line()).(ϵ̂)
         # @show [vonMises(x) for x in eachcol(pred.data.σ)] ./ 1e6
+        # * [20250404T2359] (JMA3): might need this (v) definition for rmse, but revisit fit of constants
+        # rmse((ϵ̂, ŝ ./ 1e6), (ϵ̂, vonMises.(σ̂) ./ 1e6))
         @test isapprox(31.936, rmse(
             (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
-            ([first(x) for x in eachcol(pred.data.ϵ)], [vonMises(x) for x in eachcol(pred.data.σ)] ./ 1e6)); atol=1e-2)
+            ([first(x) for x in eachcol(prediction.data.ϵ)], [vonMises(x) for x in eachcol(prediction.data.σ)] ./ 1e6)); atol=1e-2)
         q = ComponentVector(
             C₁ = p.C₁,
             C₂ = p.C₂,

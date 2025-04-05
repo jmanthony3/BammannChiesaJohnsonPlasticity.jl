@@ -5,7 +5,7 @@ using ComponentArrays
 using CSV, DataFrames
 using FiniteDiff
 import ForwardDiff
-using Optimization, OptimizationOptimJL, LossFunctions
+using Optimization, OptimizationOptimJL, Interpolations, LossFunctions
 # using Plots
 
 using Test
@@ -16,8 +16,8 @@ df_Tension_e002_295 = CSV.read("Data_Tension_e0002_T295.csv", DataFrame;
         header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
 test = BCJMetalUniaxialTest(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, name="exp")
 bcj_loading = BCJMetalStrainControl(295.0, 2e-3, float(last(df_Tension_e002_295[!, "Strain"])), 200, :tension)
-G = 159e9   # shear modulus [Pa]
-μ = 77e9    # bulk modulus [Pa]
+K = 159e9   # bulk modulus [Pa]
+μ = 77e9    # shear modulus [Pa]
 ψ = Bammann1990Modeling(bcj_loading, μ)
 p = ComponentVector(
     C₁ = 9.1402e10,
@@ -39,8 +39,8 @@ p = ComponentVector(
     C₁₇ = 7.87311e6,
     C₁₈ = 0.0155747,
 )
-res = ContinuumMechanicsBase.predict(ψ, test, p)
-@show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
+prediction = ContinuumMechanicsBase.predict(ψ, test, p)
+@show [vonMises(x) for x in eachcol(prediction.data.σ)] ./ 1e6
 # plt = scatter(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, label="exp")
 # scatter!(plt, [first(x) for x in eachcol(res.data.ϵ)], [symmetricvonMises(x) for x in eachcol(res.data.σ)], label="DK")
 # # scatter!(plt, [x[1, 1] for x in res.data.ϵ], [vonMises(x) for x in res.data.σ], label="DK")
