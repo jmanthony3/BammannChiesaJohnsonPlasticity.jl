@@ -48,13 +48,13 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
         ϵ = [first(x) for x in test.data.ϵ]
         σ = [first(x) for x in test.data.σ]
         ϵ̂ = [first(x) for x in eachcol(prediction.data.ϵ)]
-        σ̂ = [vonMises(x) for x in eachcol(prediction.data.σ)]
+        σ̂ = collect(eachcol(prediction.data.σ))
         # resϵ = [x[1, 1] for x in pred.data.ϵ]
         # testϵ = [x[1, 1] for x in test.data.ϵ]
         # s = collect([[x...] for x in eachcol(pred.data.σ)[[findlast(x .>= resϵ) for x in testϵ]]])
         # # s = collect([[x...] for x in pred.data.σ[[findlast(x .>= resϵ) for x in testϵ]]])
         ŝ = linear_interpolation(ϵ, σ, extrapolation_bc=Line()).(ϵ̂)
-        res = map(i -> loss.(only(i[1]), vonMises(i[2])), zip(ŝ, σ̂)) |> mean
+        res = map(i -> loss.(i[1], vonMises(i[2])), zip(ŝ, σ̂)) |> mean
         # @show res # uncomment for testing
         return res
     end
