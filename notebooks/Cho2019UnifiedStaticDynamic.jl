@@ -128,28 +128,8 @@ Next, we load the desired `.csv` file and configure the type of material test to
 # ╔═╡ 398fa1e3-1d11-4285-ad23-b11a4d8628c5
 # df_Tension_e002_295 = CSV.read("../test/Data_Tension_e0002_T295.csv", DataFrame;
 # 	header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
-df_Tension_e002_295 = CSV.read("Cho2019UnifiedStaticDynamic-Fig4a.csv", DataFrame;
+df_Fig4a = CSV.read("Cho2019UnifiedStaticDynamic-Fig4a.csv", DataFrame;
 	header=true, delim=',', skipto=3, types=Float64)
-
-# ╔═╡ ba3e98a7-9088-48bf-abeb-110d458b3297
-md"""
-Using the experimental data, we construct the loading conditions for the initial state for calibration.
-"""
-
-# ╔═╡ bd3a90e7-8896-4553-bbd8-bf72c8f60eaf
-begin
-	test = BCJMetalUniaxialTest( # (x, y) data from experiment for calibration
-		filter(!ismissing, df_Tension_e002_295[!, 1]),
-		filter(!ismissing, df_Tension_e002_295[!, 2]) .* 1e6,
-		name="exp")
-	Ω = BCJMetalStrainControl( # loading conditions
-		298.0, 											# temperature
-		4e-4, 											# strain-rate
-		float(last(filter(!ismissing, df_Tension_e002_295[!, 1]))), 		# final strain
-		200, 											# number of strain increments
-		:tension) 										# load direction
-	nothing
-end
 
 # ╔═╡ d6b8bf04-e1fc-41d8-93af-345953f03040
 md"""
@@ -172,13 +152,40 @@ begin
 	nothing
 end
 
+# ╔═╡ ba3e98a7-9088-48bf-abeb-110d458b3297
+md"""
+Using the experimental data, we construct the loading conditions for the initial state for calibration.
+"""
+
 # ╔═╡ a1e992cc-9792-4457-a653-e76d3c47c1da
 md"""
 Construct the model type given the loading conditions and material properties.
 """
 
-# ╔═╡ 1b83b3e8-9593-483b-a690-fe06aa48aeb5
-ψ = Cho2019Unified(Ω, E⁺, E⁺, R, d₀, Kic, 𝒹, 𝒻, η₀, R₀)
+# ╔═╡ bd3a90e7-8896-4553-bbd8-bf72c8f60eaf
+begin
+	ϵ̇ = 4e-4
+	tests = Dict()
+	domains = Dict()
+	models = Dict()
+	for (i, θ) in enumerate((298, 407, 475, 509, 542, 559, 576, 610, 678, 814))
+	    θ_str = match(r"(.*)K(.*)", names(df_Fig4a)[4(i - 1) + 1])[1]
+	    θ_flt = parse(Float64, θ_str)
+	    x = filter(!ismissing, df_Fig4a[!, 4(i - 1) + 1])
+	    idx_sort = sortperm(x)
+	    x = x[idx_sort]
+	    y = filter(!ismissing, df_Fig4a[!, 4(i - 1) + 2])[idx_sort] .* 1e6
+	    @show (4(i - 1) + 1, 4(i - 1) + 2), θ_str, ϵ̇, last(x), 4length(x)
+	    tests[θ_str] = BCJMetalUniaxialTest(x, y, name="$(θ_flt)K")
+	    domains[θ_str] = BCJMetalStrainControl(θ_flt, ϵ̇, last(x), 4length(x), :tension)
+	    models[θ_str] = Cho2019Unified(domains[θ_str], E⁺, E⁺, R, d₀, Kic, 𝒹, 𝒻, η₀, R₀)
+	end
+	
+	tests = sort(tests; rev=false)
+	domains = sort(domains; rev=false)
+	models = sort(models; rev=false)
+	nothing
+end
 
 # ╔═╡ bd66c9a7-cf0a-4d34-884b-f369722801a8
 md"""
@@ -250,42 +257,70 @@ p0 = ComponentVector(
 )
 
 # ╔═╡ 2494657a-bdaa-48c5-8209-a36585697975
-@bind p parameters_sliders(String.(collect(parameters(ψ))), p0)
+@bind p parameters_sliders(String.(collect(parameters(first(models)[2]))), p0)
 
 # ╔═╡ d4836c95-8b9d-4c0e-bcf3-29abdc551967
 p
 
 # ╔═╡ 65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
 begin
-	res = ContinuumMechanicsBase.predict(ψ, test, p)
-	plt = scatter(df_Tension_e002_295[!, 1], df_Tension_e002_295[!, 2], label="exp",
-		xlabel="True Strain (ϵ) [mm/mm]",
-		ylabel="True Stress (σ) [MPa]")
-	plot!(plt, [first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6, label=@sprintf(
-			"Bammann1993Failure (RMSE:%.3f)", rmse(
-					(float.(filter(!ismissing, df_Tension_e002_295[!, 1])), float.(filter(!ismissing, df_Tension_e002_295[!, 2]))),
-					([first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6))
-			),
-		linecolor=:blue
-	)
+    plt = plot(xlims=(0, 1), ylims=(0, Inf), widen=1.06)
+	for (i, (θ, ψ)) in enumerate(models)
+        test = tests[θ]
+        res = ContinuumMechanicsBase.predict(ψ, test, p)
+        # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
+        scatter!(plt, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ],
+                markercolor=i,
+                label="$(θ)K:Exp",
+            )
+        plot!(plt, [first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)],
+                linecolor=i,
+                label="$(θ)K:Model",
+            )
+    end
+    plt
 end
 
 # ╔═╡ 22a08ebd-2461-4625-8f9b-3ec72cbb5a05
-@bind p_checkboxes confirm(MultiCheckBox(String.(collect(parameters(ψ)))))
+@bind p_checkboxes confirm(MultiCheckBox(String.(collect(parameters(first(models)[2])))))
 
 # ╔═╡ df492d79-2a80-4fb2-ad59-f57f4e2b99e9
 begin
+	pltq = plot(xlims=(0, 1), ylims=(0, Inf), widen=1.06)
 	q = parameters_selection(ComponentVector(p), p_checkboxes)
-	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(), ui=q)
+	# prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(), ui=q)
+	# sol = solve(prob, LBFGS())
+	# calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
+	# plot!(deepcopy(plt), [first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6, label=@sprintf(
+	# 		"Bammann1993Failure (RMSE:%.3f, K:%d, T:%.3f [s])", rmse(
+	# 			(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
+	# 			([first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6)),
+	# 		sol.stats.iterations, sol.stats.time),
+	# 	linecolor=:blue,
+	# 	linestyle=:dash)
+	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(
+	    collect(Cho2019Unified, values(models)),
+	    collect(BCJMetalUniaxialTest, values(tests)),
+	    p,
+	    parameters(first(values(models))),
+	    AutoForwardDiff(),
+	    L2DistLoss();
+	    ui=q)
 	sol = solve(prob, LBFGS())
-	calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
-	plot!(deepcopy(plt), [first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6, label=@sprintf(
-			"Cho2019Unified (RMSE:%.3f, K:%d, T:%.3f [s])", rmse(
-				(df_Tension_e002_295[!, 1], df_Tension_e002_295[!, 2]),
-				([first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6)),
-			sol.stats.iterations, sol.stats.time),
-		linecolor=:blue,
-		linestyle=:dash)
+	for (i, (θ, ψ)) in enumerate(models)
+        test = tests[θ]
+        calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
+        # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
+		scatter!(pltq, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ],
+                markercolor=i,
+                label="$(θ)K:Exp",
+            )
+        plot!(pltq, [first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)],
+                linecolor=i,
+                label="$(θ)K:Calib",
+            )
+    end
+	pltq
 end
 
 # ╔═╡ ac027691-ae47-4450-b9d6-b814b5be79d5
@@ -303,12 +338,11 @@ end; r
 # ╠═5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
 # ╟─156a860c-e8a5-4dd8-b234-0a0e4419b5a5
 # ╟─398fa1e3-1d11-4285-ad23-b11a4d8628c5
-# ╟─ba3e98a7-9088-48bf-abeb-110d458b3297
-# ╠═bd3a90e7-8896-4553-bbd8-bf72c8f60eaf
 # ╟─d6b8bf04-e1fc-41d8-93af-345953f03040
 # ╠═b63e916b-4601-4b61-97ae-9aa07515050c
+# ╟─ba3e98a7-9088-48bf-abeb-110d458b3297
 # ╟─a1e992cc-9792-4457-a653-e76d3c47c1da
-# ╠═1b83b3e8-9593-483b-a690-fe06aa48aeb5
+# ╠═bd3a90e7-8896-4553-bbd8-bf72c8f60eaf
 # ╟─bd66c9a7-cf0a-4d34-884b-f369722801a8
 # ╠═45ed6284-590e-40ee-93f2-439f264fa032
 # ╠═2494657a-bdaa-48c5-8209-a36585697975
