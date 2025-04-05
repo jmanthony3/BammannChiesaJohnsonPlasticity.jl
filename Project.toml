@@ -14,7 +14,6 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [weakdeps]
-Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 LossFunctions = "30fc2ffe-d236-52d8-8643-a9d8f7c094a7"
 Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
 
