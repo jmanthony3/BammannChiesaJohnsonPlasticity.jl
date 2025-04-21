@@ -49,15 +49,8 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
         σ = [first(x) for x in test.data.σ]
         ϵ̂ = [first(x) for x in eachcol(prediction.data.ϵ)]
         σ̂ = collect(eachcol(prediction.data.σ))
-        # resϵ = [x[1, 1] for x in pred.data.ϵ]
-        # testϵ = [x[1, 1] for x in test.data.ϵ]
-        # # s = collect([[x...] for x in eachcol(pred.data.σ)[[findlast(x .>= resϵ) for x in testϵ]]])
-        # s = collect([[x...] for x in σ̂[[findlast(x .>= ϵ̂) for x in ϵ]]])
-        # # s = collect([[x...] for x in pred.data.σ[[findlast(x .>= resϵ) for x in testϵ]]])
         ŝ = linear_interpolation(ϵ, σ, extrapolation_bc=Line()).(ϵ̂)
         err = map(i -> loss.(i[1], vonMises(i[2])), zip(ŝ, σ̂)) |> mean
-        # # @show res # uncomment for testing
-        # @show map(i -> loss.(i[1], vonMises(i[2])), zip(s, σ̂)) |> mean, err, ŝ - s
         return err
     end
 
@@ -116,8 +109,6 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
     sense   = nothing,
     kwargs...,
 ) # where {T<:AbstractFloat} #, S<:SymmetricTensor{2, 3, T}}
-    get_data(d, f; columnate=false, concatenate=false) = (z = [[first(x) for x in (columnate ? eachcol(y.data[f]) : y.data[f])] for y in d]; concatenate ? vcat(z...) : z)
-    get_idx(d1, d2) = [[findlast(first(x) .>= get_data([d2[i]], :ϵ; columnate=true)...) for x in z] for (i, z) in enumerate([[first(x) for x in y.data.ϵ] for y in values(d1)])]
     function f(ps, p)
         ψs, tests, qs, loss, ad_type, kwargs = p
         function g(ps, qs)
@@ -131,32 +122,17 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
             end
             return ComponentVector(ps)
         end
-        predictions = [ContinuumMechanicsBase.predict(ψ, test, g(ps, qs); ad_type, kwargs...) for (ψ, test) in zip(ψs, tests)]
-        # # @show preds
-        # # resϵ = [first(x) for x in eachcol(pred.data.ϵ)]
-        # # testϵ = [first(x) for x in test.data.ϵ]
-        # # ϵ = get_data(tests, ϵ)
-        # # ϵ̂ = get_data(preds, ϵ; col=true)
-        # # # resϵ = [x[1, 1] for x in pred.data.ϵ]
-        # # # testϵ = [x[1, 1] for x in test.data.ϵ]
-        # # s = collect([[x...] for x in eachcol(pred.data.σ)[[findlast(x .>= resϵ) for x in testϵ]]])
-        # # # s = collect([[x...] for x in pred.data.σ[[findlast(x .>= resϵ) for x in testϵ]]])
-        # s = vcat([x[y] for (x, y) in zip(get_data(predictions, :ϵ; columnate=true), get_idx(tests, predictions))]...)
-        # ŝ = vcat([[first(x) for x in y.data.ϵ] for y in values(tests)]...)
-        # # @show length(s) == length(ŝ)
-        # res = map(i -> loss.(only(i[1]), only(i[2])), zip(s, ŝ)) |> mean
-        # # @show res # uncomment for testing
-        ϵ = [first(x) for x in test.data.ϵ]
-        σ = [first(x) for x in test.data.σ]
-        ϵ̂ = [first(x) for x in eachcol(prediction.data.ϵ)]
-        σ̂ = collect(eachcol(prediction.data.σ))
-        # resϵ = [x[1, 1] for x in pred.data.ϵ]
-        # testϵ = [x[1, 1] for x in test.data.ϵ]
-        # s = collect([[x...] for x in eachcol(pred.data.σ)[[findlast(x .>= resϵ) for x in testϵ]]])
-        # # s = collect([[x...] for x in pred.data.σ[[findlast(x .>= resϵ) for x in testϵ]]])
-        ŝ = linear_interpolation(ϵ, σ, extrapolation_bc=Line()).(ϵ̂)
-        err = map(i -> loss.(i[1], vonMises(i[2])), zip(ŝ, σ̂)) |> mean
-        return err
+        errors = Vector{typeof(first(ψs).θ)}(undef, length(ψs))
+        for (i, (ψ, test)) in enumerate(zip(ψs, tests))
+            prediction = ContinuumMechanicsBase.predict(ψ, test, g(ps, qs); ad_type, kwargs...)
+            ϵ = [first(x) for x in test.data.ϵ]
+            σ = [first(x) for x in test.data.σ]
+            ϵ̂ = [first(x) for x in eachcol(prediction.data.ϵ)]
+            σ̂ = collect(eachcol(prediction.data.σ))
+            ŝ = linear_interpolation(ϵ, σ, extrapolation_bc=Line()).(ϵ̂)
+            errors[i] = map(i -> loss.(i[1], vonMises(i[2])), zip(ŝ, σ̂)) |> mean
+        end
+        return mean(errors)
     end
 
     u₀ = ComponentVector(u₀)
