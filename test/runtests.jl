@@ -46,13 +46,14 @@ using Test
             C₁₈ = 1214.34,
         )
         prediction = ContinuumMechanicsBase.predict(ψ, test, p)
-        ŝ = linear_interpolation(ϵ, σ, extrapolation_bc=Line()).(ϵ̂)
-        # @show [vonMises(x) for x in eachcol(pred.data.σ)] ./ 1e6
-        # * [20250404T2359] (JMA3): might need this (v) definition for rmse, but revisit fit of constants
-        # rmse((ϵ̂, ŝ ./ 1e6), (ϵ̂, vonMises.(σ̂) ./ 1e6))
+        ϵ = [first(x) for x in test.data.ϵ]
+        σ = [first(x) for x in test.data.σ]
+        ϵ̂ = [first(x) for x in eachcol(prediction.data.ϵ)]
+        σ̂ = [vonMises(x) for x in eachcol(prediction.data.σ)]
+        s = linear_interpolation(ϵ̂, σ̂, extrapolation_bc=Line()).(ϵ)
         @test isapprox(31.936, rmse(
             (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
-            ([first(x) for x in eachcol(prediction.data.ϵ)], [vonMises(x) for x in eachcol(prediction.data.σ)] ./ 1e6)); atol=1e-2)
+            (ϵ, s ./ 1e6)); atol=1e-2)
         q = ComponentVector(
             C₁ = p.C₁,
             C₂ = p.C₂,
@@ -75,10 +76,13 @@ using Test
         )
         sol = testmodel(ψ, test, p, q)
         @test sol.retcode == SciMLBase.ReturnCode.Success
-        calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
+        calibration = ContinuumMechanicsBase.predict(ψ, test, sol.u)
+        ϵ̂ = [first(x) for x in eachcol(calibration.data.ϵ)]
+        σ̂ = [vonMises(x) for x in eachcol(calibration.data.σ)]
+        s = linear_interpolation(ϵ̂, σ̂, extrapolation_bc=Line()).(ϵ)
         @test isapprox(29.888, rmse(
             (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
-            ([first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6)); atol=1e-2)
+            (ϵ, s ./ 1e6)); atol=1e-2)
     end
 
     # # bcj_loading = BCJ_metal(295., 570., 0.15, 200, 1, p)
