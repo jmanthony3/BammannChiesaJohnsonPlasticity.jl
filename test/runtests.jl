@@ -15,7 +15,7 @@ using Test
     df_Tension_e002_295 = CSV.read("Data_Tension_e0002_T295.csv", DataFrame;
         header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
     test = BCJMetalUniaxialTest(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, name="exp")
-    bcj_loading = BCJMetalStrainControl(295.0, 2e-3, float(last(df_Tension_e002_295[!, "Strain"])), 200, :tension)
+    Ω = BCJMetalStrainControl(295.0, 2e-3, float(last(df_Tension_e002_295[!, "Strain"])), 200, :tension)
     K = 159e9   # bulk modulus [Pa]
     μ = 77e9    # shear modulus [Pa]
     function testmodel(ψ, test, p, q)
@@ -24,7 +24,7 @@ using Test
         return solve(prob, LBFGS())
     end
     @testset "Bammann1990Modeling" begin
-        ψ = Bammann1990Modeling(bcj_loading, μ)
+        ψ = Bammann1990Modeling(Ω, μ)
         p = ComponentVector(
             C₁ = 9.98748e10,
             C₂ = 1483.14,
