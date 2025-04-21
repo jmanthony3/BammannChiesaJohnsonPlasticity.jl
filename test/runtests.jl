@@ -5,7 +5,7 @@ using ComponentArrays
 using CSV, DataFrames
 using FiniteDiff
 import ForwardDiff
-using Optimization, OptimizationOptimJL, LossFunctions
+using Optimization, OptimizationOptimJL, Interpolations, LossFunctions
 
 using Test
 
@@ -15,16 +15,16 @@ using Test
     df_Tension_e002_295 = CSV.read("Data_Tension_e0002_T295.csv", DataFrame;
         header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
     test = BCJMetalUniaxialTest(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"] .* 1e6, name="exp")
-    bcj_loading = BCJMetalStrainControl(295.0, 2e-3, float(last(df_Tension_e002_295[!, "Strain"])), 200, :tension)
-    G = 159e9   # shear modulus [Pa]
-    μ = 77e9    # bulk modulus [Pa]
+    Ω = BCJMetalStrainControl(295.0, 2e-3, float(last(df_Tension_e002_295[!, "Strain"])), 200, :tension)
+    K = 159e9   # bulk modulus [Pa]
+    μ = 77e9    # shear modulus [Pa]
     function testmodel(ψ, test, p, q)
         prob = ContinuumMechanicsBase.MaterialOptimizationProblem(
             ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(); ui=q)
         return solve(prob, LBFGS())
     end
     @testset "Bammann1990Modeling" begin
-        ψ = Bammann1990Modeling(bcj_loading, μ)
+        ψ = Bammann1990Modeling(Ω, μ)
         p = ComponentVector(
             C₁ = 9.98748e10,
             C₂ = 1483.14,
@@ -45,11 +45,15 @@ using Test
             C₁₇ = 9.56827e6,
             C₁₈ = 1214.34,
         )
-        pred = ContinuumMechanicsBase.predict(ψ, test, p)
-        # @show [vonMises(x) for x in eachcol(pred.data.σ)] ./ 1e6
+        prediction = ContinuumMechanicsBase.predict(ψ, test, p)
+        ϵ = [first(x) for x in test.data.ϵ]
+        σ = [first(x) for x in test.data.σ]
+        ϵ̂ = [first(x) for x in eachcol(prediction.data.ϵ)]
+        σ̂ = [vonMises(x) for x in eachcol(prediction.data.σ)]
+        s = linear_interpolation(ϵ̂, σ̂, extrapolation_bc=Line()).(ϵ)
         @test isapprox(31.936, rmse(
             (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
-            ([first(x) for x in eachcol(pred.data.ϵ)], [vonMises(x) for x in eachcol(pred.data.σ)] ./ 1e6)); atol=1e-2)
+            (ϵ, s ./ 1e6)); atol=1e-2)
         q = ComponentVector(
             C₁ = p.C₁,
             C₂ = p.C₂,
@@ -72,10 +76,13 @@ using Test
         )
         sol = testmodel(ψ, test, p, q)
         @test sol.retcode == SciMLBase.ReturnCode.Success
-        calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
+        calibration = ContinuumMechanicsBase.predict(ψ, test, sol.u)
+        ϵ̂ = [first(x) for x in eachcol(calibration.data.ϵ)]
+        σ̂ = [vonMises(x) for x in eachcol(calibration.data.σ)]
+        s = linear_interpolation(ϵ̂, σ̂, extrapolation_bc=Line()).(ϵ)
         @test isapprox(29.888, rmse(
             (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
-            ([first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6)); atol=1e-2)
+            (ϵ, s ./ 1e6)); atol=1e-2)
     end
 
     # # bcj_loading = BCJ_metal(295., 570., 0.15, 200, 1, p)

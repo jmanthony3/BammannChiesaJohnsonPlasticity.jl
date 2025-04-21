@@ -3,4 +3,5 @@
 /docs/build/
 /notebooks/Manifest.toml
 /notebooks/*backup*.jl
+/notebooks/*.csv
 /test/Manifest.toml
