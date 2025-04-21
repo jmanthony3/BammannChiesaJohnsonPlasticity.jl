@@ -6,20 +6,20 @@ using ComponentArrays, StructArrays
 # using Tensors # uncomment when we can work with Tensors.jl
 using DocStringExtensions
 
-# """
-# Structure for viscoplasticity model with loading conditions and material properties.
-# Here, uses the effective strain rate based on applied strain rate and loading direction.
-# """
-# struct Bammann1993Failure{T<:AbstractFloat} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
-# # struct Bammann1993Failure{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
-#     θ       ::T         # applied temperature
-#     ϵ̇_eff   ::T         # strain rate (effective)
-#     ϵₙ      ::T         # final strain
-#     N       ::Integer   # number of strain increments
-#     Δϵ      ::Vector{T} # S         # total strain tensor step
-#     Δt      ::T         # time step
-#     μ       ::T         # shear modulus at temperature, θ
-# end
+"""
+Structure for viscoplasticity model with loading conditions and material properties.
+Here, uses the effective strain rate based on applied strain rate and loading direction.
+"""
+struct Bammann1993Failure{T<:AbstractFloat} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
+# struct Bammann1993Failure{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
+    θ       ::T         # applied temperature
+    ϵ̇_eff   ::T         # strain rate (effective)
+    ϵₙ      ::T         # final strain
+    N       ::Integer   # number of strain increments
+    Δϵ      ::Vector{T} # S         # total strain tensor step
+    Δt      ::T         # time step
+    μ       ::T         # shear modulus at temperature, θ
+end
 
 """
     $(SIGNATURES)

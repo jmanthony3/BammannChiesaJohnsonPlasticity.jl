@@ -5,14 +5,87 @@ using ComponentArrays
 using CSV, DataFrames
 using FiniteDiff
 import ForwardDiff
-using Optimization, OptimizationOptimJL, LossFunctions
-using Plots
-using Interpolations
+using Optimization, OptimizationOptimJL, Interpolations, LossFunctions
 
 using Test
 
-include("Cho2019UnifiedStaticDynamic-functions.jl")
-include("ext.jl")
+function MMO(
+    ψ   ::AbstractBCJModel,  # , S},
+    test::AbstractBCJTest,
+    u₀,
+    model_ps,
+    ad_type,
+    loss;
+    ui,
+    lb      = parameter_bounds(ψ, test).lb,
+    ub      = parameter_bounds(ψ, test).ub,
+    int     = nothing,
+    lcons   = nothing,
+    ucons   = nothing,
+    sense   = nothing,
+    kwargs...,
+) # where {T<:AbstractFloat} #, S<:SymmetricTensor{2, 3, T}}
+    function f(ps, p)
+        ψ, test, qs, loss, ad_type, kwargs = p
+        function g(ps, qs)
+            if !isnothing(qs) && any(!isnan, qs)
+                for (name, value) in zip(keys(qs), qs)
+                    if !isnan(value)
+                        # @show value
+                        ps[name] = value
+                    end
+                end
+            end
+            return ComponentVector(ps)
+        end
+        prediction = ContinuumMechanicsBase.predict(ψ, test, g(ps, qs); ad_type, kwargs...)
+        ϵ = [first(x) for x in test.data.ϵ]
+        σ = [first(x) for x in test.data.σ]
+        ϵ̂ = [first(x) for x in eachcol(prediction.data.ϵ)]
+        σ̂ = collect(eachcol(prediction.data.σ))
+        ŝ = σ # vonMises.(σ̂) # linear_interpolation(ϵ, σ, extrapolation_bc=Line()).(ϵ̂)
+        err = map(i -> loss.(i[1], vonMises(i[2])), zip(ŝ, σ̂)) |> mean
+        return err
+    end
+
+    u₀ = ComponentVector(u₀)
+    # pb = ContinuumMechanicsBase.parameter_bounds(ψ, test)
+    # lb, ub = pb.lb, pb.ub
+    if !isnothing(lb) && !isnothing(ub)
+        lb = ComponentVector(lb)
+        ub = ComponentVector(ub)
+    elseif !isnothing(lb)
+        lb = ComponentVector(lb)
+        ub = u₀ .* Inf
+    elseif !isnothing(ub)
+        ub = ComponentVector(ub)
+        lb = u₀ .* -Inf
+    else
+        ub = u₀ .* Inf
+        lb = u₀ .* -Inf
+    end
+
+    # model_ps = ContinuumMechanicsBase.parameters(ψ)
+    for p in model_ps
+        if !isnothing(lb)
+            if (u₀[p] < lb[p])
+                @error "Parameter $p = $(u₀[p]) is less than lower bound of $(lb[p])"
+                return nothing
+            end
+        end
+        if !isnothing(ub)
+            if (u₀[p] > ub[p])
+                @error "Parameter $p = $(u₀[p]) is greater than upper bound of $(ub[p])"
+                return nothing
+            end
+        end
+    end
+
+    func = OptimizationFunction(f, ad_type)
+    # Check for Bounds
+    p = (ψ, test, ui, loss, ad_type, kwargs)
+    return OptimizationProblem(func, u₀, p; lb, ub, int, lcons, ucons, sense)
+end
 
 
 
@@ -22,10 +95,8 @@ test = BCJMetalUniaxialTest(df_Tension_e002_295[!, "Strain"], df_Tension_e002_29
 Ω = BCJMetalStrainControl(295.0, 2e-3, float(last(df_Tension_e002_295[!, "Strain"])), 200, :tension)
 K = 159e9   # bulk modulus [Pa]
 μ = 77e9    # shear modulus [Pa]
-
 ψ = Bammann1990Modeling(Ω, μ)
-
-p0 = ComponentVector(
+p = ComponentVector(
     C₁ = 9.98748e10,
     C₂ = 1483.14,
     C₃ = 1.61687e8,
@@ -45,69 +116,28 @@ p0 = ComponentVector(
     C₁₇ = 9.56827e6,
     C₁₈ = 1214.34,
 )
-prediction = ContinuumMechanicsBase.predict(ψ, test, p0)
 
-ϵ = [first(x) for x in test.data.ϵ]
-σ = [first(x) for x in test.data.σ]
-ϵ̂ = [first(x) for x in eachcol(prediction.data.ϵ)]
-σ̂ = collect(eachcol(prediction.data.σ))
-# resϵ = [x[1, 1] for x in pred.data.ϵ]
-# testϵ = [x[1, 1] for x in test.data.ϵ]
-# s = collect([[x...] for x in eachcol(pred.data.σ)[[findlast(x .>= resϵ) for x in testϵ]]])
-# # s = collect([[x...] for x in pred.data.σ[[findlast(x .>= resϵ) for x in testϵ]]])
-ŝ = linear_interpolation(ϵ, σ, extrapolation_bc=Line()).(ϵ̂)
-err = map(i -> loss.(i[1], vonMises(i[2])), zip(ŝ, σ̂)) |> mean
+q = ComponentVector(
+    C₁ = p.C₁,      C₂ = p.C₂,
+    C₃ = p.C₃,      C₄ = p.C₄,
+    C₅ = p.C₅,      C₆ = p.C₆,
+    C₇ = p.C₇,      C₈ = p.C₈,
+    C₉ = p.C₉,      C₁₀ = p.C₁₀,
+    C₁₁ = p.C₁₁,    C₁₂ = p.C₁₂,
+    C₁₃ = p.C₁₃,    C₁₄ = p.C₁₄,
+    C₁₅ = NaN,      C₁₆ = NaN,
+    C₁₇ = NaN,      C₁₈ = NaN,
+)
 
-# # res = ContinuumMechanicsBase.predict(ψ, test, p)
-# # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
-# RES = []
-# begin
-#     plt = plot(xlims=(0, 1), ylims=(0, Inf), widen=1.06)
-#     for (i, (θ, ψ)) in enumerate(models)
-#         test = tests[θ]
-#         res = ContinuumMechanicsBase.predict(ψ, test, p)
-#         push!(RES, res)
-#         # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
-#         scatter!(plt, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ],
-#                 markercolor=i,
-#                 label="$(θ)K:Exp",
-#             )
-#         plot!(plt, [first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)],
-#                 linecolor=i,
-#                 label="$(θ)K:Model",
-#             )
-#     end
-#     display(plt)
-# end
+prob = MMO(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(); ui=q)
+sol = solve(prob, LBFGS())
 
-# q = ComponentVector(
-#         C₁  = NaN,      C₂  = NaN,    # V
-#         C₃  = NaN,      C₄  = NaN,    # Y
-#         C₅  = NaN,      C₆  = NaN,    # f
-#         C₇  = p.C₇,     C₈  = p.C₈,    # r_d
-#         C₉  = p.C₉,     C₁₀ = p.C₁₀,   # h
-#         C₁₁ = p.C₁₁,    C₁₂ = p.C₁₂,   # r_s
-#         C₁₃ = p.C₁₃,    C₁₄ = p.C₁₄,   # R_d
-#         C₁₅ = p.C₁₅,    C₁₆ = p.C₁₆,   # H
-#         C₁₇ = p.C₁₇,    C₁₈ = p.C₁₈,   # R_s
-# )
-# # sol = Dict()
-# # for (i, (θ, ψ)) in enumerate(models)
-# #     test = tests[θ]
-# #     prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(), ui=q)
-# #     sol[θ] = solve(prob, LBFGS())
-# # end
-# prob = ContinuumMechanicsBase.MaterialOptimizationProblem(
-#     collect(Bammann1990Modeling, values(models)),
-#     collect(BCJMetalUniaxialTest, values(tests)),
-#     p,
-#     parameters(first(values(models))),
-#     AutoForwardDiff(),
-#     L2DistLoss();
-#     ui=q)
-# # prob = BCJPlasticityProblem(ψ, test, p; ad_type=AutoForwardDiff(), ui=q)
-# sol = solve(prob, LBFGS())
-# # # calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
-# # # scatter!(plt, [first(x) for x in eachcol(calib.data.ϵ)], [symmetricvonMises(x) for x in eachcol(calib.data.σ)], label="DK (Calib.)")
-# # # # scatter!(plt, [x[1, 1] for x in res.data.ϵ], [vonMises(x) for x in res.data.σ], label="DK")
-# # # display(plt)
+# sol = testmodel(ψ, test, p, q)
+# @test sol.retcode == SciMLBase.ReturnCode.Success
+# calibration = ContinuumMechanicsBase.predict(ψ, test, sol.u)
+# ϵ̂ = [first(x) for x in eachcol(calibration.data.ϵ)]
+# σ̂ = [vonMises(x) for x in eachcol(calibration.data.σ)]
+# s = linear_interpolation(ϵ̂, σ̂, extrapolation_bc=Line()).(ϵ)
+# @test isapprox(29.888, rmse(
+#     (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
+#     (ϵ, s ./ 1e6)); atol=1e-2)

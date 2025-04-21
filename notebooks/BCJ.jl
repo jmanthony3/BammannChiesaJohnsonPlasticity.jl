@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.4
+# v0.20.6
 
 using Markdown
 using InteractiveUtils
@@ -7,7 +7,7 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     #! format: off
-    quote
+    return quote
         local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
@@ -21,7 +21,7 @@ end
 begin
 	using Pkg
 	Pkg.activate(".") # activate project in current directory
-	Pkg.add(url="https://github.com/jmanthony3/BammannChiesaJohnsonPlasticity.jl.git", rev="main")
+	Pkg.add(url="https://github.com/jmanthony3/BammannChiesaJohnsonPlasticity.jl.git", rev="cho2019unified")
 	Pkg.add("ContinuumMechanicsBase")
 	Pkg.add("ComponentArrays")
 	Pkg.add("CSV")
@@ -149,8 +149,8 @@ Now we define some material properties for the desired model.
 
 # ╔═╡ b63e916b-4601-4b61-97ae-9aa07515050c
 begin
-	G 	= 159e9 	# shear modulus [Pa]
-	μ 	= 77e9 		# bulk modulus [Pa]
+	K 	= 159e9 	# bulk modulus [Pa]
+	μ 	= 77e9 		# shear modulus [Pa]
 	nothing
 end
 
