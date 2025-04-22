@@ -31,10 +31,13 @@ Here, uses the effective strain rate based on applied strain rate and loading di
 struct Cho2019Unified{T<:AbstractFloat} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
 # struct Bammann1993Failure{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
     θ       ::T         # applied temperature
+    n       ::T
+    ω₀      ::T
     E⁺      ::T
     V⁺      ::T
     R       ::T
     d₀      ::T
+    z       ::T
     Kic     ::T
     𝒹       ::T
     𝒻       ::T
@@ -55,13 +58,13 @@ Outer constructor for loading conditions and material properties which assumes a
 Here, `μ` is the shear modulus.
 """
 function Cho2019Unified(Ω::BammannChiesaJohnsonPlasticity.BCJMetalStrainControl,
-        # n   ::T,
-        # ω₀  ::T,
+        n   ::T,
+        ω₀  ::T,
         E⁺  ::T,        # activation energy for grain growth
         V⁺  ::T,        # activation volume for grain growth
         R   ::T,        # gas constant
         d₀  ::T,        # initial grain size
-        # z   ::T,
+        z   ::T,
         Kic ::T,        # fracture toughness
         𝒹   ::T,        # average size of second phase particles
         𝒻   ::T,        # volume fraction of second phase particles
@@ -98,7 +101,7 @@ function Cho2019Unified(Ω::BammannChiesaJohnsonPlasticity.BCJMetalStrainControl
         # Δt  = Δϵ[1, 2] / ϵ_dot      # timestep
         ϵ̇
     end
-    return Cho2019Unified{T}(θ, #=n,=# #=ω₀,=# E⁺, V⁺, R, d₀, #=z,=# Kic, 𝒹, 𝒻, η₀, R₀, P, ϵ̇_eff, ϵₙ, N, Δϵ̲̲, Δt)
+    return Cho2019Unified{T}(θ, n, ω₀, E⁺, V⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀, P, ϵ̇_eff, ϵₙ, N, Δϵ̲̲, Δt)
 end
 
 """
@@ -107,7 +110,6 @@ Though not explicitly listed in paper, temperature equations `h = C₁₅ * exp(
 Important: `ϕ` is included in the list of arguments, but is presently, internally set to zero.
 This is a limitation of the point simulator causing infinite stress triaxiality, χ.
 """
-# σ̲̲, α̲̲, κ, κₛ, ϕ, ..., ϕ̇, ..., ϵ̲̲, ϵ̲̲⁽ᵖ⁾, t
 # function update(ψ::Cho2019Unified, Sig, Al, K, Ks, Phi, Nuc, Vod, dPhi, X, XR, XH, Xd, Xs, d, TE, PE, VE, Alm, t, (;
 function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, η, damirr, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, (;
             # BCJ-plasticity
@@ -129,8 +131,10 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             C₁₅,    C₁₆,    C₂₅,    # H
             C₁₇,    C₁₈,    C₂₆,    # R_s
                             NK,     # * [20250402T1521] (JMA3): I think this is the modifier for finding the k-root
-                                    # *                         (see Eq. 4.22 in HEC dissertation)
-                                    # *                         (c. f. `optimize.py` that NK=2.0 by default)
+                                    # *                         (see Eq. 4.22 in HEC dissertation).
+                                    # *                         (c. f. `optimize.py` that NK=2.0 by default).
+                                    # ! [20250422T1121] (JMA3): This is exponent on κ in rate equation.
+                                    # !                         Bammann assumed 2 for metals for dislocation creep in Power Law
             ## torsion, tension/compression
             ca, cb,
             ## dynamic recrystallization
@@ -138,10 +142,10 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             Cx3, Cx4, Csp,
             Cx5, Cxa, Cxb, Cxc,
             ## static RX (grain growth)
-            n, ω₀, # E⁺, V⁺, R,
+            # n, ω₀, # E⁺, V⁺, R,
             ## grain size
             # d₀, Cg1, Cg2, Cg3, z,
-            Cg1, Cg2, Cg3, z,
+            Cg1, Cg2, Cg3, # z,
             ## damage
             ### nucleation
             # 𝒹, 𝒻, Kic, a, b, c,
@@ -150,17 +154,17 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             pCnuc, Tnuc, nn, Tgrw,
             ## irradiation hardening
             kr1, krt, kr2, kr3, kp1, kpt, kp2
-        ); imat=0, iYS=0, tanβ₀=0.0, iREXmethod=0, iGSmethod=0)
+        ); imat=0, iYS=0, tanβ₀=0.0, iREXmethod=3, iGSmethod=4, iNewton=0)
     # get fields from model
         θ       = ψ.θ
-        # n       = ψ.n
-        # ω₀      = ψ.ω₀
+        n       = ψ.n
+        ω₀      = ψ.ω₀
         E⁺      = ψ.E⁺
         V⁺      = ψ.V⁺
         R       = ψ.R
-        # z       = ψ.z
+        z       = ψ.z
         # d₀      = ψ.d₀
-        # η₀      = ψ.η₀
+        η₀      = ψ.η₀
         Kic     = ψ.Kic
         𝒹       = ψ.𝒹
         𝒻       = ψ.𝒻
@@ -179,7 +183,8 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         ϵ̲̲⁽ᴴ⁾    = hydrostatic(ϵ̲̲)
         # dt      = ψ.Δt
         Δt      = ψ.Δt
-        t      += Δt # ! update state variable
+        t      += Δt    # ! update state variable
+        ϵ̲̲      += ψ.Δϵ̲̲  # ! update state variable
         M       = N + 1
         T       = typeof(float(θ))
     # calculation constants/functions
@@ -399,7 +404,13 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         α̲̲_mag  *= sqrt_threehalves
     # REX Model
         ## REX calculation: separated DRX and SRX equations
-            if     iREXmethod == 0 # Euler Method (explicit)
+            if     iREXmethod == 0
+                xx  = 0.0
+                dXR = 0.0
+                dXH = 0.0
+                dXd = 0.0
+                dXs = 0.0
+            elseif iREXmethod == 1 # Euler Method (explicit)
                 KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
                 dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
                 dAlpha  = max(0.0, dAlpha)
@@ -430,7 +441,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 # * ========================================================================
                 # dX      = dXR - dXH
                 xx      = X + dX
-            elseif iREXmethod == 1 # explicit exponential integration algorithm
+            elseif iREXmethod == 2 # explicit exponential integration algorithm
                 KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
                 dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
                 dAlpha  = max(0.0, dAlpha)
@@ -447,7 +458,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 pX0     = Cxd + Cxs
                 dXR     = pX0          *  ( X ^ Cxa )  *  ( (1.0-X) ^  Cxb  )
                 dXH     = Ch * (X^Cxc)
-            elseif iREXmethod == 2 # RK4-explicit method
+            elseif iREXmethod == 3 # RK4-explicit method
                 # K = 10.
                 KAlMu   = μ  \  ( (κ^1.0) + (α̲̲_mag^1.0) )
                 dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 3.0 )  )
@@ -477,12 +488,12 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 dXs     = Cxs  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )
                 dXR     = pX0 *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )
                 dXH     = Ch * (xx ^ Cxc)
-            elseif iREXmethod >= 3 # implicitly solve functions using Newton-Rapson method
+            elseif iREXmethod >= 4 # implicitly solve functions using Newton-Rapson method
                 Nitmax = 20
                 Ntol   = 1e-6
                 xx     = 0.5
                 for k in range(0, Nitmax)
-                    if     iREXmethod == 3 # Euler Method (implicit)
+                    if     iREXmethod == 4 # Euler Method (implicit)
                         KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
                         dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *   ( α̲̲_mag ^ 2.0 )  )
                         dAlpha  = max(0.0, dAlpha)
@@ -499,7 +510,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                         dF      = dF + ( Cxd + Cxs )  *  Cxa  *  ( (1.0-xx) ^  Cxb      )  *  ( xx ^ (Cxa-1.0))
                         dF      = dF - (      Ch    *  Cxc  *  ( xx ^ (Cxc-1.0) )  )
                         dF      = dF - 1.0
-                    elseif iREXmethod == 4 # exponential integration algorithm (asymptotic)
+                    elseif iREXmethod == 5 # exponential integration algorithm (asymptotic)
                         KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
                         dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
                         dAlpha  = max(0.0, dAlpha)
@@ -522,7 +533,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                         dF      = dF    +    (   (  ( dVdt/Udt )  -  ( (Vdt*dUdt) / (Udt^2.0) )  )   *   (   1.0  -  exp(-Udt)  )   )
                         dF      = dF    +    (   (                      Vdt       /  Udt         )   *   (  dUdt  *  exp(-Udt)  )   )
                         dF     -= 1.0
-                    elseif iREXmethod == 5 # exponential integration algorithm (trapezoidal)
+                    elseif iREXmethod == 6 # exponential integration algorithm (trapezoidal)
                         KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
                         dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
                         dAlpha  = max(0.0, dAlpha)
@@ -565,7 +576,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                     end
                 end
             else
-                error("iREXMethod > 5 which is not supported.")
+                error("iREXMethod > 6 which is not supported.")
             end
 
             # Final solution and estimate volume of DRX and SRX
@@ -583,9 +594,11 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         ## Grain size kinetics (SGG and grain refinement rate)
             # Grain size rate integration method
             # 0-explicit; 1-implicit; 2-analytic; 3-earlier model (IJP,2019)
-            # iGSmethod = 0 # [20250402T1523] (JMA3): I commented this out to let the positional argument have precedence
+            # iGSmethod = 0 # [20250402T1523] (JMA3): I commented this out to let the keyword argument have precedence
             dim1 = d
-            if     iGSmethod == 0 # Forward Euler (explicit)
+            if     iGSmethod == 0
+                d = dim1
+            elseif iGSmethod == 1 # Forward Euler (explicit)
                 # static grain growth rate
                 dr      = dim1
                 dsgk    =  ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )
@@ -596,7 +609,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 d       = dr  +  ( (dsgg-dred) * Δt ) # ! update ISV
                 # Z       = ddd*exp((sxE + P[i]*1.e6*sxV)/(R*θ))
                 # dss     = (sxk/(Cg3*sxn*0.3))^(1./(sxn-1.+Cg2))*Z^(-(1./(sxn-1.+Cg2)))
-            elseif iGSmethod == 1 # Backward Euler: a = 1 (implicit); a = 0.5 (Crank-Nicholson)
+            elseif iGSmethod == 2 # Backward Euler: a = 1 (implicit); a = 0.5 (Crank-Nicholson)
                 λ       = 1.0
                 Nitmax  = 20
                 Convg   = 1e-6
@@ -631,13 +644,13 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 dsss    = prefct     *     (    (#=[=#
                         ϵ̲̲̇′_mag   *   exp(  ( E⁺ + (1e6P*V⁺) ) / ( R * θ )  )
                     #=]=#)    ^    (   -1.0   /   (  n  -  1.0  +  Cg2  )   )    )
-            elseif iGSmethod == 2 # analytical solution
+            elseif iGSmethod == 3 # analytical solution
                 # static grain growth
                 dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )
                 # ! update ISV
                 # ? [20250401T1206] (JMA3): what is `d0`
                 d       = ψ.d₀    +    (   dsgk   *   t   *   (  t  ^  ( (n/4.0) - 1.0 )  )   )    ^    (   1.0   /   n   )
-            elseif iGSmethod == 3 # original version of DRX grain size kinetics model
+            elseif iGSmethod == 4 # original version of DRX grain size kinetics model
                 P1      = 300.0
                 P2      = 0.18
                 P3      = 2.0
@@ -662,17 +675,18 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 ddred   = max((dss-dr), ddred)
                 d       = dr + ddred # ! update ISV
             else
-                error("iGSmethod > 3 not supported")
+                error("iGSmethod > 4 not supported")
             end
         ## Hall-Petch effect
             idzz = 0
-            # ? [20250401T1206] (JMA3): what is `d0`
+            # // ? [20250401T1206] (JMA3): what is `d0`
+            # [20250422T1126] (JMA3): `d0` is the initial grain size.
             dzz1, dzz0 = if idzz == 0
-                ( (ψ.d₀/d) ^ z,            1.0 )
+                ( (ψ.d₀/d) ^ z,             1.0 )
             elseif idzz == 1
-                (         1.0,   (dim1/d) ^ z )
+                (         1.0,     (dim1/d) ^ z )
             elseif idzz == 2
-                ( (ψ.d₀/d)     ,   (dim1/d)      ) .^ z
+                ( (ψ.d₀/d)     ,   (dim1/d)     ) .^ z
             else
                 error("idzz > 2 which is not supported.")
             end
@@ -693,7 +707,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             # Str = ( σ̲̲′ .* ϕ₂⁽ᵗʳ⁾ )  +  ( twoμ .* Δϵ̲̲′ .* ϕ₁⁽ᵗʳ⁾)
             σ̲̲′⁽ᵗʳ⁾ = ( σ̲̲′ .* ϕ₂⁽ᵗʳ⁾ )  +  ( twoμ .* Δϵ̲̲′ .* ϕ₁⁽ᵗʳ⁾)
         #--- use of Newton Method for DG and Kappa
-        iNewton = 0
+        # iNewton = 0 # [20250422T1128] (JMA3): Commented out to let keyword argument have precendence.
         #--- irradiation hardening effect
         Hir = (1.0+Si) ^ 2.0
         #--- trial kappa
@@ -706,9 +720,9 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         rdrssk  = 1.0   +   (  ( Rs + (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) )  *  Δt  *  ( κₛ ^ (NK-1.0) ) *  dzz1  )
         # Kstr    = κₛ * X0 * dzz0 / rdrssk
         κₛ⁽ᵗʳ⁾  = κₛ * X0 * dzz0 / rdrssk
-        # ! update ISV
-        # ? [20250401T1206] (JMA3): why are we updating this again?
-        d       =           (  ( Rs + (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) )  *         ( κₛ ^ (NK-1.0) )          )
+        # # ! update ISV
+        # # ? [20250401T1206] (JMA3): why are we updating this again?
+        # d       =           (  ( Rs + (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) )  *         ( κₛ ^ (NK-1.0) )          )
         if iNewton == 1 # Newton iteration (Backward Euler)
             Nitmax  = 20
             Ntol    = 1.e-06
@@ -775,12 +789,12 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         #     Sig[k][i] = S[k][i]
         # end
         # σ̲̲ = @. σ̲̲⁽ᵗʳ⁾
-        σ̲̲′ .= σ̲̲′⁽ᵗʳ⁾
+        σ̲̲′ = σ̲̲′⁽ᵗʳ⁾
         # Cauchy stress update
         # for k in range(0, 3)
         #     Sig[k][i] = Sig[k][i] + P_H
         # end
-        σ̲̲ .= σ̲̲′⁽ᵗʳ⁾ + volumetric(P_H) # ! update ISV
+        σ̲̲ = σ̲̲′⁽ᵗʳ⁾ + volumetric(P_H) # ! update ISV
         # von Mises stress update
         # vM[i]  = S[0][i]^2 + S[1][i]^2 + S[2][i]^2 \
         #         +(S[3][i]^2 + S[4][i]^2 + S[5][i]^2)*2.
@@ -829,11 +843,12 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         νᵥ = νᵥ # ! update ISV
         ϕ̇ = 0.0 # ! update ISV
 
-        # [20250401T1450] (JMA3): I'm not really sure what this is doing; maybe TERRAfit?
-        α̲̲ₛₐₜ_mag    = 0.0
-        κₛₐₜ        = (  (H * Hir * ϵ̲̲̇′_mag )  /  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  )   ^   (  1.0  /  NK  )
-        ϵ̲̲̲̇′⁽ᵖ⁾_mag   = ϵ̲̲̇′_mag # [20250402T1207] (JMA3): 
-        vMₛₐₜ       = Be + Y + Yₚ + α̲̲ₛₐₜ_mag + κₛₐₜ
+        # // [20250401T1450] (JMA3): I'm not really sure what this is doing; maybe TERRAfit?
+        # [20250422T1129] (JMA3): Yes. Just for visualization in TERRAfit. Not actually needed.
+        # α̲̲ₛₐₜ_mag    = 0.0
+        # κₛₐₜ        = (  (H * Hir * ϵ̲̲̇′_mag )  /  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  )   ^   (  1.0  /  NK  )
+        # ϵ̲̲̲̇′⁽ᵖ⁾_mag   = ϵ̲̲̇′_mag # [20250402T1207] (JMA3): 
+        # vMₛₐₜ       = Be + Y + Yₚ + α̲̲ₛₐₜ_mag + κₛₐₜ
     else # plastic solution (Radial return starts)
         EPflag = 2
         #--- Plastic strain increment solution
@@ -898,7 +913,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             # for k in range(0, 6)
             #     S[k][i] = Str[k] - (dam1 * twoμ * DG * N[k])
             # end
-            σ̲̲′ .= σ̲̲′⁽ᵗʳ⁾  -  ( (ϕ₁⁽ᵗʳ⁾*twoμ*Δγ) .* n̂′ )
+            σ̲̲′ = σ̲̲′⁽ᵗʳ⁾  -  ( (ϕ₁⁽ᵗʳ⁾*twoμ*Δγ) .* n̂′ )
             # Cauchy stress update
             # for k in range(0, 3)
             #     Sig[k][i] = S[k][i] + P_H
@@ -906,7 +921,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             # for k in range(3, 6)
             #     Sig[k][i] = S[k][i]
             # end
-            σ̲̲ .= σ̲̲′ + volumetric(P_H)
+            σ̲̲ = σ̲̲′ + volumetric(P_H) # ! update state variable
             # von Mises stress update
             # vM[i] = S[0][i]^2 + S[1][i]^2 + S[2][i]^2 \
             #         +(S[3][i]^2 + S[4][i]^2 + S[5][i]^2)*2.
@@ -928,7 +943,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         #     Al[k][i] = Altr[k]   +   (
         #         ( (1.0-X[i]) ^ NK )  *  dzz1  *  dam1  *  h  *  DG  *  N[k]  /  rdrsa  )
         # end
-        α̲̲ .= α̲̲⁽ᵗʳ⁾    +    ( # ! update ISV
+        α̲̲ = α̲̲⁽ᵗʳ⁾    +    ( # ! update ISV
                 (  ( (1.0-X) ^ NK )  *  dzz1  *  ϕ₁⁽ᵗʳ⁾  *  h  *  Δγ  )   .*   n̂′   ./   rdrsa   )
         #--- kappa solution # ! update ISV
         κ = (   iNewton   !=   0   )    ?    (   xx2   )    :    (#=[=#   κ⁽ᵗʳ⁾   +   (
@@ -944,7 +959,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             # for k in range(3, 6)
             #     ds[k] = S[k][i]
             # end
-            ds .= σ̲̲′
+            ds = σ̲̲′
             di1 = σ̲̲[1] + σ̲̲[4] + σ̲̲[6]
             # di1  = 3.0 * P_H
             # [
@@ -1033,28 +1048,29 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
 
         ϵ̲̲⁽ᴴ⁾ = JJ3
 
-        # ? [20250401T1510] (JMA3): I'm not really sure what this section does either
-        ## final process for returning variables
-            # TEm[i] = TE[0][i]^2 + TE[1][i]^2 + TE[2][i]^2 \
-            #       +(TE[3][i]^2 + TE[4][i]^2 + TE[5][i]^2)*2.
-            # TEm[i] = sqrt(TEm[i])*sqrt_twothirds
-            ϵ̲̲′_mag += ϵ̲̲̇′_mag*Δt
+        # // ? [20250401T1510] (JMA3): I'm not really sure what this section does either
+        # [20250422T1131] (JMA3): Just for visualization in TERRAfit. Not actually needed.
+        # ## final process for returning variables
+        #     # TEm[i] = TE[0][i]^2 + TE[1][i]^2 + TE[2][i]^2 \
+        #     #       +(TE[3][i]^2 + TE[4][i]^2 + TE[5][i]^2)*2.
+        #     # TEm[i] = sqrt(TEm[i])*sqrt_twothirds
+        #     ϵ̲̲′_mag += ϵ̲̲̇′_mag*Δt
     
-            # Alm[i] = Al[0][i]^2 + Al[1][i]^2 + Al[2][i]^2 \
-            #         +(Al[3][i]^2 + Al[4][i]^2 + Al[5][i]^2)*2.
-            # Alm[i] = sqrt(Alm[i])*sqrt_threehalves
-            α̲̲_mag = sqrt_threehalves * norm_symvec(α̲̲)
-        ## saturation stress
-            # ϵ̲̲̇′_mag
-            ϵ̲̲̲̇′⁽ᵖ⁾_mag = Δγ / Δt * sqrt_twothirds
-            #ddp = ddd
-            #Alsat = Be + Yp + sqrt(h*ddp/(rd*ddp+rs))
-            α̲̲ₛₐₜ_mag = 0.0
-            κₛₐₜ  = (  ( (1.0-X) ^ NK )  *  H  *  Hir  *  ϵ̲̲̲̇′⁽ᵖ⁾_mag  /  (
-                (sqrt_twothirds*Rdc*ϵ̲̲̲̇′⁽ᵖ⁾_mag) + Rs )  )   ^   (  1.0  /  NK  )
-            # if(i >= incnum0-1): Ksat  = vM[i]
-            vMₛₐₜ = Be + Y + Yₚ + α̲̲ₛₐₜ_mag + κₛₐₜ
-            vMₛₐₜ = κₛₐₜ + Be
+        #     # Alm[i] = Al[0][i]^2 + Al[1][i]^2 + Al[2][i]^2 \
+        #     #         +(Al[3][i]^2 + Al[4][i]^2 + Al[5][i]^2)*2.
+        #     # Alm[i] = sqrt(Alm[i])*sqrt_threehalves
+        #     α̲̲_mag = sqrt_threehalves * norm_symvec(α̲̲)
+        # ## saturation stress
+        #     # ϵ̲̲̇′_mag
+        #     ϵ̲̲̲̇′⁽ᵖ⁾_mag = Δγ / Δt * sqrt_twothirds
+        #     #ddp = ddd
+        #     #Alsat = Be + Yp + sqrt(h*ddp/(rd*ddp+rs))
+        #     α̲̲ₛₐₜ_mag = 0.0
+        #     κₛₐₜ  = (  ( (1.0-X) ^ NK )  *  H  *  Hir  *  ϵ̲̲̲̇′⁽ᵖ⁾_mag  /  (
+        #         (sqrt_twothirds*Rdc*ϵ̲̲̲̇′⁽ᵖ⁾_mag) + Rs )  )   ^   (  1.0  /  NK  )
+        #     # if(i >= incnum0-1): Ksat  = vM[i]
+        #     vMₛₐₜ = Be + Y + Yₚ + α̲̲ₛₐₜ_mag + κₛₐₜ
+        #     vMₛₐₜ = κₛₐₜ + Be
     end
     # return (vM,ϵ̲̲′_mag,α̲̲_mag,κ,X,d,ϕ,η,νᵥ,vMₛₐₜ,ϵ̲̲̲̇′⁽ᵖ⁾_mag,t)
     return σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d
@@ -1103,8 +1119,7 @@ function ContinuumMechanicsBase.predict(
     t       = 0.0
     for i ∈ range(2, M)
         t += ψ.Δt
-        #                                                         update(ψ, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, η, damirr, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, (;
-        σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d = update(ψ, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, damirr, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, p)
+        σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d = update(ψ, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, damirr, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, p; kwargs...)
         # update!(ψ, σ__, α__, κ, ϵ__, ϵₚ__, p)
         push!(ϵ⃗, ϵ̲̲)
         push!(σ⃗, σ̲̲)
@@ -1165,7 +1180,7 @@ ContinuumMechanicsBase.parameters(::Cho2019Unified) = (
     :C₁₃,    :C₁₄,    :C₂₄,    # R_d
     :C₁₅,    :C₁₆,    :C₂₅,    # H
     :C₁₇,    :C₁₈,    :C₂₆,    # R_s
-                    :NK,     # * [20250402T1521] (JMA3): I think this is the modifier for finding the k-root
+                        :NK,     # * [20250402T1521] (JMA3): I think this is the modifier for finding the k-root
                             # *                         (see Eq. 4.22 in HEC dissertation)
                             # *                         (c. f. `optimize.py` that NK=2.0 by default)
     ## torsion, tension/compression
@@ -1175,10 +1190,10 @@ ContinuumMechanicsBase.parameters(::Cho2019Unified) = (
     :Cx3, :Cx4, :Csp,
     :Cx5, :Cxa, :Cxb, :Cxc,
     ## static RX (grain growth)
-    :n, :ω₀, # E⁺, V⁺, R,
+    # :n, :ω₀, # E⁺, V⁺, R,
     ## grain size
     # d₀, Cg1, Cg2, Cg3, z,
-    :Cg1, :Cg2, :Cg3, :z,
+    :Cg1, :Cg2, :Cg3, # :z,
     ## damage
     ### nucleation
     # 𝒹, 𝒻, Kic, a, b, c,

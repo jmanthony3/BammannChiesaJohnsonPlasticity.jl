@@ -40,7 +40,7 @@ for (i, θ) in enumerate((298, 407, 475, 509, 542, 559, 576, 610, 678, 814))
     @show (4(i - 1) + 1, 4(i - 1) + 2), θ_str, ϵ̇, last(x), 4length(x)
     tests[θ_str] = BCJMetalUniaxialTest(x, y, name="$(θ_flt)K")
     domains[θ_str] = BCJMetalStrainControl(θ_flt, ϵ̇, last(x), 4length(x), :tension)
-    models[θ_str] = Cho2019Unified(domains[θ_str], E⁺, E⁺, R, d₀, Kic, 𝒹, 𝒻, η₀, R₀)
+    models[θ_str] = Cho2019Unified(domains[θ_str], n, ω₀, E⁺, E⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀)
 end
 
 tests = sort(tests; rev=false)
@@ -88,12 +88,9 @@ p = ComponentVector(
     Cxa = 0.8052,
     Cxb = 3.68,
     Cxc = 4.485,
-    n = n,
-    ω₀ = ω₀,
     Cg1 = 7.41e4,
     Cg2 = 0.8826,
     Cg3 = 1.185e-3,
-    z = z,
     a = 0.0,
     b = 0.0,
     c = 0.0,
@@ -110,21 +107,24 @@ p = ComponentVector(
     kp2 = 0.0,
 )
 
-plt = plot(xlims=(0, 1), ylims=(0, Inf), widen=1.06)
-for (i, (θ, ψ)) in enumerate(models)
-    test = tests[θ]
-    res = ContinuumMechanicsBase.predict(ψ, test, p)
-    # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
-    scatter!(plt, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ],
-            markercolor=i,
-            label="$(θ)K:Exp",
-        )
-    plot!(plt, [first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)],
-            linecolor=i,
-            label="$(θ)K:Model",
-        )
+begin
+    plt = plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:outerright, widen=1.06)
+    for (i, (θ, ψ)) in enumerate(models)
+        test = tests[θ]
+        res = ContinuumMechanicsBase.predict(ψ, test, p)
+        # res = ContinuumMechanicsBase.predict(ψ, test, p; iREXmethod=0, iGSmethod=0)
+        # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
+        scatter!(plt, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
+                markercolor=i,
+                label="$(θ)K:Exp",
+            )
+        plot!(plt, [first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)],
+                linecolor=i,
+                label="$(θ)K:Model",
+            )
+    end
+    display(plt)
 end
-display(plt)
 
 # pltq = plot(xlims=(0, 1), ylims=(0, Inf), widen=1.06)
 
