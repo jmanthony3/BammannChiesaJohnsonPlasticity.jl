@@ -178,7 +178,7 @@ begin
 	    @show (4(i - 1) + 1, 4(i - 1) + 2), θ_str, ϵ̇, last(x), 4length(x)
 	    tests[θ_str] = BCJMetalUniaxialTest(x, y, name="$(θ_flt)K")
 	    domains[θ_str] = BCJMetalStrainControl(θ_flt, ϵ̇, last(x), 4length(x), :tension)
-	    models[θ_str] = Cho2019Unified(domains[θ_str], E⁺, E⁺, R, d₀, Kic, 𝒹, 𝒻, η₀, R₀)
+	    models[θ_str] = Cho2019Unified(domains[θ_str], n, ω₀, E⁺, E⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀)
 	end
 	
 	tests = sort(tests; rev=false)
@@ -234,12 +234,9 @@ p0 = ComponentVector(
 	Cxa = 0.8052,
 	Cxb = 3.68,
 	Cxc = 4.485,
-	n = n,
-	ω₀ = ω₀,
 	Cg1 = 7.41e4,
 	Cg2 = 0.8826,
 	Cg3 = 1.185e-3,
-	z = z,
 	a = 0.0,
 	b = 0.0,
 	c = 0.0,
@@ -269,7 +266,7 @@ begin
         test = tests[θ]
         res = ContinuumMechanicsBase.predict(ψ, test, p)
         # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
-        scatter!(plt, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ],
+        scatter!(plt, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
                 markercolor=i,
                 label="$(θ)K:Exp",
             )
@@ -311,7 +308,7 @@ begin
         test = tests[θ]
         calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
         # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
-		scatter!(pltq, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ],
+		scatter!(pltq, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
                 markercolor=i,
                 label="$(θ)K:Exp",
             )

@@ -111,8 +111,8 @@ begin
     plt = plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:outerright, widen=1.06)
     for (i, (θ, ψ)) in enumerate(models)
         test = tests[θ]
-        res = ContinuumMechanicsBase.predict(ψ, test, p)
-        # res = ContinuumMechanicsBase.predict(ψ, test, p; iREXmethod=0, iGSmethod=0)
+        # res = ContinuumMechanicsBase.predict(ψ, test, p)
+        res = ContinuumMechanicsBase.predict(ψ, test, p; iREXmethod=0, iGSmethod=0)
         # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
         scatter!(plt, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
                 markercolor=i,
