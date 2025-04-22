@@ -122,7 +122,8 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
             end
             return ComponentVector(ps)
         end
-        errors = Vector{typeof(first(ψs).θ)}(undef, length(ψs))
+        # errors = Vector{typeof(first(ψs).θ)}(undef, length(ψs))
+        errors = []
         for (i, (ψ, test)) in enumerate(zip(ψs, tests))
             prediction = ContinuumMechanicsBase.predict(ψ, test, g(ps, qs); ad_type, kwargs...)
             ϵ = [first(x) for x in test.data.ϵ]
@@ -130,7 +131,8 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
             ϵ̂ = [first(x) for x in eachcol(prediction.data.ϵ)]
             σ̂ = collect(eachcol(prediction.data.σ))
             ŝ = linear_interpolation(ϵ, σ, extrapolation_bc=Line()).(ϵ̂)
-            errors[i] = map(i -> loss.(i[1], vonMises(i[2])), zip(ŝ, σ̂)) |> mean
+            # errors[i] = map(i -> loss.(i[1], vonMises(i[2])), zip(ŝ, σ̂)) |> mean
+            push!(errors, map(i -> loss.(i[1], vonMises(i[2])), zip(ŝ, σ̂)) |> mean)
         end
         return mean(errors)
     end

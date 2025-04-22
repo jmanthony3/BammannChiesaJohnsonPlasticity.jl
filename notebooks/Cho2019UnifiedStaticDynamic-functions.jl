@@ -17,12 +17,15 @@ ContinuumMechanicsBase.I₃(x::Vector{<:Real}) = det([
 
 "Maps a scalar onto the volumetric portion of the flat vector representation of a second-rank tensor."
 volumetric(x::AbstractFloat)    = x .* [1, 0, 0, 1, 0, 1]
+volumetric(x)                   = x .* [1, 0, 0, 1, 0, 1]
 
 "Returns the scalar, hydrostatic portion from the flat vector representation of a second-rank tensor."
 hydrostatic(x::Vector{<:Real})  = I₁(x) / 3.0
+hydrostatic(x)                  = I₁(x) / 3.0
 
 "Returns the deviatoric of the flat vector representation of a second-rank tensor."
 deviatoric(x::Vector{<:Real})   = x - volumetric(hydrostatic(x))
+deviatoric(x)                   = x - volumetric(hydrostatic(x))
 
 """
 Structure for viscoplasticity model with loading conditions and material properties.
@@ -154,7 +157,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             pCnuc, Tnuc, nn, Tgrw,
             ## irradiation hardening
             kr1, krt, kr2, kr3, kp1, kpt, kp2
-        ); imat=0, iYS=0, tanβ₀=0.0, iREXmethod=3, iGSmethod=4, iNewton=0)
+        ); imat=0, iYS=0, tanβ₀=0.0, iREXmethod=3, iGSmethod=4, iNewton=0, kwargs...)
     # get fields from model
         θ       = ψ.θ
         n       = ψ.n
