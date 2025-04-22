@@ -24,29 +24,29 @@ hydrostatic(x::Vector{<:Real})  = I₁(x) / 3.0
 "Returns the deviatoric of the flat vector representation of a second-rank tensor."
 deviatoric(x::Vector{<:Real})   = x - volumetric(hydrostatic(x))
 
-# """
-# Structure for viscoplasticity model with loading conditions and material properties.
-# Here, uses the effective strain rate based on applied strain rate and loading direction.
-# """
-# struct Cho2019Unified{T<:AbstractFloat} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
-# # struct Bammann1993Failure{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
-#     θ       ::T         # applied temperature
-#     E⁺      ::T
-#     V⁺      ::T
-#     R       ::T
-#     d₀      ::T
-#     Kic     ::T
-#     𝒹       ::T
-#     𝒻       ::T
-#     η₀      ::T
-#     R₀      ::T
-#     P       ::T         # pressure
-#     ϵ̇_eff   ::T         # strain rate (effective)
-#     ϵₙ      ::T         # final strain
-#     N       ::Integer   # number of strain increments
-#     Δϵ̲̲      ::Vector{T} # S         # total strain tensor step
-#     Δt      ::T         # time step
-# end
+"""
+Structure for viscoplasticity model with loading conditions and material properties.
+Here, uses the effective strain rate based on applied strain rate and loading direction.
+"""
+struct Cho2019Unified{T<:AbstractFloat} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
+# struct Bammann1993Failure{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
+    θ       ::T         # applied temperature
+    E⁺      ::T
+    V⁺      ::T
+    R       ::T
+    d₀      ::T
+    Kic     ::T
+    𝒹       ::T
+    𝒻       ::T
+    η₀      ::T
+    R₀      ::T
+    P       ::T         # pressure
+    ϵ̇_eff   ::T         # strain rate (effective)
+    ϵₙ      ::T         # final strain
+    N       ::Integer   # number of strain increments
+    Δϵ̲̲      ::Vector{T} # S         # total strain tensor step
+    Δt      ::T         # time step
+end
 
 """
     $(SIGNATURES)
