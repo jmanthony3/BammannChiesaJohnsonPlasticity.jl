@@ -26,6 +26,7 @@ begin
 	Pkg.add("ComponentArrays")
 	Pkg.add("CSV")
 	Pkg.add("DataFrames")
+	Pkg.add("DataInterpolations")
 	Pkg.add("FiniteDiff")
 	Pkg.add("ForwardDiff")
 	Pkg.add("Optimization")
@@ -47,7 +48,7 @@ begin
 	using CSV, DataFrames
 	using FiniteDiff
 	import ForwardDiff
-	using Optimization, OptimizationOptimJL, LossFunctions
+	using DataInterpolations, Optimization, OptimizationOptimJL, LossFunctions
 	using Plots
 	using Printf
 
@@ -169,24 +170,24 @@ Now we can make a group of sliders for the pre-defined model `parameters`.
 
 # ╔═╡ 45ed6284-590e-40ee-93f2-439f264fa032
 p0 = ComponentVector(
-	C₁ = 100567805581.449005127,
-	C₂ = 1493.432680374,
-	C₃ = 162809350.500710130,
-	C₄ = 385.096810454,
-	C₅ = 1.663838836,
-	C₆ = 1330.136471316,
-	C₇ = 0.000196661,
-	C₈ = 1515.064799827,
-    C₉ = 4.07014e-10,
-    C₁₀ = 1000.0,
-    C₁₁ = 7.07701e-12,
-    C₁₂ = 18.6325,
-    C₁₃ = 5.07815e-9,
-    C₁₄ = 2168.07,
-	C₁₅ = 37563031.154610492,
-	C₁₆ = 1805.159941973,
-	C₁₇ = 9634658.446984392,
-	C₁₈ = 1222.769281462,
+    C₁ = 9.98748e10,
+    C₂ = 1483.14,
+    C₃ = 1.61687e8,
+    C₄ = 382.443,
+    C₅ = 1.65237,
+    C₆ = 1320.97,
+    C₇ = 0.000195306,
+    C₈ = 1504.62,
+    C₉ = 4.04209e-10,
+    C₁₀ = 993.109,
+    C₁₁ = 7.02824e-12,
+    C₁₂ = 18.5041,
+    C₁₃ = 5.04316e-9,
+    C₁₄ = 2153.13,
+    C₁₅ = 3.73042e7,
+    C₁₆ = 1792.72,
+    C₁₇ = 9.56827e6,
+    C₁₈ = 1214.34,
 )
 
 # ╔═╡ 2494657a-bdaa-48c5-8209-a36585697975
@@ -197,14 +198,19 @@ p
 
 # ╔═╡ 65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
 begin
-	res = ContinuumMechanicsBase.predict(ψ, test, p)
+	prediction = ContinuumMechanicsBase.predict(ψ, test, p)
+	ϵ = [first(x) for x in test.data.ϵ]
+	σ = [first(x) for x in test.data.σ]
+	ϵ̂_prediction = [first(x) for x in eachcol(prediction.data.ϵ)]
+	σ̂_prediction = [vonMises(x) for x in eachcol(prediction.data.σ)]
+	# s = linear_interpolation(ϵ̂, σ̂, extrapolation_bc=Line()).(ϵ)
+	ŝ_prediction = CubicSpline(σ, ϵ; extrapolation=ExtrapolationType.Linear).(ϵ̂_prediction)
 	plt = scatter(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"], label="exp",
 		xlabel="True Strain (ϵ) [mm/mm]",
 		ylabel="True Stress (σ) [MPa]")
-	plot!(plt, [first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6, label=@sprintf(
+	plot!(plt, ϵ̂_prediction, σ̂_prediction ./ 1e6, label=@sprintf(
 			"Bammann1990Modeling (RMSE:%.3f)", rmse(
-					(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
-					([first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6))
+				(ϵ̂_prediction, σ̂_prediction ./ 1e6), (ϵ̂_prediction, ŝ_prediction ./ 1e6))
 			),
 		linecolor=:blue
 	)
@@ -216,13 +222,16 @@ end
 # ╔═╡ df492d79-2a80-4fb2-ad59-f57f4e2b99e9
 begin
 	q = parameters_selection(ComponentVector(p), p_checkboxes)
-	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(), ui=q)
-	sol = solve(prob, LBFGS())
-	calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
-	plot!(deepcopy(plt), [first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6, label=@sprintf(
+	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoFiniteDiff(), L2DistLoss(), ui=q)
+	sol = solve(prob, NelderMead())
+	calibration = ContinuumMechanicsBase.predict(ψ, test, sol.u)
+	ϵ̂_calibration = [first(x) for x in eachcol(calibration.data.ϵ)]
+	σ̂_calibration = [vonMises(x) for x in eachcol(calibration.data.σ)]
+	# s = linear_interpolation(ϵ̂, σ̂, extrapolation_bc=Line()).(ϵ)
+	ŝ_calibration = CubicSpline(σ, ϵ; extrapolation=ExtrapolationType.Linear).(ϵ̂_calibration)
+	plot!(deepcopy(plt), ϵ̂_calibration, σ̂_calibration ./ 1e6, label=@sprintf(
 			"Bammann1990Modeling (RMSE:%.3f, K:%d, T:%.3f [s])", rmse(
-				(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
-				([first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6)),
+				(ϵ̂_calibration, σ̂_calibration ./ 1e6), (ϵ̂_calibration, ŝ_calibration ./ 1e6)),
 			sol.stats.iterations, sol.stats.time),
 		linecolor=:blue,
 		linestyle=:dash)
@@ -252,7 +261,7 @@ end; r
 # ╠═45ed6284-590e-40ee-93f2-439f264fa032
 # ╠═2494657a-bdaa-48c5-8209-a36585697975
 # ╠═d4836c95-8b9d-4c0e-bcf3-29abdc551967
-# ╟─65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
+# ╠═65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
 # ╠═22a08ebd-2461-4625-8f9b-3ec72cbb5a05
 # ╠═df492d79-2a80-4fb2-ad59-f57f4e2b99e9
 # ╠═ac027691-ae47-4450-b9d6-b814b5be79d5

@@ -26,6 +26,7 @@ begin
 	Pkg.add("ComponentArrays")
 	Pkg.add("CSV")
 	Pkg.add("DataFrames")
+	Pkg.add("DataInterpolations")
 	Pkg.add("DocStringExtensions")
 	Pkg.add("FiniteDiff")
 	Pkg.add("ForwardDiff")
@@ -49,6 +50,7 @@ begin
 	using DocStringExtensions
 	using FiniteDiff
 	import ForwardDiff
+	using DataInterpolations
 	using Optimization, OptimizationOptimJL, LossFunctions
 	using Plots
 	using Printf
@@ -200,36 +202,36 @@ p0 = ComponentVector(
 	C₄ = 324.9,
 	C₅ = 2.971,
 	C₆ = 2548.0,
-	Pₖ₁ = 0.0,
-	Pₖ₂ = 0.0,
-	Pₖ₃ = 0.0,
+	Pₖ₁ = 1e-12,
+	Pₖ₂ = 1e-12,
+	Pₖ₃ = 1e-12,
 	C₇ = 0.1345,
 	C₈ = 351.1,
-	C₂₁ = 0.0,
+	C₂₁ = 1e-12,
 	C₉ = 0.02869,
-	C₁₀ = 0.0,
-	C₂₂ = 0.0,
+	C₁₀ = 1e-12,
+	C₂₂ = 1e-12,
 	C₁₁ = 0.02928,
 	C₁₂ = 4337.0,
-	C₂₃ = 0.0,
+	C₂₃ = 1e-12,
 	C₁₃ = 0.05098,
 	C₁₄ = 476.6,
-	C₂₄ = 0.0,
+	C₂₄ = 1e-12,
 	C₁₅ = 0.006924,
-	C₁₆ = 0.0,
-	C₂₅ = 0.0,
+	C₁₆ = 1e-12,
+	C₂₅ = 1e-12,
 	C₁₇ = 2.487,
 	C₁₈ = 7611.0,
-	C₂₆ = 0.0,
+	C₂₆ = 1e-12,
 	NK = 2.0,
-	ca = 0.0,
-	cb = 0.0,
+	ca = 1e-12,
+	cb = 1e-12,
 	Cx1 = 1.78e6,
 	Cx2 = 7.806e3,
-	Cdp = 0.0,
+	Cdp = 1e-12,
 	Cx3 = 5.401e4,
 	Cx4 = 8943.0,
-	Csp = 0.0,
+	Csp = 1e-12,
 	Cx5 = 5.0,
 	Cxa = 0.8052,
 	Cxb = 3.68,
@@ -237,20 +239,20 @@ p0 = ComponentVector(
 	Cg1 = 7.41e4,
 	Cg2 = 0.8826,
 	Cg3 = 1.185e-3,
-	a = 0.0,
-	b = 0.0,
-	c = 0.0,
-	pCnuc = 0.0,
-	Tnuc = 0.0,
-	nn = 0.0,
-	Tgrw = 0.0,
-	kr1 = 0.0,
-	krt = 0.0,
-	kr2 = 0.0,
-	kr3 = 0.0,
-	kp1 = 0.0,
-	kpt = 0.0,
-	kp2 = 0.0,
+	a = 1e-12,
+	b = 1e-12,
+	c = 1e-12,
+	pCnuc = 1e-12,
+	Tnuc = 1e-12,
+	nn = 1e-12,
+	Tgrw = 1e-12,
+	kr1 = 1e-12,
+	krt = 1e-12,
+	kr2 = 1e-12,
+	kr3 = 1e-12,
+	kp1 = 1e-12,
+	kpt = 1e-12,
+	kp2 = 1e-12,
 )
 
 # ╔═╡ 2494657a-bdaa-48c5-8209-a36585697975
@@ -264,13 +266,14 @@ begin
     plt = plot(xlims=(0, 1), ylims=(0, Inf), widen=1.06)
 	for (i, (θ, ψ)) in enumerate(models)
         test = tests[θ]
-        res = ContinuumMechanicsBase.predict(ψ, test, p)
+        # prediction = ContinuumMechanicsBase.predict(ψ, test, p)
+		prediction = ContinuumMechanicsBase.predict(ψ, test, p; iREXmethod=0, iGSmethod=0)
         # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
         scatter!(plt, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
                 markercolor=i,
                 label="$(θ)K:Exp",
             )
-        plot!(plt, [first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)],
+        plot!(plt, [first(x) for x in eachcol(prediction.data.ϵ)], [vonMises(x) for x in eachcol(prediction.data.σ)],
                 linecolor=i,
                 label="$(θ)K:Model",
             )
@@ -300,19 +303,20 @@ begin
 	    collect(BCJMetalUniaxialTest, values(tests)),
 	    p,
 	    parameters(first(values(models))),
-	    AutoForwardDiff(),
+	    AutoFiniteDiff(),
 	    L2DistLoss();
 	    ui=q)
-	sol = solve(prob, LBFGS())
+	sol = solve(prob, NelderMead())
 	for (i, (θ, ψ)) in enumerate(models)
         test = tests[θ]
-        calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
+        # calibration = ContinuumMechanicsBase.predict(ψ, test, sol.u)
+		calibration = ContinuumMechanicsBase.predict(ψ, test, sol.u; iREXmethod=0, iGSmethod=0)
         # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
 		scatter!(pltq, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
                 markercolor=i,
                 label="$(θ)K:Exp",
             )
-        plot!(pltq, [first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)],
+        plot!(pltq, [first(x) for x in eachcol(calibration.data.ϵ)], [vonMises(x) for x in eachcol(calibration.data.σ)],
                 linecolor=i,
                 label="$(θ)K:Calib",
             )

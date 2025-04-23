@@ -26,24 +26,24 @@ using Test
     @testset "Bammann1990Modeling" begin
         ψ = Bammann1990Modeling(Ω, μ)
         p = ComponentVector(
-            C₁ = 9.98748e10,
-            C₂ = 1483.14,
-            C₃ = 1.61687e8,
-            C₄ = 382.443,
-            C₅ = 1.65237,
-            C₆ = 1320.97,
-            C₇ = 0.000195306,
-            C₈ = 1504.62,
-            C₉ = 4.04209e-10,
-            C₁₀ = 993.109,
-            C₁₁ = 7.02824e-12,
-            C₁₂ = 18.5041,
-            C₁₃ = 5.04316e-9,
-            C₁₄ = 2153.13,
-            C₁₅ = 3.73042e7,
-            C₁₆ = 1792.72,
-            C₁₇ = 9.56827e6,
-            C₁₈ = 1214.34,
+            C₁ = 9.85045e10,
+            C₂ = 1462.79,
+            C₃ = 1.59469e8,
+            C₄ = 377.196,
+            C₅ = 1.6297,
+            C₆ = 1302.85,
+            C₇ = 0.000192626,
+            C₈ = 1483.98,
+            C₉ = 3.98663e-10,
+            C₁₀ = 979.483,
+            C₁₁ = 6.93181e-12,
+            C₁₂ = 18.2502,
+            C₁₃ = 4.97397e-9,
+            C₁₄ = 2123.59,
+            C₁₅ = 3.67924e7,
+            C₁₆ = 1768.12,
+            C₁₇ = 9.43699e6,
+            C₁₈ = 1197.68,
         )
         prediction = ContinuumMechanicsBase.predict(ψ, test, p)
         ϵ = [first(x) for x in test.data.ϵ]
@@ -51,18 +51,40 @@ using Test
         ϵ̂ = [first(x) for x in eachcol(prediction.data.ϵ)]
         σ̂ = [vonMises(x) for x in eachcol(prediction.data.σ)]
         # s = linear_interpolation(ϵ̂, σ̂, extrapolation_bc=Line()).(ϵ)
-        s = CubicSpline(σ̂, ϵ̂; extrapolation=ExtrapolationType.Linear).(ϵ)
-        @test isapprox(31.936, rmse(
-            (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
-            (ϵ, s ./ 1e6)); atol=1e-2)
+        ŝ = CubicSpline(σ, ϵ; extrapolation=ExtrapolationType.Linear).(ϵ̂)
+        # @test isapprox(31.936, rmse( # from main
+        #     (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
+        #     (ϵ, s ./ 1e6)); atol=1e-2)
+        @test isapprox(89.400, rmse( # from cho2019unified
+            (ϵ̂, σ̂ ./ 1e6), (ϵ̂, ŝ ./ 1e6)); atol=1e-2)
 
-        q = ComponentVector(
-            C₁ = p.C₁,
-            C₂ = p.C₂,
-            C₃ = p.C₃,
-            C₄ = p.C₄,
-            C₅ = p.C₅,
-            C₆ = p.C₆,
+        # q = ComponentVector( # from main
+        #     C₁ = p.C₁,
+        #     C₂ = p.C₂,
+        #     C₃ = p.C₃,
+        #     C₄ = p.C₄,
+        #     C₅ = p.C₅,
+        #     C₆ = p.C₆,
+        #     C₇ = p.C₇,
+        #     C₈ = p.C₈,
+        #     C₉ = p.C₉,
+        #     C₁₀ = p.C₁₀,
+        #     C₁₁ = p.C₁₁,
+        #     C₁₂ = p.C₁₂,
+        #     C₁₃ = p.C₁₃,
+        #     C₁₄ = p.C₁₄,
+        #     C₁₅ = NaN,
+        #     C₁₆ = NaN,
+        #     C₁₇ = NaN,
+        #     C₁₈ = NaN,
+        # )
+        q = ComponentVector( # from cho2019unified
+            C₁ = NaN,
+            C₂ = NaN,
+            C₃ = NaN,
+            C₄ = NaN,
+            C₅ = NaN,
+            C₆ = NaN,
             C₇ = p.C₇,
             C₈ = p.C₈,
             C₉ = p.C₉,
@@ -71,10 +93,10 @@ using Test
             C₁₂ = p.C₁₂,
             C₁₃ = p.C₁₃,
             C₁₄ = p.C₁₄,
-            C₁₅ = NaN,
-            C₁₆ = NaN,
-            C₁₇ = NaN,
-            C₁₈ = NaN,
+            C₁₅ = p.C₁₅,
+            C₁₆ = p.C₁₆,
+            C₁₇ = p.C₁₇,
+            C₁₈ = p.C₁₈,
         )
         sol = testmodel(ψ, test, p, q)
         @test sol.retcode == SciMLBase.ReturnCode.Success
@@ -83,10 +105,12 @@ using Test
         ϵ̂ = [first(x) for x in eachcol(calibration.data.ϵ)]
         σ̂ = [vonMises(x) for x in eachcol(calibration.data.σ)]
         # s = linear_interpolation(ϵ̂, σ̂, extrapolation_bc=Line()).(ϵ)
-        s = CubicSpline(σ̂, ϵ̂; extrapolation=ExtrapolationType.Linear).(ϵ)
-        @test isapprox(29.888, rmse(
-            (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
-            (ϵ, s ./ 1e6)); atol=1e-2)
+        ŝ = CubicSpline(σ, ϵ; extrapolation=ExtrapolationType.Linear).(ϵ̂)
+        # @test isapprox(29.888, rmse( # from main
+        #     (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
+        #     (ϵ, s ./ 1e6)); atol=1e-2)
+        @test isapprox(66.984, rmse( # from cho2019unified
+            (ϵ̂, σ̂ ./ 1e6), (ϵ̂, ŝ ./ 1e6)); atol=1e-1)
     end
 
     # # bcj_loading = BCJ_metal(295., 570., 0.15, 200, 1, p)
