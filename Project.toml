@@ -23,7 +23,7 @@ OptimizationBCJPlasticityExt = ["Optimization", "LossFunctions"]
 [compat]
 ComponentArrays = "0.15.24"
 ContinuumMechanicsBase = "0.2.2"
-DataInterpolations = "7.2.0"
+DataInterpolations = "8.0.0"
 DocStringExtensions = "0.9.3"
 LinearAlgebra = "1.11.0"
 LossFunctions = "1"
