@@ -3,7 +3,7 @@ module OptimizationBCJPlasticityExt
 using BammannChiesaJohnsonPlasticity
 using ContinuumMechanicsBase
 using ComponentArrays
-using Optimization, Interpolations, LossFunctions
+using DataInterpolations, Optimization, LossFunctions
 
 export parameter_bounds, MaterialOptimizationProblem
 
@@ -49,7 +49,8 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
         σ = [first(x) for x in test.data.σ]
         ϵ̂ = [first(x) for x in eachcol(prediction.data.ϵ)]
         σ̂ = collect(eachcol(prediction.data.σ))
-        ŝ = linear_interpolation(ϵ, σ, extrapolation_bc=Line()).(ϵ̂)
+        # ŝ = linear_interpolation(ϵ, σ, extrapolation_bc=Line()).(ϵ̂)
+        ŝ = CubicSpline(σ, ϵ; extrapolation=ExtrapolationType.Linear).(ϵ̂)
         err = map(i -> loss.(i[1], vonMises(i[2])), zip(ŝ, σ̂)) |> mean
         return err
     end
@@ -130,7 +131,8 @@ function ContinuumMechanicsBase.MaterialOptimizationProblem(
             σ = [first(x) for x in test.data.σ]
             ϵ̂ = [first(x) for x in eachcol(prediction.data.ϵ)]
             σ̂ = collect(eachcol(prediction.data.σ))
-            ŝ = linear_interpolation(ϵ, σ, extrapolation_bc=Line()).(ϵ̂)
+            # ŝ = linear_interpolation(ϵ, σ, extrapolation_bc=Line()).(ϵ̂)
+            ŝ = CubicSpline(σ, ϵ; extrapolation=ExtrapolationType.Linear).(ϵ̂)
             # errors[i] = map(i -> loss.(i[1], vonMises(i[2])), zip(ŝ, σ̂)) |> mean
             push!(errors, map(i -> loss.(i[1], vonMises(i[2])), zip(ŝ, σ̂)) |> mean)
         end

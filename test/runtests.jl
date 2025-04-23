@@ -5,7 +5,7 @@ using ComponentArrays
 using CSV, DataFrames
 using FiniteDiff
 import ForwardDiff
-using Optimization, OptimizationOptimJL, Interpolations, LossFunctions
+using Optimization, OptimizationOptimJL, DataInterpolations, LossFunctions
 
 using Test
 
@@ -20,8 +20,8 @@ using Test
     μ = 77e9    # shear modulus [Pa]
     function testmodel(ψ, test, p, q)
         prob = ContinuumMechanicsBase.MaterialOptimizationProblem(
-            ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(); ui=q)
-        return solve(prob, LBFGS())
+            ψ, test, p, parameters(ψ), AutoFiniteDiff(), L2DistLoss(); ui=q)
+        return solve(prob, NelderMead())
     end
     @testset "Bammann1990Modeling" begin
         ψ = Bammann1990Modeling(Ω, μ)
@@ -50,10 +50,12 @@ using Test
         σ = [first(x) for x in test.data.σ]
         ϵ̂ = [first(x) for x in eachcol(prediction.data.ϵ)]
         σ̂ = [vonMises(x) for x in eachcol(prediction.data.σ)]
-        s = linear_interpolation(ϵ̂, σ̂, extrapolation_bc=Line()).(ϵ)
+        # s = linear_interpolation(ϵ̂, σ̂, extrapolation_bc=Line()).(ϵ)
+        s = CubicSpline(σ̂, ϵ̂; extrapolation=ExtrapolationType.Linear).(ϵ)
         @test isapprox(31.936, rmse(
             (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
             (ϵ, s ./ 1e6)); atol=1e-2)
+
         q = ComponentVector(
             C₁ = p.C₁,
             C₂ = p.C₂,
@@ -76,10 +78,12 @@ using Test
         )
         sol = testmodel(ψ, test, p, q)
         @test sol.retcode == SciMLBase.ReturnCode.Success
+
         calibration = ContinuumMechanicsBase.predict(ψ, test, sol.u)
         ϵ̂ = [first(x) for x in eachcol(calibration.data.ϵ)]
         σ̂ = [vonMises(x) for x in eachcol(calibration.data.σ)]
-        s = linear_interpolation(ϵ̂, σ̂, extrapolation_bc=Line()).(ϵ)
+        # s = linear_interpolation(ϵ̂, σ̂, extrapolation_bc=Line()).(ϵ)
+        s = CubicSpline(σ̂, ϵ̂; extrapolation=ExtrapolationType.Linear).(ϵ)
         @test isapprox(29.888, rmse(
             (df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
             (ϵ, s ./ 1e6)); atol=1e-2)
