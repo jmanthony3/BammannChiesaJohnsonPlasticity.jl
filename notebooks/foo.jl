@@ -17,6 +17,8 @@ n   = 2.0
 ω₀  = 3.6e4
 R   = 8.31446261815324 # universal gas constant
 E⁺  = 82.0e3
+# ? [20250424T0919] (JMA3): What value should this be?
+V⁺  = 0.0
 z   = 0.65
 d₀  = 10.0 # μm (Ghauri et al., 1990)
 η₀  = 0.0
@@ -40,7 +42,7 @@ for (i, θ) in enumerate((298, 407, 475, 509, 542, 559, 576, 610, 678, 814))
     @show (4(i - 1) + 1, 4(i - 1) + 2), θ_str, ϵ̇, last(x), 4length(x)
     tests[θ_str] = BCJMetalUniaxialTest(x, y, name="$(θ_flt)K")
     domains[θ_str] = BCJMetalStrainControl(θ_flt, ϵ̇, last(x), 4length(x), :tension)
-    models[θ_str] = Cho2019Unified(domains[θ_str], n, ω₀, E⁺, E⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀)
+    models[θ_str] = Cho2019Unified(domains[θ_str], n, ω₀, E⁺, V⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀)
 end
 
 tests = sort(tests; rev=false)
@@ -111,14 +113,13 @@ begin
     plt = plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:outerright, widen=1.06)
     for (i, (θ, ψ)) in enumerate(models)
         test = tests[θ]
-        # res = ContinuumMechanicsBase.predict(ψ, test, p)
-        res = ContinuumMechanicsBase.predict(ψ, test, p; iREXmethod=0, iGSmethod=0)
-        # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
+        # prediction = ContinuumMechanicsBase.predict(ψ, test, p)
+        prediction = ContinuumMechanicsBase.predict(ψ, test, p; iREXmethod=0, iGSmethod=0)
         scatter!(plt, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
                 markercolor=i,
                 label="$(θ)K:Exp",
             )
-        plot!(plt, [first(x) for x in eachcol(res.data.ϵ)], [vonMises(x) for x in eachcol(res.data.σ)],
+        plot!(plt, [first(x) for x in eachcol(prediction.data.ϵ)], [vonMises(x) for x in eachcol(prediction.data.σ)],
                 linecolor=i,
                 label="$(θ)K:Model",
             )
@@ -187,7 +188,7 @@ q = ComponentVector(
 )
 
 begin
-    prob = ContinuumMechanicsBase.MaterialOptimizationProblem(
+    problem = ContinuumMechanicsBase.MaterialOptimizationProblem(
         collect(Cho2019Unified, values(models)),
         collect(BCJMetalUniaxialTest, values(tests)),
         p,
@@ -195,23 +196,20 @@ begin
         AutoFiniteDiff(),
         L2DistLoss();
         ui=q)
-    sol = solve(prob, NelderMead()) # 10.044 s (264158926 allocations: 11.01 GiB)
-    begin # 5.562 ms (165493 allocations: 7.29 MiB) ~ 5.716 ms (165474 allocations: 7.28 MiB)
-        pltq = plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:outerright, widen=1.06)
-        for (i, (θ, ψ)) in collect(enumerate(models))
-            test = tests[θ]
-            # calibration = ContinuumMechanicsBase.predict(ψ, test, sol.u)
-            calibration = ContinuumMechanicsBase.predict(ψ, test, sol.u; iREXmethod=0, iGSmethod=0)
-            # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
-            scatter!(pltq, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
-                    markercolor=i,
-                    label="$(θ)K:Exp",
-                )
-            plot!(pltq, [first(x) for x in eachcol(calibration.data.ϵ)], [vonMises(x) for x in eachcol(calibration.data.σ)],
-                    linecolor=i,
-                    label="$(θ)K:Calib",
-                )
-        end
+    sol = solve(problem, NelderMead())
+    pltq = plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:outerright, widen=1.06)
+    for (i, (θ, ψ)) in collect(enumerate(models))
+        test = tests[θ]
+        # calibration = ContinuumMechanicsBase.predict(ψ, test, sol.u)
+        calibration = ContinuumMechanicsBase.predict(ψ, test, sol.u; iREXmethod=0, iGSmethod=0)
+        scatter!(pltq, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
+                markercolor=i,
+                label="$(θ)K:Exp",
+            )
+        plot!(pltq, [first(x) for x in eachcol(calibration.data.ϵ)], [vonMises(x) for x in eachcol(calibration.data.σ)],
+                linecolor=i,
+                label="$(θ)K:Calib",
+            )
     end; display(pltq)
 
     @show sol.retcode; i, r = 1, deepcopy(q); for (key, value) in zip(keys(p), q)

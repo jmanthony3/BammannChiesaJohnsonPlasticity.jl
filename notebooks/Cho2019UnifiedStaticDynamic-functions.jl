@@ -32,7 +32,7 @@ Structure for viscoplasticity model with loading conditions and material propert
 Here, uses the effective strain rate based on applied strain rate and loading direction.
 """
 struct Cho2019Unified{T<:AbstractFloat} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
-# struct Bammann1993Failure{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
+# struct Cho2019Unified{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
     θ       ::T         # applied temperature
     n       ::T
     ω₀      ::T
@@ -58,7 +58,6 @@ end
     $(SIGNATURES)
 
 Outer constructor for loading conditions and material properties which assumes a Poisson's ratio of 0.5.
-Here, `μ` is the shear modulus.
 """
 function Cho2019Unified(Ω::BammannChiesaJohnsonPlasticity.BCJMetalStrainControl,
         n   ::T,
@@ -108,12 +107,10 @@ function Cho2019Unified(Ω::BammannChiesaJohnsonPlasticity.BCJMetalStrainControl
 end
 
 """
-Using the equations and constants from [Bammann et. al. (1993)](@cite bammannFailureDuctileMaterials1993), this kernel function maps the current material state and ISVs onto the next configuration.
-Though not explicitly listed in paper, temperature equations `h = C₁₅ * exp(-C₁₆ / θ)` and `H = C₁₇ * exp(-C₁₈ / θ)` are included (and their constants renumbered) from (c. f. [Horstemeyer (1994)](@cite horstemeyerPredictingFormingLimit1994)).
-Important: `ϕ` is included in the list of arguments, but is presently, internally set to zero.
-This is a limitation of the point simulator causing infinite stress triaxiality, χ.
+Using the equations and constants from [Cho et. al. (2019)](@cite choUnifiedStaticDynamic2019), this kernel function maps the current material state and ISVs onto the next configuration.
+Currently, is a literal translation of the Python code used for that publication and includes the various options for calculating recrystallization and grain growth.
+Also currently includes the support for pressure-dependent systems.
 """
-# function update(ψ::Cho2019Unified, Sig, Al, K, Ks, Phi, Nuc, Vod, dPhi, X, XR, XH, Xd, Xs, d, TE, PE, VE, Alm, t, (;
 function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, η, damirr, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, (;
             # BCJ-plasticity
             ## yield surface
@@ -251,17 +248,17 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 RRT023 = RRT0 ^ (2.0/3.0)
                 FF = pres    -    (#={=#   1.5KT0   *   (  RRT073  -  RRT053  )   *   (#=[=#
                     1.0  +  ( (3.0/4.0) * (dKdP-4.0) * (RRT023-1.0) )  #=]=#)   #=}=#)
-                # Define Derivative of F, dF
+                # define derivative of F, dF
                 dF1 = ( 18.0 / 24.0 )  *  ( dKdP - 4.0 )  *  KT0  *  ( RRT0 ^ (-1.0/3.0) )  *  ( RRT073 - RRT053 )
                 dF2 = 1.5KT0
                 dF2 = dF2 * (  ( 7.0 / 3.0 )  *  ( RRT0 ^ (4.0/3.0) )  -  ( 5.0 / 3.0 )  *  ( RRT0 ^ (2.0/3.0) )  )
                 dF2 = dF2 * (  ( 3.0 / 4.0 )  *  ( dKdP - 4.0 )  *  ( RRT023 - 1.0 )  +  1.0)
                 dF  = -(dF1+dF2)
-                # find Corrector
+                # find corrector
                 dRRT0 = -FF/dF
-                # update Solution
+                # update solution
                 RRT0 -= dRRT0
-                # convergence Check
+                # convergence check
                 err = abs(dRRT0)
                 err <= convg ? break : Niter += 1
                 Niter >= (itmax - 1) ? println("BM convergence issue! ", err) : nothing
@@ -364,9 +361,9 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         Rs  =           C₁₇   * exp(  -( C₁₈ + (1e6P*C₂₆) )  /  ( R * θ )  )
         Rdc = Rd * (ϵ̲̲̇′_mag^-0.0)
     # yield surface parameters
-        #iYS: 0-Pressure insensitive (Mises);
-        #     1-Pressure sensitive (Shear-Mises);
-        #     2-Pressure sensitive (TANH)
+        # iYS: 0-Pressure insensitive (Mises);
+        #      1-Pressure sensitive (Shear-Mises);
+        #      2-Pressure sensitive (TANH)
         if     iYS == 0
             Yₚ = 0.
         elseif iYS == 1
@@ -433,16 +430,17 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 dXR     = dXd + dXs
                 dXH     = Ch  *  ( X ^ Cxc )
                 dX      = dXR - dXH
-                # ? [20250402T1149] (JMA3): Maybe this (v) should be included? It's not originally...
-                # * ========================================================================
-                # * [20250402T1151] (JMA3): Maybe this section of reassignment is redundant
-                # *                         since these get updated at the end anyway.
-                # XR     += dXR # ! update ISV
-                XH     += dXH # ! update ISV
-                Xd     += dXd # ! update ISV
-                Xs     += dXs # ! update ISV
-                # * ========================================================================
-                # dX      = dXR - dXH
+                # # ? [20250402T1149] (JMA3): Maybe this (v) should be included? It's not originally...
+                # # * [20250402T1151] (JMA3): Maybe this section of reassignment is redundant
+                # # * [20250424T0955] (JMA3): I commented this out because it seems redundant.
+                # # * ========================================================================
+                # # *                         since these get updated at the end anyway.
+                # # XR     += dXR # ! update ISV
+                # XH     += dXH # ! update ISV
+                # Xd     += dXd # ! update ISV
+                # Xs     += dXs # ! update ISV
+                # # * ========================================================================
+                # # dX      = dXR - dXH
                 xx      = X + dX
             elseif iREXmethod == 2 # explicit exponential integration algorithm
                 KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
@@ -451,8 +449,8 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  (      κ ^ 2.0 )  )
                 dKappa  = max(0.0, dKappa)
                 KAlMu1  = μ  \  ( dKappa + dAlpha )
-                Cxd      = Cx1   *   exp(  -( Cx2 + (   P*Cdp) )  /        θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
-                Cxs      = Cx3   *   exp(  -( Cx4 + (   P*Csp) )  /        θ  )   *   (  KAlMu          *  Δt  )
+                Cxd     = Cx1   *   exp(  -( Cx2 + (   P*Cdp) )  /        θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
+                Cxs     = Cx3   *   exp(  -( Cx4 + (   P*Csp) )  /        θ  )   *   (  KAlMu          *  Δt  )
                 Ch      = Cx5 * KAlMu1 * Δt
                 Udt     = ( Cxd + Cxs )  *  ( X ^ Cxa )  *  ( (1.0-X) ^ (Cxb-1.0) )
                 Udt     = Udt   +   (  Ch  *  (  X ^ (Cxc-1.0)  )  )
@@ -486,11 +484,11 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 Cxd     *= Δt
                 Cxs     *= Δt
                 Ch     *= Δt
-                pX0     = Cxd + Cxs
+                pX0     = Cxd  +  Cxs
                 dXd     = Cxd  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )
                 dXs     = Cxs  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )
-                dXR     = pX0 *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )
-                dXH     = Ch * (xx ^ Cxc)
+                dXR     = pX0  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )
+                dXH     =  Ch  *  ( xx ^ Cxc )
             elseif iREXmethod >= 4 # implicitly solve functions using Newton-Rapson method
                 Nitmax = 20
                 Ntol   = 1e-6
@@ -597,7 +595,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         ## Grain size kinetics (SGG and grain refinement rate)
             # Grain size rate integration method
             # 0-explicit; 1-implicit; 2-analytic; 3-earlier model (IJP,2019)
-            # iGSmethod = 0 # [20250402T1523] (JMA3): I commented this out to let the keyword argument have precedence
+            # iGSmethod = 0 # [20250402T1523] (JMA3): I commented this out to let the keyword argument have precedence.
             dim1 = d
             if     iGSmethod == 0
                 d = dim1
@@ -651,7 +649,8 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 # static grain growth
                 dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )
                 # ! update ISV
-                # ? [20250401T1206] (JMA3): what is `d0`
+                # // ? [20250401T1206] (JMA3): what is `d0`
+                # [20250422T1126] (JMA3): `d0` is the initial grain size.
                 d       = ψ.d₀    +    (   dsgk   *   t   *   (  t  ^  ( (n/4.0) - 1.0 )  )   )    ^    (   1.0   /   n   )
             elseif iGSmethod == 4 # original version of DRX grain size kinetics model
                 P1      = 300.0
@@ -661,7 +660,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                 tscl    = t  ^  ( (n/4.0) - 1.0 )
                 dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )   *   tscl
                 dssmax  = ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )
-                # ? [20250331T1347] (JMA3): what even is this if-statement?
+                # ? [20250331T1347] (JMA3): What even is this `if`-statement?
                 if ϵ̲̲̇′_mag * Δt == 0.0
                     dssr = ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )
                     dssr = dr
@@ -669,9 +668,9 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
                     dss0 = ϵ̲̲̇′_mag   *   exp(  ( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )
                     dssr = P1 * (dss0^-P2)
                 end
-                # ? [20250331T1350] (JMA3): why the addition, subtraction, and increment?
+                # ? [20250331T1350] (JMA3): Why the addition, subtraction, and increment?
                 ddgrw   = (  ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )  )   -   dr
-                dr     += dr + ddgrw
+                dr     += ddgrw
                 dss     = min(dssr, dr)
                 ddred   = -P3 * X * ϵ̲̲̇′_mag * Δt * dr * (dr-dss)
                 # ddred = -Cg3*Xd[i]*dr*(dr - dss)*ddd*dt
@@ -693,6 +692,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
             else
                 error("idzz > 2 which is not supported.")
             end
+            # [20250401T1042] (JMA3): these comments (v) are from HEC's original code
             # d0 = 1. !Turn on if absolute grain size-stress relation is used
             # YT  = YT*dzz1 ! Turn on if grain size dependent yield is used
     # elastic prediction
@@ -724,7 +724,8 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
         # Kstr    = κₛ * X0 * dzz0 / rdrssk
         κₛ⁽ᵗʳ⁾  = κₛ * X0 * dzz0 / rdrssk
         # # ! update ISV
-        # # ? [20250401T1206] (JMA3): why are we updating this again?
+        # # ? [20250401T1206] (JMA3): Why are we updating this again?
+        # # * [20250424T0936] (JMA3): Honestly, I have no idea. So let's comment it out for now.
         # d       =           (  ( Rs + (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) )  *         ( κₛ ^ (NK-1.0) )          )
         if iNewton == 1 # Newton iteration (Backward Euler)
             Nitmax  = 20
@@ -1123,7 +1124,6 @@ function ContinuumMechanicsBase.predict(
     for i ∈ range(2, M)
         t += ψ.Δt
         σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d = update(ψ, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, damirr, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, p; kwargs...)
-        # update!(ψ, σ__, α__, κ, ϵ__, ϵₚ__, p)
         push!(ϵ⃗, ϵ̲̲)
         push!(σ⃗, σ̲̲)
     end
@@ -1183,9 +1183,11 @@ ContinuumMechanicsBase.parameters(::Cho2019Unified) = (
     :C₁₃,    :C₁₄,    :C₂₄,    # R_d
     :C₁₅,    :C₁₆,    :C₂₅,    # H
     :C₁₇,    :C₁₈,    :C₂₆,    # R_s
-                        :NK,     # * [20250402T1521] (JMA3): I think this is the modifier for finding the k-root
-                            # *                         (see Eq. 4.22 in HEC dissertation)
-                            # *                         (c. f. `optimize.py` that NK=2.0 by default)
+                        :NK,    # * [20250402T1521] (JMA3): I think this is the modifier for finding the k-root
+                                # *                         (see Eq. 4.22 in HEC dissertation)
+                                # *                         (c. f. `optimize.py` that NK=2.0 by default)
+                                # ! [20250422T1121] (JMA3): This is exponent on κ in rate equation.
+                                # !                         Bammann assumed 2 for metals for dislocation creep in Power Law
     ## torsion, tension/compression
     :ca, :cb,
     ## dynamic recrystallization
