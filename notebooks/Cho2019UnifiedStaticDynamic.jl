@@ -178,7 +178,7 @@ begin
 	    @show (4(i - 1) + 1, 4(i - 1) + 2), θ_str, ϵ̇, last(x), 4length(x)
 	    tests[θ_str] = BCJMetalUniaxialTest(x, y, name="$(θ_flt)K")
 	    domains[θ_str] = BCJMetalStrainControl(θ_flt, ϵ̇, last(x), 4length(x), :tension)
-	    models[θ_str] = Cho2019Unified(domains[θ_str], n, ω₀, E⁺, E⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀)
+	    models[θ_str] = Cho2019UnifiedStaticDynamic(domains[θ_str], n, ω₀, E⁺, E⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀)
 	end
 	
 	tests = sort(tests; rev=false)
@@ -261,7 +261,7 @@ p
 
 # ╔═╡ 65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
 begin
-    plt = plot(xlims=(0, 1), ylims=(0, Inf), widen=1.06)
+    plt = plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:outerright, widen=1.06)
 	for (i, (θ, ψ)) in enumerate(models)
         test = tests[θ]
         # prediction = ContinuumMechanicsBase.predict(ψ, test, p)
@@ -284,10 +284,10 @@ end
 
 # ╔═╡ df492d79-2a80-4fb2-ad59-f57f4e2b99e9
 begin
-	pltq = plot(xlims=(0, 1), ylims=(0, Inf), widen=1.06)
+	pltq = plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:outerright, widen=1.06)
 	q = parameters_selection(ComponentVector(p), p_checkboxes)
 	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(
-	    collect(Cho2019Unified, values(models)),
+	    collect(Cho2019UnifiedStaticDynamic, values(models)),
 	    collect(BCJMetalUniaxialTest, values(tests)),
 	    p,
 	    parameters(first(values(models))),
@@ -336,7 +336,7 @@ end; r
 # ╠═45ed6284-590e-40ee-93f2-439f264fa032
 # ╠═2494657a-bdaa-48c5-8209-a36585697975
 # ╠═d4836c95-8b9d-4c0e-bcf3-29abdc551967
-# ╟─65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
+# ╠═65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
 # ╠═22a08ebd-2461-4625-8f9b-3ec72cbb5a05
 # ╠═df492d79-2a80-4fb2-ad59-f57f4e2b99e9
 # ╠═ac027691-ae47-4450-b9d6-b814b5be79d5
