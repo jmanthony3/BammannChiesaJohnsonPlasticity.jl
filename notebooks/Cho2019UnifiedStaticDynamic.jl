@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.11
+# v0.20.13
 
 using Markdown
 using InteractiveUtils
@@ -114,7 +114,7 @@ The `BammannChiesaJohnsonPlasticity.jl` package was modeled after the `Hyperelas
 Therefore, the `BCJPlasticity.jl` package is fully capable of performing point-simulator predictions for a variety of uniaxial loading conditions at given temperatures and strain rates.
 With the `Optimization.jl` package from SciML, calibrations for BCJ model constants may also be performed.
 This notebook expands on the `BCJPlasticity.jl` package with sliders, checkboxes, and other widgets from the `PlutoUI.jl` package which adds a layer of interaction with the BCJ plasticity model of choice.
-What follows is an example of loading experimental data from a tension test of 4340 stainless steel at room temperature ($295 [K]$) and $2 \times 10^{-3} [mm/mm/s]$ strain rate and constructing the appropriate BCJ model from test conditions and material properties.
+What follows is an example of loading experimental data from tension tests to replicate Fig. 4 from [Cho 2019](https://www.sciencedirect.com/science/article/pii/S0749641918303139?casa_token=tQbSk0wbfLwAAAAA:vQJyOp3-HPScV3EmVpZOT3Hpx6cCBa_Gwft4WzdFHHLRqSpD1s66BdkpqM8BIl4AC-Qn1bUDZg#sec5) and demonstrate constructing the appropriate BCJ model from test conditions and material properties.
 
 ## Initialize Project Environment
 First, we start by loading the required packages and defining some helper functions.
@@ -128,8 +128,6 @@ Next, we load the desired `.csv` file and configure the type of material test to
 """
 
 # ╔═╡ 398fa1e3-1d11-4285-ad23-b11a4d8628c5
-# df_Tension_e002_295 = CSV.read("../test/Data_Tension_e0002_T295.csv", DataFrame;
-# 	header=true, delim=',', types=[Float64, Float64, Float64, Float64, String])
 df_Fig4a = CSV.read("Cho2019UnifiedStaticDynamic-Fig4a.csv", DataFrame;
 	header=true, delim=',', skipto=3, types=Float64)
 
@@ -288,16 +286,6 @@ end
 begin
 	pltq = plot(xlims=(0, 1), ylims=(0, Inf), widen=1.06)
 	q = parameters_selection(ComponentVector(p), p_checkboxes)
-	# prob = ContinuumMechanicsBase.MaterialOptimizationProblem(ψ, test, p, parameters(ψ), AutoForwardDiff(), L2DistLoss(), ui=q)
-	# sol = solve(prob, LBFGS())
-	# calib = ContinuumMechanicsBase.predict(ψ, test, sol.u)
-	# plot!(deepcopy(plt), [first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6, label=@sprintf(
-	# 		"Bammann1993Failure (RMSE:%.3f, K:%d, T:%.3f [s])", rmse(
-	# 			(df_Tension_e002_295[!, "Strain"], df_Tension_e002_295[!, "Stress"]),
-	# 			([first(x) for x in eachcol(calib.data.ϵ)], [vonMises(x) for x in eachcol(calib.data.σ)] ./ 1e6)),
-	# 		sol.stats.iterations, sol.stats.time),
-	# 	linecolor=:blue,
-	# 	linestyle=:dash)
 	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(
 	    collect(Cho2019Unified, values(models)),
 	    collect(BCJMetalUniaxialTest, values(tests)),
