@@ -42,7 +42,7 @@ for (i, θ) in enumerate((298, 407, 475, 509, 542, 559, 576, 610, 678, 814))
     @show (4(i - 1) + 1, 4(i - 1) + 2), θ_str, ϵ̇, last(x), 4length(x)
     tests[θ_str] = BCJMetalUniaxialTest(x, y, name="$(θ_flt)K")
     domains[θ_str] = BCJMetalStrainControl(θ_flt, ϵ̇, last(x), 4length(x), :tension)
-    models[θ_str] = Cho2019Unified(domains[θ_str], n, ω₀, E⁺, V⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀)
+    models[θ_str] = Cho2019UnifiedStaticDynamic(domains[θ_str], n, ω₀, E⁺, V⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀)
 end
 
 tests = sort(tests; rev=false)
@@ -189,7 +189,7 @@ q = ComponentVector(
 
 begin
     problem = ContinuumMechanicsBase.MaterialOptimizationProblem(
-        collect(Cho2019Unified, values(models)),
+        collect(Cho2019UnifiedStaticDynamic, values(models)),
         collect(BCJMetalUniaxialTest, values(tests)),
         p,
         parameters(first(values(models))),

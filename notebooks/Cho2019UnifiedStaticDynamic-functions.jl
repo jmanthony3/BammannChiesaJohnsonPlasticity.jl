@@ -31,7 +31,7 @@ deviatoric(x)                   = x - volumetric(hydrostatic(x))
 Structure for viscoplasticity model with loading conditions and material properties.
 Here, uses the effective strain rate based on applied strain rate and loading direction.
 """
-struct Cho2019Unified{T<:AbstractFloat} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
+struct Cho2019UnifiedStaticDynamic{T<:AbstractFloat} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
 # struct Cho2019Unified{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
     θ       ::T         # applied temperature
     n       ::T
@@ -59,7 +59,7 @@ end
 
 Outer constructor for loading conditions and material properties which assumes a Poisson's ratio of 0.5.
 """
-function Cho2019Unified(Ω::BammannChiesaJohnsonPlasticity.BCJMetalStrainControl,
+function Cho2019UnifiedStaticDynamic(Ω::BammannChiesaJohnsonPlasticity.BCJMetalStrainControl,
         n   ::T,
         ω₀  ::T,
         E⁺  ::T,        # activation energy for grain growth
@@ -103,7 +103,7 @@ function Cho2019Unified(Ω::BammannChiesaJohnsonPlasticity.BCJMetalStrainControl
         # Δt  = Δϵ[1, 2] / ϵ_dot      # timestep
         ϵ̇
     end
-    return Cho2019Unified{T}(θ, n, ω₀, E⁺, V⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀, P, ϵ̇_eff, ϵₙ, N, Δϵ̲̲, Δt)
+    return Cho2019UnifiedStaticDynamic{T}(θ, n, ω₀, E⁺, V⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀, P, ϵ̇_eff, ϵₙ, N, Δϵ̲̲, Δt)
 end
 
 """
@@ -111,7 +111,7 @@ Using the equations and constants from [Cho et. al. (2019)](@cite choUnifiedStat
 Currently, is a literal translation of the Python code used for that publication and includes the various options for calculating recrystallization and grain growth.
 Also currently includes the support for pressure-dependent systems.
 """
-function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, η, damirr, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, (;
+function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, η, damirr, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, (;
             # BCJ-plasticity
             ## yield surface
             # base, exponent
@@ -1081,7 +1081,7 @@ function update(ψ::Cho2019Unified, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, 
 end
 
 function ContinuumMechanicsBase.predict(
-            ψ   ::Cho2019Unified{T}, # , S},
+            ψ   ::Cho2019UnifiedStaticDynamic{T}, # , S},
             test::BammannChiesaJohnsonPlasticity.AbstractBCJMetalTest{T},
             p;
             kwargs...,
@@ -1164,7 +1164,7 @@ end
 Constants for temperature equations from [Bammann et. al. (1993)](@cite bammannFailureDuctileMaterials1993).
 Note: though not explicitly listed in paper, temperature equations `h = C₁₅ * exp(-C₁₆ / θ)` and `H = C₁₇ * exp(-C₁₈ / θ)` are included (and their constants renumbered) from (c. f. [Horstemeyer (1994)](@cite horstemeyerPredictingFormingLimit1994)).
 """
-ContinuumMechanicsBase.parameters(::Cho2019Unified) = (
+ContinuumMechanicsBase.parameters(::Cho2019UnifiedStaticDynamic) = (
     # BCJ-plasticity
     ## yield surface
     # base, exponent
