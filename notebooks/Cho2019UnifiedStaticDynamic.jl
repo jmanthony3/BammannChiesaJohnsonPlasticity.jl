@@ -16,7 +16,7 @@ macro bind(def, element)
     #! format: on
 end
 
-# ╔═╡ 5cacf487-3916-4b7a-8fbf-04c8b4c9a6d9
+# ╔═╡ 5624f9cd-d46d-4dfd-ad46-e6185c120eba
 # ╠═╡ show_logs = false
 begin
 	using Pkg
@@ -37,6 +37,7 @@ begin
 	Pkg.add("Pluto")
 	Pkg.add("PlutoUI")
 	Pkg.add("Printf")
+	Pkg.add("HypertextLiteral")
 
 
 
@@ -54,26 +55,50 @@ begin
 	using Optimization, OptimizationOptimJL, LossFunctions
 	using Plots
 	using Printf
+	using HypertextLiteral
+end
 
-	# include("user-functions.jl")
+# ╔═╡ 5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
+include("Cho2019UnifiedStaticDynamic-functions.jl")
 
+# ╔═╡ d534bf54-4c83-43d6-a62c-8e4a34f8f74d
+md"""
+# Bammann-Chiesa-Johnson Plasticity Calibration
+This notebook can be used to calibrate the constants for Internal State Variables (ISVs) in the Julian implementation of the Bammann-Chiesa-Johnson (BCJ) plasticity model.
+The `BammannChiesaJohnsonPlasticity.jl` package was modeled after the `Hyperelastics.jl` package implementing the `ContinuumMechanicsBase.jl` package for common function signatures.
+Therefore, the `BCJPlasticity.jl` package is fully capable of performing point-simulator predictions for a variety of uniaxial loading conditions at given temperatures and strain rates.
+With the `Optimization.jl` package from SciML, calibrations for BCJ model constants may also be performed.
+This notebook expands on the `BCJPlasticity.jl` package with sliders, checkboxes, and other widgets from the `PlutoUI.jl` package which adds a layer of interaction with the BCJ plasticity model of choice.
+What follows is an example of loading experimental data from tension tests to replicate Fig. 4 from [Cho 2019](https://www.sciencedirect.com/science/article/pii/S0749641918303139?casa_token=tQbSk0wbfLwAAAAA:vQJyOp3-HPScV3EmVpZOT3Hpx6cCBa_Gwft4WzdFHHLRqSpD1s66BdkpqM8BIl4AC-Qn1bUDZg#sec5) and demonstrate constructing the appropriate BCJ model from test conditions and material properties.
 
+## Initialize Project Environment
+First, we start by loading the required packages and defining some helper functions.
+"""
 
-	function parameters_sliders(parameters::Vector, values::ComponentVector)
+# ╔═╡ 5cacf487-3916-4b7a-8fbf-04c8b4c9a6d9
+# ╠═╡ show_logs = false
+begin
+	function parameters_sliders(parameter_groups, value_groups::Vector)
 		return PlutoUI.combine() do Child
+			inputs = []
+			j, k = 1, 0
+			for i in range(1, length(value_groups))
+				for value_group in value_groups[i]
+					k += length(value_group)
+					parameter_group = parameter_groups[j:k]
+					input_group = [md" $(parameter): $(
+								   Child(parameter, Slider(value .* logrange(1e-3, 1e3, length=1001), default=value, show_value=true))
+								   ) " for (parameter, value) in zip(parameter_group, value_group)]
+					push!(inputs, md" $(input_group...) ")
+					j += length(value_group)
+				end
+			end
 			
-			inputs = [
-				md""" $(parameter): $(
-					Child(parameter, Slider(value .* logrange(1e-3, 1e3, length=1001), default=value))
-				)"""
-				
-				for (parameter, value) in zip(parameters, values)
-			]
-			
-			md"""
-			#### Sliders for Coarse Adjustment of Material Constants
-			$(inputs)
-			"""
+			# md"""
+			# #### Sliders for Coarse Adjustment of Material Constants
+			# $(inputs)
+			# """
+			md" $inputs "
 		end
 	end
 
@@ -101,24 +126,49 @@ begin
 		end
 		return ComponentVector(parameters)
 	end
+
+	# # https://fonsp-disorganised-mess.netlify.app/layout
+	# function aside(x)
+	# 	@htl("""
+	# 		<style>
+			
+			
+	# 		@media (min-width: calc(700px + 30px + 300px)) {
+	# 			aside.plutoui-aside-wrapper {
+	# 				position: absolute;
+	# 				right: -11px;
+	# 				width: 0px;
+	# 			}
+	# 			aside.plutoui-aside-wrapper > div {
+	# 				width: 300px;
+	# 			}
+	# 		}
+	# 		</style>
+			
+	# 		<aside class="plutoui-aside-wrapper">
+	# 		<div>
+	# 		$(x)
+	# 		</div>
+	# 		</aside>
+			
+	# 		""")
+	# end
+	# aside(embed_display(p))
+
+	# Pkg.add("PrettyTables")
+	# using PrettyTables
+	# df = DataFrame(rand(100, 5), :auto) # Example DataFrame
+
+	# html_table = pretty_table(String, df, backend = Val(:html))
+	
+	# scrollable_table = @htl("""
+	# <div style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc;">
+	#     $(HTML(html_table))
+	# </div>
+	# """)
+	
+	# scrollable_table
 end
-
-# ╔═╡ 5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
-include("Cho2019UnifiedStaticDynamic-functions.jl")
-
-# ╔═╡ d534bf54-4c83-43d6-a62c-8e4a34f8f74d
-md"""
-# Bammann-Chiesa-Johnson Plasticity Calibration
-This notebook can be used to calibrate the constants for Internal State Variables (ISVs) in the Julian implementation of the Bammann-Chiesa-Johnson (BCJ) plasticity model.
-The `BammannChiesaJohnsonPlasticity.jl` package was modeled after the `Hyperelastics.jl` package implementing the `ContinuumMechanicsBase.jl` package for common function signatures.
-Therefore, the `BCJPlasticity.jl` package is fully capable of performing point-simulator predictions for a variety of uniaxial loading conditions at given temperatures and strain rates.
-With the `Optimization.jl` package from SciML, calibrations for BCJ model constants may also be performed.
-This notebook expands on the `BCJPlasticity.jl` package with sliders, checkboxes, and other widgets from the `PlutoUI.jl` package which adds a layer of interaction with the BCJ plasticity model of choice.
-What follows is an example of loading experimental data from tension tests to replicate Fig. 4 from [Cho 2019](https://www.sciencedirect.com/science/article/pii/S0749641918303139?casa_token=tQbSk0wbfLwAAAAA:vQJyOp3-HPScV3EmVpZOT3Hpx6cCBa_Gwft4WzdFHHLRqSpD1s66BdkpqM8BIl4AC-Qn1bUDZg#sec5) and demonstrate constructing the appropriate BCJ model from test conditions and material properties.
-
-## Initialize Project Environment
-First, we start by loading the required packages and defining some helper functions.
-"""
 
 # ╔═╡ 156a860c-e8a5-4dd8-b234-0a0e4419b5a5
 md"""
@@ -129,7 +179,7 @@ Next, we load the desired `.csv` file and configure the type of material test to
 
 # ╔═╡ 398fa1e3-1d11-4285-ad23-b11a4d8628c5
 df_Fig4a = CSV.read("Cho2019UnifiedStaticDynamic-Fig4a.csv", DataFrame;
-	header=true, delim=',', skipto=3, types=Float64)
+	header=true, delim=',', skipto=3, types=Float64); nothing
 
 # ╔═╡ d6b8bf04-e1fc-41d8-93af-345953f03040
 md"""
@@ -163,6 +213,7 @@ Construct the model type given the loading conditions and material properties.
 """
 
 # ╔═╡ bd3a90e7-8896-4553-bbd8-bf72c8f60eaf
+# ╠═╡ show_logs = false
 begin
 	ϵ̇ = 4e-4
 	tests = Dict()
@@ -193,79 +244,60 @@ Now we can make a group of sliders for the pre-defined model `parameters`.
 """
 
 # ╔═╡ 45ed6284-590e-40ee-93f2-439f264fa032
-p0 = ComponentVector(
-	C₁ = 5.637,
-	C₂ = 112.6,
-	C₃ = 8.378,
-	C₄ = 324.9,
-	C₅ = 2.971,
-	C₆ = 2548.0,
-	Pₖ₁ = 1e-12,
-	Pₖ₂ = 1e-12,
-	Pₖ₃ = 1e-12,
-	C₇ = 0.1345,
-	C₈ = 351.1,
-	C₂₁ = 1e-12,
-	C₉ = 0.02869,
-	C₁₀ = 1e-12,
-	C₂₂ = 1e-12,
-	C₁₁ = 0.02928,
-	C₁₂ = 4337.0,
-	C₂₃ = 1e-12,
-	C₁₃ = 0.05098,
-	C₁₄ = 476.6,
-	C₂₄ = 1e-12,
-	C₁₅ = 0.006924,
-	C₁₆ = 1e-12,
-	C₂₅ = 1e-12,
-	C₁₇ = 2.487,
-	C₁₈ = 7611.0,
-	C₂₆ = 1e-12,
-	NK = 2.0,
-	ca = 1e-12,
-	cb = 1e-12,
-	Cx1 = 1.78e6,
-	Cx2 = 7.806e3,
-	Cdp = 1e-12,
-	Cx3 = 5.401e4,
-	Cx4 = 8943.0,
-	Csp = 1e-12,
-	Cx5 = 5.0,
-	Cxa = 0.8052,
-	Cxb = 3.68,
-	Cxc = 4.485,
-	Cg1 = 7.41e4,
-	Cg2 = 0.8826,
-	Cg3 = 1.185e-3,
-	a = 1e-12,
-	b = 1e-12,
-	c = 1e-12,
-	pCnuc = 1e-12,
-	Tnuc = 1e-12,
-	nn = 1e-12,
-	Tgrw = 1e-12,
-	kr1 = 1e-12,
-	krt = 1e-12,
-	kr2 = 1e-12,
-	kr3 = 1e-12,
-	kp1 = 1e-12,
-	kpt = 1e-12,
-	kp2 = 1e-12,
-)
+p0 = [
+	[
+		ComponentVector(C₁ = 5.637, C₂ = 112.6,),
+		ComponentVector(C₃ = 8.378, C₄ = 324.9,),
+		ComponentVector(C₅ = 2.971, C₆ = 2548.0,),
+	],
+	[
+		ComponentVector(Pₖ₁ = 1e-12, Pₖ₂ = 1e-12, Pₖ₃ = 1e-12,),
+	],
+	[
+		ComponentVector(C₇ = 0.1345, C₈ = 351.1, C₂₁ = 1e-12,),
+		ComponentVector(C₉ = 0.02869, C₁₀ = 1e-12, C₂₂ = 1e-12,),
+		ComponentVector(C₁₁ = 0.02928, C₁₂ = 4337.0, C₂₃ = 1e-12,),
+	],
+	[
+		ComponentVector(C₁₃ = 0.05098, C₁₄ = 476.6, C₂₄ = 1e-12,),
+		ComponentVector(C₁₅ = 0.006924, C₁₆ = 1e-12, C₂₅ = 1e-12,),
+		ComponentVector(C₁₇ = 2.487, C₁₈ = 7611.0, C₂₆ = 1e-12,),
+		ComponentVector(NK = 2.0,),
+	],
+	[
+		ComponentVector(ca = 1e-12, cb = 1e-12,),
+	],
+	[
+		ComponentVector(Cx1 = 1.78e6, Cx2 = 7.806e3, Cdp = 1e-12,),
+		ComponentVector(Cx3 = 5.401e4, Cx4 = 8943.0, Csp = 1e-12,),
+		ComponentVector(Cx5 = 5.0, Cxa = 0.8052, Cxb = 3.68, Cxc = 4.485,),
+	],
+	[
+		ComponentVector(Cg1 = 7.41e4, Cg2 = 0.8826, Cg3 = 1.185e-3,),
+	],
+	[
+		ComponentVector(a = 1e-12, b = 1e-12, c = 1e-12,),
+	],
+	[
+		ComponentVector(pCnuc = 1e-12, Tnuc = 1e-12, nn = 1e-12, Tgrw = 1e-12,),
+	],
+	[
+		ComponentVector(kr1 = 1e-12, krt = 1e-12, kr2 = 1e-12,
+		kr3 = 1e-12, kp1 = 1e-12, kpt = 1e-12, kp2 = 1e-12,),
+	]
+]
 
-# ╔═╡ 2494657a-bdaa-48c5-8209-a36585697975
-@bind p parameters_sliders(String.(collect(parameters(first(models)[2]))), p0)
-
-# ╔═╡ d4836c95-8b9d-4c0e-bcf3-29abdc551967
-p
+# ╔═╡ 53926f5c-e18c-4cb6-b062-bb965ec41769
+slider_ui = @bind p parameters_sliders(String.(parameters(first(models)[2])), p0);
 
 # ╔═╡ 65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
 begin
-    plt = plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:outerright, widen=1.06)
+	# slider_ui = @bind p parameters_sliders(String.(parameters(first(models)[2])), p0)
+	plt = plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:outerright, widen=1.06)
 	for (i, (θ, ψ)) in enumerate(models)
         test = tests[θ]
         # prediction = ContinuumMechanicsBase.predict(ψ, test, p)
-		prediction = ContinuumMechanicsBase.predict(ψ, test, p; iREXmethod=0, iGSmethod=0)
+		prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=2, iREXmethod=3, iGSmethod=4)
         # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
         scatter!(plt, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
                 markercolor=i,
@@ -276,8 +308,22 @@ begin
                 label="$(θ)K:Model",
             )
     end
-    plt
-end
+	# plt
+	# # [parameters_sliders(String.(parameters(first(models)[2])), p0), plt]
+	# # DataFrame("first"=>parameters_sliders(String.(parameters(first(models)[2])), p0), "second"=>plt)
+	# # PlutoUI.ExperimentalLayout.grid([parameters_sliders(String.(parameters(first(models)[2])), p0) plt])
+	# # scrollable_table = @htl("""
+	# # <div style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc;">
+	# # 	$(@bind p parameters_sliders(String.(parameters(first(models)[2])), p0))
+	# # </div>
+	# # """)
+	scrollable_table = @htl("""
+	<div style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc;">
+		$(slider_ui)
+	</div>
+	""")
+	PlutoUI.ExperimentalLayout.grid([scrollable_table plt])
+end |> PlutoUI.WideCell
 
 # ╔═╡ 22a08ebd-2461-4625-8f9b-3ec72cbb5a05
 @bind p_checkboxes confirm(MultiCheckBox(String.(collect(parameters(first(models)[2])))))
@@ -286,47 +332,56 @@ end
 begin
 	pltq = plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:outerright, widen=1.06)
 	q = parameters_selection(ComponentVector(p), p_checkboxes)
-	prob = ContinuumMechanicsBase.MaterialOptimizationProblem(
-	    collect(Cho2019UnifiedStaticDynamic, values(models)),
-	    collect(BCJMetalUniaxialTest, values(tests)),
-	    p,
-	    parameters(first(values(models))),
-	    AutoFiniteDiff(),
-	    L2DistLoss();
-	    ui=q)
-	sol = solve(prob, NelderMead())
-	for (i, (θ, ψ)) in enumerate(models)
-        test = tests[θ]
-        # calibration = ContinuumMechanicsBase.predict(ψ, test, sol.u)
-		calibration = ContinuumMechanicsBase.predict(ψ, test, sol.u; iREXmethod=0, iGSmethod=0)
-        # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
-		scatter!(pltq, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
-                markercolor=i,
-                label="$(θ)K:Exp",
-            )
-        plot!(pltq, [first(x) for x in eachcol(calibration.data.ϵ)], [vonMises(x) for x in eachcol(calibration.data.σ)],
-                linecolor=i,
-                label="$(θ)K:Calib",
-            )
-    end
+	if any(isnan, q)
+		prob = ContinuumMechanicsBase.MaterialOptimizationProblem(
+		    collect(Cho2019UnifiedStaticDynamic, values(models)),
+		    collect(BCJMetalUniaxialTest, values(tests)),
+		    p,
+		    parameters(first(values(models))),
+		    AutoFiniteDiff(),
+		    L2DistLoss();
+		    ui=q, imat=1, iYS=2, iREXmethod=3, iGSmethod=4)
+		sol = solve(prob, NelderMead())
+		for (i, (θ, ψ)) in enumerate(models)
+	        test = tests[θ]
+	        # calibration = ContinuumMechanicsBase.predict(ψ, test, sol.u)
+			calibration = ContinuumMechanicsBase.predict(ψ, test, sol.u; imat=1, iYS=2, iREXmethod=3, iGSmethod=4)
+	        # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
+			scatter!(pltq, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
+	                markercolor=i,
+	                label="$(θ)K:Exp",
+	            )
+	        plot!(pltq, [first(x) for x in eachcol(calibration.data.ϵ)], [vonMises(x) for x in eachcol(calibration.data.σ)],
+	                linecolor=i,
+	                label="$(θ)K:Calib",
+	            )
+	    end
+	end
 	pltq
 end
 
 # ╔═╡ ac027691-ae47-4450-b9d6-b814b5be79d5
-@show sol.retcode; i, r = 1, deepcopy(q); for (key, value) in zip(keys(p), q)
-	if isnan(value)
-		r[key] = sol.u[i]
-		@printf("\t%s = %.9f,\n", key, r[key])
+try
+	@show sol.retcode; i, r = 1, deepcopy(q); for (key, value) in zip(keys(p), q)
+		if isnan(value)
+			r[key] = sol.u[i]
+			@printf("\t%s = %.9f,\n", key, r[key])
+		end
+		i += 1
+	end; r
+catch exc
+	if isa(exc, UndefVarError)
+		println("Please select at least one constant to submit an optimization.")
 	end
-	global i += 1
-end; r
+end
 
 # ╔═╡ Cell order:
 # ╟─d534bf54-4c83-43d6-a62c-8e4a34f8f74d
+# ╠═5624f9cd-d46d-4dfd-ad46-e6185c120eba
 # ╠═5cacf487-3916-4b7a-8fbf-04c8b4c9a6d9
 # ╠═5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
 # ╟─156a860c-e8a5-4dd8-b234-0a0e4419b5a5
-# ╟─398fa1e3-1d11-4285-ad23-b11a4d8628c5
+# ╠═398fa1e3-1d11-4285-ad23-b11a4d8628c5
 # ╟─d6b8bf04-e1fc-41d8-93af-345953f03040
 # ╠═b63e916b-4601-4b61-97ae-9aa07515050c
 # ╟─ba3e98a7-9088-48bf-abeb-110d458b3297
@@ -334,9 +389,8 @@ end; r
 # ╠═bd3a90e7-8896-4553-bbd8-bf72c8f60eaf
 # ╟─bd66c9a7-cf0a-4d34-884b-f369722801a8
 # ╠═45ed6284-590e-40ee-93f2-439f264fa032
-# ╠═2494657a-bdaa-48c5-8209-a36585697975
-# ╠═d4836c95-8b9d-4c0e-bcf3-29abdc551967
-# ╠═65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
+# ╠═53926f5c-e18c-4cb6-b062-bb965ec41769
+# ╟─65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
 # ╠═22a08ebd-2461-4625-8f9b-3ec72cbb5a05
-# ╠═df492d79-2a80-4fb2-ad59-f57f4e2b99e9
-# ╠═ac027691-ae47-4450-b9d6-b814b5be79d5
+# ╟─df492d79-2a80-4fb2-ad59-f57f4e2b99e9
+# ╟─ac027691-ae47-4450-b9d6-b814b5be79d5

@@ -200,83 +200,83 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
     #         M0 = Kr3 * Si
     #         damirr = exp(  ( kp1 * exp(kpt/Tirr) * flu )  ^  ( 1.0 / kp2 )  )
     #     end
-    # pressure-temperature dependent reference density
-        #--- Olivine paramters
-            ttop    = 300.0
-            κ₀      = 129.0     * 1e3
-            dK0dT   = -1e-3     * 1e3
-            dKdP    = 4.47
-            rho0    = 3345.0
-            alp     = 3.5       * 1e-5
-            G0      = 79.0      * 1e3
-            dG0dT   = -0.014    * 1e3
-            dG0dP   = 1.60
-            ddG0ddP = -0.04     / 1e3
-        #--- Cpx (diopside) paramters (Li & Neuville, 2010)
-            # ttop    = 300.0
-            # K0      = 113.0     * 1e3
-            # dK0dT   = -0.012    * 1e3
-            # dKdP    = 4.7
-            # rho0    = 3270.0
-            # alp     = 3.2       * 1e-5
-            # G0      = 40.0      * 1e3 # 73.0 GPa (for real diopside)
-            # dG0dT   = -0.011    * 1e3
-            # dG0dP   = 1.50
-            # ddG0ddP = -0.04     / 1e3
-        #--- Py (Pyrope) paramters (Hu et al.,2106)
-            # ttop    = 300.0
-            # K0      = 169.0     * 1e3
-            # dK0dT   = -0.0204   * 1e3
-            # dKdP    = 4.31
-            # rho0    = 3270.0
-            # alp     = 2.724     * 1e-5
-            # G0      = 90.0      * 1e3
-            # dG0dT   = -0.0126   * 1e3
-            # dG0dP   = 1.71
-            # ddG0ddP = -0.0415   / 1e3
-        #--- B-M: density calculation at given pressure and temperature
-            KT0   = κ₀      + (            dK0dT * (θ-ttop)    )
-            RT0   = rho0    * (  1.0  -  (   alp * (θ-ttop) )  )
-            RRT0  = 1.0
-            itmax = 10
-            convg = 1e-12
-            Niter = 0
-            # Newton iterations begin
-            for k in range(0, itmax)
-                RRT073 = RRT0 ^ (7.0/3.0)
-                RRT053 = RRT0 ^ (5.0/3.0)
-                RRT023 = RRT0 ^ (2.0/3.0)
-                FF = pres    -    (#={=#   1.5KT0   *   (  RRT073  -  RRT053  )   *   (#=[=#
-                    1.0  +  ( (3.0/4.0) * (dKdP-4.0) * (RRT023-1.0) )  #=]=#)   #=}=#)
-                # define derivative of F, dF
-                dF1 = ( 18.0 / 24.0 )  *  ( dKdP - 4.0 )  *  KT0  *  ( RRT0 ^ (-1.0/3.0) )  *  ( RRT073 - RRT053 )
-                dF2 = 1.5KT0
-                dF2 = dF2 * (  ( 7.0 / 3.0 )  *  ( RRT0 ^ (4.0/3.0) )  -  ( 5.0 / 3.0 )  *  ( RRT0 ^ (2.0/3.0) )  )
-                dF2 = dF2 * (  ( 3.0 / 4.0 )  *  ( dKdP - 4.0 )  *  ( RRT023 - 1.0 )  +  1.0)
-                dF  = -(dF1+dF2)
-                # find corrector
-                dRRT0 = -FF/dF
-                # update solution
-                RRT0 -= dRRT0
-                # convergence check
-                err = abs(dRRT0)
-                err <= convg ? break : Niter += 1
-                Niter >= (itmax - 1) ? println("BM convergence issue! ", err) : nothing
-            end
-            # pressure-temperature dependent reference density
-            ρ = RRT0 * RT0
+    # # pressure-temperature dependent reference density
+    #     #--- Olivine paramters
+    #         ttop    = 300.0
+    #         κ₀      = 129.0     * 1e3
+    #         dK0dT   = -1e-3     * 1e3
+    #         dKdP    = 4.47
+    #         rho0    = 3345.0
+    #         alp     = 3.5       * 1e-5
+    #         G0      = 79.0      * 1e3
+    #         dG0dT   = -0.014    * 1e3
+    #         dG0dP   = 1.60
+    #         ddG0ddP = -0.04     / 1e3
+    #     #--- Cpx (diopside) paramters (Li & Neuville, 2010)
+    #         # ttop    = 300.0
+    #         # K0      = 113.0     * 1e3
+    #         # dK0dT   = -0.012    * 1e3
+    #         # dKdP    = 4.7
+    #         # rho0    = 3270.0
+    #         # alp     = 3.2       * 1e-5
+    #         # G0      = 40.0      * 1e3 # 73.0 GPa (for real diopside)
+    #         # dG0dT   = -0.011    * 1e3
+    #         # dG0dP   = 1.50
+    #         # ddG0ddP = -0.04     / 1e3
+    #     #--- Py (Pyrope) paramters (Hu et al.,2106)
+    #         # ttop    = 300.0
+    #         # K0      = 169.0     * 1e3
+    #         # dK0dT   = -0.0204   * 1e3
+    #         # dKdP    = 4.31
+    #         # rho0    = 3270.0
+    #         # alp     = 2.724     * 1e-5
+    #         # G0      = 90.0      * 1e3
+    #         # dG0dT   = -0.0126   * 1e3
+    #         # dG0dP   = 1.71
+    #         # ddG0ddP = -0.0415   / 1e3
+    #     #--- B-M: density calculation at given pressure and temperature
+    #         KT0   = κ₀      + (            dK0dT * (θ-ttop)    )
+    #         RT0   = rho0    * (  1.0  -  (   alp * (θ-ttop) )  )
+    #         RRT0  = 1.0
+    #         itmax = 10
+    #         convg = 1e-12
+    #         Niter = 0
+    #         # Newton iterations begin
+    #         for k in range(0, itmax)
+    #             RRT073 = RRT0 ^ (7.0/3.0)
+    #             RRT053 = RRT0 ^ (5.0/3.0)
+    #             RRT023 = RRT0 ^ (2.0/3.0)
+    #             FF = pres    -    (#={=#   1.5KT0   *   (  RRT073  -  RRT053  )   *   (#=[=#
+    #                 1.0  +  ( (3.0/4.0) * (dKdP-4.0) * (RRT023-1.0) )  #=]=#)   #=}=#)
+    #             # define derivative of F, dF
+    #             dF1 = ( 18.0 / 24.0 )  *  ( dKdP - 4.0 )  *  KT0  *  ( RRT0 ^ (-1.0/3.0) )  *  ( RRT073 - RRT053 )
+    #             dF2 = 1.5KT0
+    #             dF2 = dF2 * (  ( 7.0 / 3.0 )  *  ( RRT0 ^ (4.0/3.0) )  -  ( 5.0 / 3.0 )  *  ( RRT0 ^ (2.0/3.0) )  )
+    #             dF2 = dF2 * (  ( 3.0 / 4.0 )  *  ( dKdP - 4.0 )  *  ( RRT023 - 1.0 )  +  1.0)
+    #             dF  = -(dF1+dF2)
+    #             # find corrector
+    #             dRRT0 = -FF/dF
+    #             # update solution
+    #             RRT0 -= dRRT0
+    #             # convergence check
+    #             err = abs(dRRT0)
+    #             err <= convg ? break : Niter += 1
+    #             Niter >= (itmax - 1) ? println("BM convergence issue! ", err) : nothing
+    #         end
+    #         # pressure-temperature dependent reference density
+    #         ρ = RRT0 * RT0
     # shear modulus
         #--- 3rd-order Finite Strain (Birch-Murnaghan EOS)
-        KT0 = κ₀     +   (          dK0dT * (θ-ttop)    )
-        RT0 = rho0   *   (  1.0 - (   alp * (θ-ttop) )  )
-        GT0 = G0     +   (          dG0dT * (θ-ttop)    )
-        b1  = (3KT0*dG0dP) - 5GT0
-        b2  = 9.0(   (  KT0  ^  2.0  )   *   (  ddG0ddP  +  (
-                (1.0/KT0) * (dKdP-4.0) * dG0dP )  )   +    (  35.0GT0  /  9.0  )   )
-        F   = 0.5(  ( (ρ/RT0) ^ (2.0/3.0) )  -  1.0  )
-        μ   = max(  0.01,  ( (1.0+2.0F) ^ 2.5 )  *  ( GT0 + (b1*F) + 0.5b2 * (F^2.0) )  )
-        ν   = 0.3
-        K   = (2.0/3.0) * μ * (1.0+ν) / (1.0-2ν)
+        # KT0 = κ₀     +   (          dK0dT * (θ-ttop)    )
+        # RT0 = rho0   *   (  1.0 - (   alp * (θ-ttop) )  )
+        # GT0 = G0     +   (          dG0dT * (θ-ttop)    )
+        # b1  = (3KT0*dG0dP) - 5GT0
+        # b2  = 9.0(   (  KT0  ^  2.0  )   *   (  ddG0ddP  +  (
+        #         (1.0/KT0) * (dKdP-4.0) * dG0dP )  )   +    (  35.0GT0  /  9.0  )   )
+        # F   = 0.5(  ( (ρ/RT0) ^ (2.0/3.0) )  -  1.0  )
+        # μ   = max(  0.01,  ( (1.0+2.0F) ^ 2.5 )  *  ( GT0 + (b1*F) + 0.5b2 * (F^2.0) )  )
+        # ν   = 0.3
+        # K   = (2.0/3.0) * μ * (1.0+ν) / (1.0-2ν)
         if     imat == 1    # OFHC Cu (irradation-ISV model)
            μ = 5.47e4    - (34.1*θ)
            K = 70000.0
@@ -365,20 +365,20 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         #      1-Pressure sensitive (Shear-Mises);
         #      2-Pressure sensitive (TANH)
         if     iYS == 0
-            Yₚ = 0.
+            # Yₚ = 0.
         elseif iYS == 1
-            tanB = tanβ₀
-            Pa = Pₖ₁   *   (  ( 1.0 + exp(-Pₖ₂/θ) )  ^  ( -Pₖ₃ )  )
-            Pc = 0.0Pa
-            Pd = Pa - Pc
-            imode, Yₚ = if P <= Pa
-                imode, Ft = (P<Pc)   ?   (1, 0.0)   :   (
-                    2,  ( 0.5Pd )  *  ( (P-Pc) ^ 2.0 )  *  tanB   )
-                Yₚ = (P*tanB) - Ft
-                (   imode,                             Yₚ   )
-            else
-                (       3,   (  Pa  -  0.5Pd  )   *  tanB   )
-            end
+            # tanB = tanβ₀
+            # Pa = Pₖ₁   *   (  ( 1.0 + exp(-Pₖ₂/θ) )  ^  ( -Pₖ₃ )  )
+            # Pc = 0.0Pa
+            # Pd = Pa - Pc
+            # imode, Yₚ = if P <= Pa
+            #     imode, Ft = (P<Pc)   ?   (1, 0.0)   :   (
+            #         2,  ( 0.5Pd )  *  ( (P-Pc) ^ 2.0 )  *  tanB   )
+            #     Yₚ = (P*tanB) - Ft
+            #     (   imode,                             Yₚ   )
+            # else
+            #     (       3,   (  Pa  -  0.5Pd  )   *  tanB   )
+            # end
         elseif iYS == 2
             #Yp = Pk1*exp(-Pk2*θ)*tanh(B2*P[i])
             #Yp = (Pk1*(1. + exp(-Pk2/θ))^(-Pk3))*tanh(B2*P[i])
@@ -405,60 +405,60 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
     # REX Model
         ## REX calculation: separated DRX and SRX equations
             if     iREXmethod == 0
-                xx  = 0.0
-                dXR = 0.0
-                dXH = 0.0
-                dXd = 0.0
-                dXs = 0.0
+                # xx  = 0.0
+                # dXR = 0.0
+                # dXH = 0.0
+                # dXd = 0.0
+                # dXs = 0.0
             elseif iREXmethod == 1 # Euler Method (explicit)
-                KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
-                dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
-                dAlpha  = max(0.0, dAlpha)
-                dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  (     κ ^ 2.0 )  )
-                dKappa  = max(0.0, dKappa)
-                KAlMu1  = μ  \  ( dKappa + dAlpha )
-                Cxd     = Cx1   *   exp(  -( Cx2 + (P*Cdp) )  /  θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
-                Cxs     = Cx3   *   exp(  -( Cx4 + (P*Csp) )  /  θ  )   *   (  KAlMu          *  Δt  )
-                Ch      = Cx5 * KAlMu1 * Δt
-                # pX0     = Cd + Cs
-                # dXR     = pX0*(X[i-1]^Cxa)*(1. - X[i-1])^Cxb
-                # dXH     = Ch*X[i-1]^Cxc
-                # dX      = dXR - dXH
-                # new trial
-                dXd     = Cxd  *  ( X ^ Cxa )  *  ( (1.0-X) ^ Cxb )
-                dXs     = Cxs  *  ( X ^ Cxa )  *  ( (1.0-X) ^ Cxb )
-                dXR     = dXd + dXs
-                dXH     = Ch  *  ( X ^ Cxc )
-                dX      = dXR - dXH
-                # # ? [20250402T1149] (JMA3): Maybe this (v) should be included? It's not originally...
-                # # * [20250402T1151] (JMA3): Maybe this section of reassignment is redundant
-                # # * [20250424T0955] (JMA3): I commented this out because it seems redundant.
-                # # * ========================================================================
-                # # *                         since these get updated at the end anyway.
-                # # XR     += dXR # ! update ISV
-                # XH     += dXH # ! update ISV
-                # Xd     += dXd # ! update ISV
-                # Xs     += dXs # ! update ISV
-                # # * ========================================================================
+                # KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
+                # dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
+                # dAlpha  = max(0.0, dAlpha)
+                # dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  (     κ ^ 2.0 )  )
+                # dKappa  = max(0.0, dKappa)
+                # KAlMu1  = μ  \  ( dKappa + dAlpha )
+                # Cxd     = Cx1   *   exp(  -( Cx2 + (P*Cdp) )  /  θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
+                # Cxs     = Cx3   *   exp(  -( Cx4 + (P*Csp) )  /  θ  )   *   (  KAlMu          *  Δt  )
+                # Ch      = Cx5 * KAlMu1 * Δt
+                # # pX0     = Cd + Cs
+                # # dXR     = pX0*(X[i-1]^Cxa)*(1. - X[i-1])^Cxb
+                # # dXH     = Ch*X[i-1]^Cxc
                 # # dX      = dXR - dXH
-                xx      = X + dX
+                # # new trial
+                # dXd     = Cxd  *  ( X ^ Cxa )  *  ( (1.0-X) ^ Cxb )
+                # dXs     = Cxs  *  ( X ^ Cxa )  *  ( (1.0-X) ^ Cxb )
+                # dXR     = dXd + dXs
+                # dXH     = Ch  *  ( X ^ Cxc )
+                # dX      = dXR - dXH
+                # # # ? [20250402T1149] (JMA3): Maybe this (v) should be included? It's not originally...
+                # # # * [20250402T1151] (JMA3): Maybe this section of reassignment is redundant
+                # # # * [20250424T0955] (JMA3): I commented this out because it seems redundant.
+                # # # * ========================================================================
+                # # # *                         since these get updated at the end anyway.
+                # # # XR     += dXR # ! update ISV
+                # # XH     += dXH # ! update ISV
+                # # Xd     += dXd # ! update ISV
+                # # Xs     += dXs # ! update ISV
+                # # # * ========================================================================
+                # # # dX      = dXR - dXH
+                # xx      = X + dX
             elseif iREXmethod == 2 # explicit exponential integration algorithm
-                KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
-                dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
-                dAlpha  = max(0.0, dAlpha)
-                dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  (      κ ^ 2.0 )  )
-                dKappa  = max(0.0, dKappa)
-                KAlMu1  = μ  \  ( dKappa + dAlpha )
-                Cxd     = Cx1   *   exp(  -( Cx2 + (   P*Cdp) )  /        θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
-                Cxs     = Cx3   *   exp(  -( Cx4 + (   P*Csp) )  /        θ  )   *   (  KAlMu          *  Δt  )
-                Ch      = Cx5 * KAlMu1 * Δt
-                Udt     = ( Cxd + Cxs )  *  ( X ^ Cxa )  *  ( (1.0-X) ^ (Cxb-1.0) )
-                Udt     = Udt   +   (  Ch  *  (  X ^ (Cxc-1.0)  )  )
-                Vdt     = ( Cxd + Cxs )  *  ( X ^ Cxa )  *  ( (1.0-X) ^ (Cxb-1.0) )
-                xx      = (  X   *   exp( -Udt )  )   +   (  Vdt  *  ( (1.0-exp(-Udt)) / Udt )  )
-                pX0     = Cxd + Cxs
-                dXR     = pX0          *  ( X ^ Cxa )  *  ( (1.0-X) ^  Cxb  )
-                dXH     = Ch * (X^Cxc)
+                # KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
+                # dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
+                # dAlpha  = max(0.0, dAlpha)
+                # dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  (      κ ^ 2.0 )  )
+                # dKappa  = max(0.0, dKappa)
+                # KAlMu1  = μ  \  ( dKappa + dAlpha )
+                # Cxd     = Cx1   *   exp(  -( Cx2 + (   P*Cdp) )  /        θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
+                # Cxs     = Cx3   *   exp(  -( Cx4 + (   P*Csp) )  /        θ  )   *   (  KAlMu          *  Δt  )
+                # Ch      = Cx5 * KAlMu1 * Δt
+                # Udt     = ( Cxd + Cxs )  *  ( X ^ Cxa )  *  ( (1.0-X) ^ (Cxb-1.0) )
+                # Udt     = Udt   +   (  Ch  *  (  X ^ (Cxc-1.0)  )  )
+                # Vdt     = ( Cxd + Cxs )  *  ( X ^ Cxa )  *  ( (1.0-X) ^ (Cxb-1.0) )
+                # xx      = (  X   *   exp( -Udt )  )   +   (  Vdt  *  ( (1.0-exp(-Udt)) / Udt )  )
+                # pX0     = Cxd + Cxs
+                # dXR     = pX0          *  ( X ^ Cxa )  *  ( (1.0-X) ^  Cxb  )
+                # dXH     = Ch * (X^Cxc)
             elseif iREXmethod == 3 # RK4-explicit method
                 # K = 10.
                 KAlMu   = μ  \  ( (κ^1.0) + (α̲̲_mag^1.0) )
@@ -490,92 +490,92 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                 dXR     = pX0  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )
                 dXH     =  Ch  *  ( xx ^ Cxc )
             elseif iREXmethod >= 4 # implicitly solve functions using Newton-Rapson method
-                Nitmax = 20
-                Ntol   = 1e-6
-                xx     = 0.5
-                for k in range(0, Nitmax)
-                    if     iREXmethod == 4 # Euler Method (implicit)
-                        KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
-                        dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *   ( α̲̲_mag ^ 2.0 )  )
-                        dAlpha  = max(0.0, dAlpha)
-                        dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *   (      κ ^ 2.0 )  )
-                        dKappa  = max(0.0, dKappa)
-                        KAlMu1  = μ  \  ( dKappa + dAlpha )
-                        Cxd      = Cx1   *   exp(  -( Cx2 + (P*Cdp) )  /  θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
-                        Cxs      = Cx3   *   exp(  -( Cx4 + (P*Csp) )  /  θ  )   *   (  KAlMu          *  Δt  )
-                        Ch      = Cx5 * KAlMu1 * Δt
-                        # TODO [20250331T1119] (JMA3): come back to decrement this section instead
-                        F       = X  +   (  ( Cxd + Cxs )  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )  )
-                        F       = F  - ( Ch * (xx^Cxc) ) - xx
-                        dF      =    - ( Cxd + Cxs )  *  Cxb  *  ( (1.0-xx) ^ (Cxb-1.0) )  *  ( xx ^  Cxa )
-                        dF      = dF + ( Cxd + Cxs )  *  Cxa  *  ( (1.0-xx) ^  Cxb      )  *  ( xx ^ (Cxa-1.0))
-                        dF      = dF - (      Ch    *  Cxc  *  ( xx ^ (Cxc-1.0) )  )
-                        dF      = dF - 1.0
-                    elseif iREXmethod == 5 # exponential integration algorithm (asymptotic)
-                        KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
-                        dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
-                        dAlpha  = max(0.0, dAlpha)
-                        dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  (      κ ^ 2.0 )  )
-                        dKappa  = max(0.0, dKappa)
-                        KAlMu1  = μ  \  ( dKappa + dAlpha )
-                        Cxd      = Cx1   *   exp(  -( Cx2 + (P*Cdp) )  /  θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
-                        Cxs      = Cx3   *   exp(  -( Cx4 + (P*Csp) )  /  θ  )   *   (  KAlMu          *  Δt  )
-                        Ch      = Cx5 * KAlMu1 * Δt
-                        Udt     = ( Cxd + Cxs )  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ (Cxb-1.0) )
-                        Udt     = Udt    +    (  Ch  *  ( xx ^ (Cxc-1.0) )  )
-                        Vdt     = ( Cxd + Cxs )  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ (Cxb-1.0) )
-                        F       = (   X * exp(-Udt)   )    +    (   Vdt   *   (  ( 1.0-exp(-Udt) )  /  Udt  )   )    -    xx
-                        dUdt    = ( Cxc - 1.0 )  *  Ch  *  ( xx ^ (Cxc-2.0) )
-                        dUdt    = dUdt   +   (  ( Cxd + Cxs )  *    Cxa          *  ( xx ^ (Cxa-1.0) )  *  ( (1.0-xx) ^ (Cxb-1.0) )  )
-                        dUdt    = dUdt   -   (  ( Cxd + Cxs )  *  ( Cxb - 1.0 )  *  ( xx ^  Cxa      )  *  ( (1.0-xx) ^ (Cxb-2.0) )  )
-                        dVdt    =            (  ( Cxd + Cxs )  *    Cxa          *  ( xx ^ (Cxa-1.0) )  *  ( (1.0-xx) ^ (Cxb-1.0) )  )
-                        dVdt    = dVdt   -   (  ( Cxd + Cxs )  *  ( Cxb - 1.0 )  *  ( xx ^  Cxa      )  *  ( (1.0-xx) ^ (Cxb-2.0) )  )
-                        dF      = -X * dUdt * exp(-Udt)
-                        dF      = dF    +    (   (  ( dVdt/Udt )  -  ( (Vdt*dUdt) / (Udt^2.0) )  )   *   (   1.0  -  exp(-Udt)  )   )
-                        dF      = dF    +    (   (                      Vdt       /  Udt         )   *   (  dUdt  *  exp(-Udt)  )   )
-                        dF     -= 1.0
-                    elseif iREXmethod == 6 # exponential integration algorithm (trapezoidal)
-                        KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
-                        dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
-                        dAlpha  = max(0.0, dAlpha)
-                        dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  (      κ ^ 2.0 )  )
-                        dKappa  = max(0.0, dKappa)
-                        KAlMu1  = μ  \  ( dKappa + dAlpha )
-                        Cxd      = Cx1   *   exp(  -( Cx2 + (P*Cdp) )  /  θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
-                        Cxs      = Cx3   *   exp(  -( Cx4 + (P*Csp) )  /  θ  )   *   (  KAlMu          *  Δt  )
-                        Ch      = Cx5 * KAlMu1 * Δt
-                        Udt     = ( Cxd + Cxs )  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ (Cxb-1.0) )
-                        Udt     = Udt   +   (  Ch  *  ( xx ^ (Cxc-1.0) )  )
-                        U0dt    = ( Cxd + Cxs )  *  (  X ^ Cxa )  *  ( (1.0- X) ^ (Cxb-1.0) )
-                        U0dt    = U0dt  +   (  Ch  *  (  X ^ (Cxc-1.0) )  )
-                        Vdt     = ( Cxd + Cxs )  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ (Cxb-1.0) )
-                        V0dt    = ( Cxd + Cxs )  *  (  X ^ Cxa )  *  ( (1.0- X) ^ (Cxb-1.0) )
-                        F       =                   X  *  exp( -0.5(U0dt+Udt) )
-                        F      +=          0.5(  V0dt  *  exp( -0.5(U0dt+Udt) )  +  Vdt  )   -   xx
-                        dUdt    = ( Cxc - 1.0 )  *  Ch  *  ( xx ^ (Cxc-2.0) )
-                        dUdt    = dUdt   +   (  ( Cxd + Cxs )  *    Cxa          *  ( xx ^ (Cxa-1.0) )  *  ( (1.0-xx) ^ (Cxb-1.0) )  )
-                        dUdt    = dUdt   -   (  ( Cxd + Cxs )  *  ( Cxb - 1.0 )  *  ( xx ^  Cxa      )  *  ( (1.0-xx) ^ (Cxb-2.0) )  )
-                        dVdt    =            (  ( Cxd + Cxs )  *    Cxa          *  ( xx ^ (Cxa-1.0) )  *  ( (1.0-xx) ^ (Cxb-1.0) )  )
-                        dVdt    = dVdt   -   (  ( Cxd + Cxs )  *  ( Cxb - 1.0 )  *  ( xx ^  Cxa      )  *  ( (1.0-xx) ^ (Cxb-2.0) )  )
-                        dF      = -0.5dUdt  *  X  *  exp( -0.5(U0dt+Udt) )
-                        dF     += 0.5(  -0.5dUdt  *  V0dt  *  exp( -0.5(U0dt+Udt) )  +  dVdt  )
-                        dF     -= 1.0
-                    end
+                # Nitmax = 20
+                # Ntol   = 1e-6
+                # xx     = 0.5
+                # for k in range(0, Nitmax)
+                #     if     iREXmethod == 4 # Euler Method (implicit)
+                #         KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
+                #         dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *   ( α̲̲_mag ^ 2.0 )  )
+                #         dAlpha  = max(0.0, dAlpha)
+                #         dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *   (      κ ^ 2.0 )  )
+                #         dKappa  = max(0.0, dKappa)
+                #         KAlMu1  = μ  \  ( dKappa + dAlpha )
+                #         Cxd      = Cx1   *   exp(  -( Cx2 + (P*Cdp) )  /  θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
+                #         Cxs      = Cx3   *   exp(  -( Cx4 + (P*Csp) )  /  θ  )   *   (  KAlMu          *  Δt  )
+                #         Ch      = Cx5 * KAlMu1 * Δt
+                #         # TODO [20250331T1119] (JMA3): come back to decrement this section instead
+                #         F       = X  +   (  ( Cxd + Cxs )  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )  )
+                #         F       = F  - ( Ch * (xx^Cxc) ) - xx
+                #         dF      =    - ( Cxd + Cxs )  *  Cxb  *  ( (1.0-xx) ^ (Cxb-1.0) )  *  ( xx ^  Cxa )
+                #         dF      = dF + ( Cxd + Cxs )  *  Cxa  *  ( (1.0-xx) ^  Cxb      )  *  ( xx ^ (Cxa-1.0))
+                #         dF      = dF - (      Ch    *  Cxc  *  ( xx ^ (Cxc-1.0) )  )
+                #         dF      = dF - 1.0
+                #     elseif iREXmethod == 5 # exponential integration algorithm (asymptotic)
+                #         KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
+                #         dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
+                #         dAlpha  = max(0.0, dAlpha)
+                #         dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  (      κ ^ 2.0 )  )
+                #         dKappa  = max(0.0, dKappa)
+                #         KAlMu1  = μ  \  ( dKappa + dAlpha )
+                #         Cxd      = Cx1   *   exp(  -( Cx2 + (P*Cdp) )  /  θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
+                #         Cxs      = Cx3   *   exp(  -( Cx4 + (P*Csp) )  /  θ  )   *   (  KAlMu          *  Δt  )
+                #         Ch      = Cx5 * KAlMu1 * Δt
+                #         Udt     = ( Cxd + Cxs )  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ (Cxb-1.0) )
+                #         Udt     = Udt    +    (  Ch  *  ( xx ^ (Cxc-1.0) )  )
+                #         Vdt     = ( Cxd + Cxs )  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ (Cxb-1.0) )
+                #         F       = (   X * exp(-Udt)   )    +    (   Vdt   *   (  ( 1.0-exp(-Udt) )  /  Udt  )   )    -    xx
+                #         dUdt    = ( Cxc - 1.0 )  *  Ch  *  ( xx ^ (Cxc-2.0) )
+                #         dUdt    = dUdt   +   (  ( Cxd + Cxs )  *    Cxa          *  ( xx ^ (Cxa-1.0) )  *  ( (1.0-xx) ^ (Cxb-1.0) )  )
+                #         dUdt    = dUdt   -   (  ( Cxd + Cxs )  *  ( Cxb - 1.0 )  *  ( xx ^  Cxa      )  *  ( (1.0-xx) ^ (Cxb-2.0) )  )
+                #         dVdt    =            (  ( Cxd + Cxs )  *    Cxa          *  ( xx ^ (Cxa-1.0) )  *  ( (1.0-xx) ^ (Cxb-1.0) )  )
+                #         dVdt    = dVdt   -   (  ( Cxd + Cxs )  *  ( Cxb - 1.0 )  *  ( xx ^  Cxa      )  *  ( (1.0-xx) ^ (Cxb-2.0) )  )
+                #         dF      = -X * dUdt * exp(-Udt)
+                #         dF      = dF    +    (   (  ( dVdt/Udt )  -  ( (Vdt*dUdt) / (Udt^2.0) )  )   *   (   1.0  -  exp(-Udt)  )   )
+                #         dF      = dF    +    (   (                      Vdt       /  Udt         )   *   (  dUdt  *  exp(-Udt)  )   )
+                #         dF     -= 1.0
+                #     elseif iREXmethod == 6 # exponential integration algorithm (trapezoidal)
+                #         KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
+                #         dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
+                #         dAlpha  = max(0.0, dAlpha)
+                #         dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  (      κ ^ 2.0 )  )
+                #         dKappa  = max(0.0, dKappa)
+                #         KAlMu1  = μ  \  ( dKappa + dAlpha )
+                #         Cxd      = Cx1   *   exp(  -( Cx2 + (P*Cdp) )  /  θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
+                #         Cxs      = Cx3   *   exp(  -( Cx4 + (P*Csp) )  /  θ  )   *   (  KAlMu          *  Δt  )
+                #         Ch      = Cx5 * KAlMu1 * Δt
+                #         Udt     = ( Cxd + Cxs )  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ (Cxb-1.0) )
+                #         Udt     = Udt   +   (  Ch  *  ( xx ^ (Cxc-1.0) )  )
+                #         U0dt    = ( Cxd + Cxs )  *  (  X ^ Cxa )  *  ( (1.0- X) ^ (Cxb-1.0) )
+                #         U0dt    = U0dt  +   (  Ch  *  (  X ^ (Cxc-1.0) )  )
+                #         Vdt     = ( Cxd + Cxs )  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ (Cxb-1.0) )
+                #         V0dt    = ( Cxd + Cxs )  *  (  X ^ Cxa )  *  ( (1.0- X) ^ (Cxb-1.0) )
+                #         F       =                   X  *  exp( -0.5(U0dt+Udt) )
+                #         F      +=          0.5(  V0dt  *  exp( -0.5(U0dt+Udt) )  +  Vdt  )   -   xx
+                #         dUdt    = ( Cxc - 1.0 )  *  Ch  *  ( xx ^ (Cxc-2.0) )
+                #         dUdt    = dUdt   +   (  ( Cxd + Cxs )  *    Cxa          *  ( xx ^ (Cxa-1.0) )  *  ( (1.0-xx) ^ (Cxb-1.0) )  )
+                #         dUdt    = dUdt   -   (  ( Cxd + Cxs )  *  ( Cxb - 1.0 )  *  ( xx ^  Cxa      )  *  ( (1.0-xx) ^ (Cxb-2.0) )  )
+                #         dVdt    =            (  ( Cxd + Cxs )  *    Cxa          *  ( xx ^ (Cxa-1.0) )  *  ( (1.0-xx) ^ (Cxb-1.0) )  )
+                #         dVdt    = dVdt   -   (  ( Cxd + Cxs )  *  ( Cxb - 1.0 )  *  ( xx ^  Cxa      )  *  ( (1.0-xx) ^ (Cxb-2.0) )  )
+                #         dF      = -0.5dUdt  *  X  *  exp( -0.5(U0dt+Udt) )
+                #         dF     += 0.5(  -0.5dUdt  *  V0dt  *  exp( -0.5(U0dt+Udt) )  +  dVdt  )
+                #         dF     -= 1.0
+                #     end
 
-                    dxx = -F / dF
-                    xx  = max(1e-6, min(0.9999999, xx + dxx))
+                #     dxx = -F / dF
+                #     xx  = max(1e-6, min(0.9999999, xx + dxx))
 
-                    pX0 =  Cxd  +  Cxs
-                    dXR = pX0  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )
-                    dXH =  Ch  *  ( xx ^ Cxc )
+                #     pX0 =  Cxd  +  Cxs
+                #     dXR = pX0  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )
+                #     dXH =  Ch  *  ( xx ^ Cxc )
 
-                    if abs(dxx) <= Ntol
-                        break
-                    end
-                    if k >= Nitmax-1
-                        println("Newton-Rapson Convergence Issue: k >= Nitmax")
-                    end
-                end
+                #     if abs(dxx) <= Ntol
+                #         break
+                #     end
+                #     if k >= Nitmax-1
+                #         println("Newton-Rapson Convergence Issue: k >= Nitmax")
+                #     end
+                # end
             else
                 error("iREXMethod > 6 which is not supported.")
             end
@@ -598,60 +598,60 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             # iGSmethod = 0 # [20250402T1523] (JMA3): I commented this out to let the keyword argument have precedence.
             dim1 = d
             if     iGSmethod == 0
-                d = dim1
+                # d = dim1
             elseif iGSmethod == 1 # Forward Euler (explicit)
-                # static grain growth rate
-                dr      = dim1
-                dsgk    =  ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )
-                dsgg    = dsgk   /   (  n  *  ( dr ^ (n-1.0) )  )
-                # dynamic grain size reduction rate (new version: EPSL2020)
-                dred    = Cg1 * X * ϵ̲̲̇′_mag * (dr^Cg2)
-                # total grain size change rate
-                d       = dr  +  ( (dsgg-dred) * Δt ) # ! update ISV
-                # Z       = ddd*exp((sxE + P[i]*1.e6*sxV)/(R*θ))
-                # dss     = (sxk/(Cg3*sxn*0.3))^(1./(sxn-1.+Cg2))*Z^(-(1./(sxn-1.+Cg2)))
+                # # static grain growth rate
+                # dr      = dim1
+                # dsgk    =  ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )
+                # dsgg    = dsgk   /   (  n  *  ( dr ^ (n-1.0) )  )
+                # # dynamic grain size reduction rate (new version: EPSL2020)
+                # dred    = Cg1 * X * ϵ̲̲̇′_mag * (dr^Cg2)
+                # # total grain size change rate
+                # d       = dr  +  ( (dsgg-dred) * Δt ) # ! update ISV
+                # # Z       = ddd*exp((sxE + P[i]*1.e6*sxV)/(R*θ))
+                # # dss     = (sxk/(Cg3*sxn*0.3))^(1./(sxn-1.+Cg2))*Z^(-(1./(sxn-1.+Cg2)))
             elseif iGSmethod == 2 # Backward Euler: a = 1 (implicit); a = 0.5 (Crank-Nicholson)
-                λ       = 1.0
-                Nitmax  = 20
-                Convg   = 1e-6
-                dr      = dim1
-                # dsgk    = sxk*exp(-(sxE + P[i]*1.e6*sxV)/(R*θ))
-                # time downscaling factor for matching to n=4
-                tscl    = t  ^  ( (n/4.0) - 1.0 )
-                dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )   *   tscl
-                xx      = dr
-                for k in range(0, Nitmax)
-                    F   = dr      +      (#={=#     dsgk     *     Δt     /     (#=[=#    n    *    (
-                            (  ( 1.0 - λ )  *  ( dr ^ (n-1.0) )  )   +   (  λ  *  ( xx ^ (n-1.0) )  )
-                        )    #=]=#)     #=}=#)
-                    F  -= Cg1   *   X   *   ϵ̲̲̇′_mag   *   Δt   *   (
-                            ( (1.0-λ) * (dr^Cg2) )  +  ( λ * (xx^Cg2) )  )
-                    F  -= xx
-                    dF  = (  ( dsgk * Δt * λ * (1.0-n) / n )  *  ( xx ^ -n )  )   -   1.0
-                    dF -= Cg1    *    X    *    ϵ̲̲̇′_mag    *    Δt    *    (
-                            (  Cg2 * λ * ( xx ^ (Cg2-1.0) )  )   )
-                    dxx = -F / dF
-                    xx += dxx
+                # λ       = 1.0
+                # Nitmax  = 20
+                # Convg   = 1e-6
+                # dr      = dim1
+                # # dsgk    = sxk*exp(-(sxE + P[i]*1.e6*sxV)/(R*θ))
+                # # time downscaling factor for matching to n=4
+                # tscl    = t  ^  ( (n/4.0) - 1.0 )
+                # dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )   *   tscl
+                # xx      = dr
+                # for k in range(0, Nitmax)
+                #     F   = dr      +      (#={=#     dsgk     *     Δt     /     (#=[=#    n    *    (
+                #             (  ( 1.0 - λ )  *  ( dr ^ (n-1.0) )  )   +   (  λ  *  ( xx ^ (n-1.0) )  )
+                #         )    #=]=#)     #=}=#)
+                #     F  -= Cg1   *   X   *   ϵ̲̲̇′_mag   *   Δt   *   (
+                #             ( (1.0-λ) * (dr^Cg2) )  +  ( λ * (xx^Cg2) )  )
+                #     F  -= xx
+                #     dF  = (  ( dsgk * Δt * λ * (1.0-n) / n )  *  ( xx ^ -n )  )   -   1.0
+                #     dF -= Cg1    *    X    *    ϵ̲̲̇′_mag    *    Δt    *    (
+                #             (  Cg2 * λ * ( xx ^ (Cg2-1.0) )  )   )
+                #     dxx = -F / dF
+                #     xx += dxx
 
-                    if abs(dxx) <= Convg
-                        break
-                    end
-                    if k >= Nitmax - 1
-                        println("N-R Convg Issue for Grain Size: k >= Nitmax", dxx, k)
-                    end
-                end
-                d       = xx # ! update ISV
-                prefct  = ( ω₀ * tscl / (Cg1*n*X) )  ^  ( 1.0 / (n-1.0+Cg2) )
-                dsss    = prefct     *     (    (#=[=#
-                        ϵ̲̲̇′_mag   *   exp(  ( E⁺ + (1e6P*V⁺) ) / ( R * θ )  )
-                    #=]=#)    ^    (   -1.0   /   (  n  -  1.0  +  Cg2  )   )    )
+                #     if abs(dxx) <= Convg
+                #         break
+                #     end
+                #     if k >= Nitmax - 1
+                #         println("N-R Convg Issue for Grain Size: k >= Nitmax", dxx, k)
+                #     end
+                # end
+                # d       = xx # ! update ISV
+                # prefct  = ( ω₀ * tscl / (Cg1*n*X) )  ^  ( 1.0 / (n-1.0+Cg2) )
+                # dsss    = prefct     *     (    (#=[=#
+                #         ϵ̲̲̇′_mag   *   exp(  ( E⁺ + (1e6P*V⁺) ) / ( R * θ )  )
+                #     #=]=#)    ^    (   -1.0   /   (  n  -  1.0  +  Cg2  )   )    )
             elseif iGSmethod == 3 # analytical solution
-                # static grain growth
-                dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )
-                # ! update ISV
-                # // ? [20250401T1206] (JMA3): what is `d0`
-                # [20250422T1126] (JMA3): `d0` is the initial grain size.
-                d       = ψ.d₀    +    (   dsgk   *   t   *   (  t  ^  ( (n/4.0) - 1.0 )  )   )    ^    (   1.0   /   n   )
+                # # static grain growth
+                # dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )
+                # # ! update ISV
+                # # // ? [20250401T1206] (JMA3): what is `d0`
+                # # [20250422T1126] (JMA3): `d0` is the initial grain size.
+                # d       = ψ.d₀    +    (   dsgk   *   t   *   (  t  ^  ( (n/4.0) - 1.0 )  )   )    ^    (   1.0   /   n   )
             elseif iGSmethod == 4 # original version of DRX grain size kinetics model
                 P1      = 300.0
                 P2      = 0.18
@@ -728,26 +728,26 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         # # * [20250424T0936] (JMA3): Honestly, I have no idea. So let's comment it out for now.
         # d       =           (  ( Rs + (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) )  *         ( κₛ ^ (NK-1.0) )          )
         if iNewton == 1 # Newton iteration (Backward Euler)
-            Nitmax  = 20
-            Ntol    = 1.e-06
-            Rx0     = X0
-            xx      = κ
-            for k in range(0, Nitmax)
-                RSRD    = 1.0  +  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs ) * Δt * ( xx ^ (NK-1.0) )
-                F1      = (Rx0*κ/RSRD) - xx
-                dF1     = (  -Rx0  *  κ  *  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  Δt  *  ( NK - 1.0 )  *  ( xx ^ (NK-2.0) )  /  ( RSRD ^ 2.0 )  )   -   1.0
-                dxx     = -F1 / dF1
-                xxn     = xx
-                xx     += dxx
-                if abs(dxx / xxn) <= Ntol
-                    break
-                end
-                if k >= Nitmax - 1
-                    println("Ktr: N-R Conv Issue: k >= Nitmax", k)
-                end
-            end
-            κ⁽ᵗʳ⁾   = xx
-            rdrsk   = 1.0   +   (  ( Rs + (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) )  *  Δt  *  ( xx ^ (NK-1.0) )  )
+            # Nitmax  = 20
+            # Ntol    = 1.e-06
+            # Rx0     = X0
+            # xx      = κ
+            # for k in range(0, Nitmax)
+            #     RSRD    = 1.0  +  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs ) * Δt * ( xx ^ (NK-1.0) )
+            #     F1      = (Rx0*κ/RSRD) - xx
+            #     dF1     = (  -Rx0  *  κ  *  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  Δt  *  ( NK - 1.0 )  *  ( xx ^ (NK-2.0) )  /  ( RSRD ^ 2.0 )  )   -   1.0
+            #     dxx     = -F1 / dF1
+            #     xxn     = xx
+            #     xx     += dxx
+            #     if abs(dxx / xxn) <= Ntol
+            #         break
+            #     end
+            #     if k >= Nitmax - 1
+            #         println("Ktr: N-R Conv Issue: k >= Nitmax", k)
+            #     end
+            # end
+            # κ⁽ᵗʳ⁾   = xx
+            # rdrsk   = 1.0   +   (  ( Rs + (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) )  *  Δt  *  ( xx ^ (NK-1.0) )  )
         end
         #--- trial alpha
         # * [20250331T1452] (JMA3): this is already defined above
@@ -861,56 +861,56 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                 (   ϕ₁⁽ᵗʳ⁾   *   twoμ   )    +    (   ϕ₁⁽ᵗʳ⁾   *   (  2.0  /  3.0  )   *   (
                         ( (1.0-X) ^ NK )  *  dzz1  *  ( (h/rdrsa) + (H*Hir/rdrsk) )  )   )    )
         elseif iNewton == 1 # Newton-Rapson for DG and Kappa
-            Δγ = (    ξ̲̲′⁽ᵗʳ⁾_mag    -    (   sqrt_twothirds   *   ak   *   ϕ₁⁽ᵗʳ⁾   )    )     /     (
-                (   ϕ₁⁽ᵗʳ⁾   *   twoμ   )    +    (   ϕ₁⁽ᵗʳ⁾   *   (  2.0  /  3.0  )   *   (
-                        ( (1.0-X) ^ NK )  *  dzz1  *  ( (h/rdrsa) + (H*Hir/rdrsk) )  )   )    )
+            # Δγ = (    ξ̲̲′⁽ᵗʳ⁾_mag    -    (   sqrt_twothirds   *   ak   *   ϕ₁⁽ᵗʳ⁾   )    )     /     (
+            #     (   ϕ₁⁽ᵗʳ⁾   *   twoμ   )    +    (   ϕ₁⁽ᵗʳ⁾   *   (  2.0  /  3.0  )   *   (
+            #             ( (1.0-X) ^ NK )  *  dzz1  *  ( (h/rdrsa) + (H*Hir/rdrsk) )  )   )    )
 
-            Nitmax  = 20
-            Ntol    = 1e-6
-            xx1     = Δγ
-            xx2     = κ
-            κ₀      = κ
-            Rx      = (1.0-X) ^ NK
-            th      = 1.0 # 1-Backward Euler; 0.5-Midpoint; 0-Forward Euler
-            for k in range(0, Nitmax)
-                thK0thK     = (  ( 1.0 - th )  *  ( κ₀ ^ (NK-1.0) )  )   +   (  th  *  ( xx2 ^ (NK-1.0) )  )
-                Rdxx1Rsdt   = 1.0  +  (  ( (sqrt_twothirds*Rdc*xx1) + (Rs*Δt) )  *  thK0thK  )
-                F₁      = ξ̲̲′⁽ᵗʳ⁾_mag   -   (  twoμ * xx1  )   -   (
-                        sqrt_twothirds  *  ( κ₀ + (Rx*H*Hir*xx1) )  /  Rdxx1Rsdt  )   -   (
-                        sqrt_twothirds  *  ( Be + Y + Yₚ )  )
-                ∂F₁╱∂x₁ = -twoμ     -     (    sqrt_twothirds    *    (
-                    (  Rx  *  H  *  Hir  /  Rdxx1Rsdt  )   -   (
-                        ( κ₀ + (Rx*H*Hir*xx1) )  *  sqrt_twothirds  *  Rdc  *  thK0thK  /  ( Rdxx1Rsdt ^ 2.0 )  )   )    )
-                ∂F₁╱∂x₂ = -1.0 * sqrt_twothirds
-                F₂      = (  ( κ₀ + (Rx*H*Hir*xx1) )  /  Rdxx1Rsdt  )   -   xx2
-                ∂F₂╱∂x₁ = (  Rx  *  H  *  Hir  /  Rdxx1Rsdt  )   -   (
-                    ( κ₀ + (Rx*H*Hir*xx1) )  *  sqrt_twothirds  *  Rdc  *  thK0thK  /  ( Rdxx1Rsdt ^ 2.0 )  )
-                ∂F₂╱∂x₂ = -( κ₀ + (Rx*H*Hir*xx1) )  *  (
-                    (sqrt_twothirds*Rdc*xx1) + (Rs*Δt) )  *  th  *  ( NK - 1.0 )  *  ( xx2 ^ (NK-2.0) )
-                ∂F₂╱∂x₂ = ( ∂F₂╱∂x₂ / (Rdxx1Rsdt^2.0) )  -  1.0
+            # Nitmax  = 20
+            # Ntol    = 1e-6
+            # xx1     = Δγ
+            # xx2     = κ
+            # κ₀      = κ
+            # Rx      = (1.0-X) ^ NK
+            # th      = 1.0 # 1-Backward Euler; 0.5-Midpoint; 0-Forward Euler
+            # for k in range(0, Nitmax)
+            #     thK0thK     = (  ( 1.0 - th )  *  ( κ₀ ^ (NK-1.0) )  )   +   (  th  *  ( xx2 ^ (NK-1.0) )  )
+            #     Rdxx1Rsdt   = 1.0  +  (  ( (sqrt_twothirds*Rdc*xx1) + (Rs*Δt) )  *  thK0thK  )
+            #     F₁      = ξ̲̲′⁽ᵗʳ⁾_mag   -   (  twoμ * xx1  )   -   (
+            #             sqrt_twothirds  *  ( κ₀ + (Rx*H*Hir*xx1) )  /  Rdxx1Rsdt  )   -   (
+            #             sqrt_twothirds  *  ( Be + Y + Yₚ )  )
+            #     ∂F₁╱∂x₁ = -twoμ     -     (    sqrt_twothirds    *    (
+            #         (  Rx  *  H  *  Hir  /  Rdxx1Rsdt  )   -   (
+            #             ( κ₀ + (Rx*H*Hir*xx1) )  *  sqrt_twothirds  *  Rdc  *  thK0thK  /  ( Rdxx1Rsdt ^ 2.0 )  )   )    )
+            #     ∂F₁╱∂x₂ = -1.0 * sqrt_twothirds
+            #     F₂      = (  ( κ₀ + (Rx*H*Hir*xx1) )  /  Rdxx1Rsdt  )   -   xx2
+            #     ∂F₂╱∂x₁ = (  Rx  *  H  *  Hir  /  Rdxx1Rsdt  )   -   (
+            #         ( κ₀ + (Rx*H*Hir*xx1) )  *  sqrt_twothirds  *  Rdc  *  thK0thK  /  ( Rdxx1Rsdt ^ 2.0 )  )
+            #     ∂F₂╱∂x₂ = -( κ₀ + (Rx*H*Hir*xx1) )  *  (
+            #         (sqrt_twothirds*Rdc*xx1) + (Rs*Δt) )  *  th  *  ( NK - 1.0 )  *  ( xx2 ^ (NK-2.0) )
+            #     ∂F₂╱∂x₂ = ( ∂F₂╱∂x₂ / (Rdxx1Rsdt^2.0) )  -  1.0
 
-                a₁₁     = ∂F₁╱∂x₁
-                a₁₂     = ∂F₁╱∂x₂
-                a₂₁     = ∂F₂╱∂x₁
-                a₂₂     = ∂F₂╱∂x₂
-                dxx2    = ( (-F₂*a₁₁/a₂₁) + F₁ )  /  ( (a₂₂ * (a₁₁/a₂₁)) - a₁₂ )
-                dxx1    = ( (-a₁₂*dxx2)   - F₁ )  /  a₁₁
+            #     a₁₁     = ∂F₁╱∂x₁
+            #     a₁₂     = ∂F₁╱∂x₂
+            #     a₂₁     = ∂F₂╱∂x₁
+            #     a₂₂     = ∂F₂╱∂x₂
+            #     dxx2    = ( (-F₂*a₁₁/a₂₁) + F₁ )  /  ( (a₂₂ * (a₁₁/a₂₁)) - a₁₂ )
+            #     dxx1    = ( (-a₁₂*dxx2)   - F₁ )  /  a₁₁
 
-                xx1n    = xx1
-                xx2n    = xx2
+            #     xx1n    = xx1
+            #     xx2n    = xx2
 
-                xx1    += dxx1
-                xx2    += dxx2
+            #     xx1    += dxx1
+            #     xx2    += dxx2
 
-                if abs(dxx1/xx1n) <= Ntol && abs(dxx2/xx2n) <= Ntol
-                    break
-                end
-                if k >= Nitmax - 1
-                    println("Gamma-K: N-R Conv. Issue: k >= Nitmax")
-                end
-            end
-            Δγ  = xx1
-            κ   = xx2 # ! update ISV
+            #     if abs(dxx1/xx1n) <= Ntol && abs(dxx2/xx2n) <= Ntol
+            #         break
+            #     end
+            #     if k >= Nitmax - 1
+            #         println("Gamma-K: N-R Conv. Issue: k >= Nitmax")
+            #     end
+            # end
+            # Δγ  = xx1
+            # κ   = xx2 # ! update ISV
         end
         #--- stress solution
             # deviatoric stress update
