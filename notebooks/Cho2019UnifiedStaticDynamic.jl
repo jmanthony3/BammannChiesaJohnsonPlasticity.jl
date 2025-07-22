@@ -86,9 +86,13 @@ begin
 				for value_group in value_groups[i]
 					k += length(value_group)
 					parameter_group = parameter_groups[j:k]
-					input_group = [md" $(parameter): $(
-								   Child(parameter, Slider(value .* logrange(1e-3, 1e3, length=1001), default=value, show_value=true))
-								   ) " for (parameter, value) in zip(parameter_group, value_group)]
+					# input_group = [md" $(parameter): $(
+					# 			   Child(parameter, Slider(value .* logrange(1e-3, 1e3, length=1001), default=value, show_value=true))
+					# 			   ) " for (parameter, value) in zip(parameter_group, value_group)]
+					# Scrubbable(0.80 : 0.01 : 1.00, format=".0%", prefix="you are 🌝 ", suffix=" cool")
+					input_group = [md""" $(parameter): $(
+								   Child(parameter, Scrubbable(value .* logrange(1e-3, 1e3; length=1001); default=value, format=".03e")))
+								   ) """ for (parameter, value) in zip(parameter_group, value_group)]
 					push!(inputs, md" $(input_group...) ")
 					j += length(value_group)
 				end
@@ -191,14 +195,20 @@ begin
 	n 	= 2.0
 	ω₀ 	= 3.6e4
 	R 	= 8.31446261815324 # universal gas constant
-	E⁺ 	= 82.0e3
+	# E⁺ 	= 82.0e3
+	E⁺ 	= 82.0
+	V⁺ 	= 0.0
 	z 	= 0.65
-	d₀ 	= 10.0 # μm (Ghauri et al., 1990)
+	# d₀ 	= 10.0 # μm (Ghauri et al., 1990)
+	d₀ 	= 62.0 # μm (Tanner et al., 1990)
 	η₀ 	= 0.0
-	Kic = 1000.0
-	𝒹 	= 0.0
+	# Kic = 1000.0
+	Kic = 50.0
+	# 𝒹 	= 0.0
+	𝒹 	= 2e-5
 	𝒻 	= 0.001
-	R₀ 	= 0.0
+	# R₀ 	= 0.0
+	R₀ 	= 1e-6
 	nothing
 end
 
@@ -219,7 +229,8 @@ begin
 	tests = Dict()
 	domains = Dict()
 	models = Dict()
-	for (i, θ) in enumerate((298, 407, 475, 509, 542, 559, 576, 610, 678, 814))
+	# for (i, θ) in enumerate((298, 407, 475, 509, 542, 559, 576, 610, 678, 814))
+	for (i, θ) in enumerate((298,))
 	    θ_str = match(r"(.*)K(.*)", names(df_Fig4a)[4(i - 1) + 1])[1]
 	    θ_flt = parse(Float64, θ_str)
 	    x = filter(!ismissing, df_Fig4a[!, 4(i - 1) + 1])
@@ -229,7 +240,7 @@ begin
 	    @show (4(i - 1) + 1, 4(i - 1) + 2), θ_str, ϵ̇, last(x), 4length(x)
 	    tests[θ_str] = BCJMetalUniaxialTest(x, y, name="$(θ_flt)K")
 	    domains[θ_str] = BCJMetalStrainControl(θ_flt, ϵ̇, last(x), 4length(x), :tension)
-	    models[θ_str] = Cho2019UnifiedStaticDynamic(domains[θ_str], n, ω₀, E⁺, E⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀)
+	    models[θ_str] = Cho2019UnifiedStaticDynamic(domains[θ_str], n, ω₀, E⁺, V⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀)
 	end
 	
 	tests = sort(tests; rev=false)
@@ -276,14 +287,16 @@ p0 = [
 		ComponentVector(Cg1 = 7.41e4, Cg2 = 0.8826, Cg3 = 1.185e-3,),
 	],
 	[
-		ComponentVector(a = 1e-12, b = 1e-12, c = 1e-12,),
+		# ComponentVector(a = 1e-12, b = 1e-12, c = 1e-12,),
+		ComponentVector(a = 1e-12, b = 1e-12, c = 3.3e4,),
 	],
 	[
-		ComponentVector(pCnuc = 1e-12, Tnuc = 1e-12, nn = 1e-12, Tgrw = 1e-12,),
+		# ComponentVector(Cnuc = 1e-12, Tnuc = 1e-12, nn = 1e-12, Tgrw = 1e-12,),
+		ComponentVector(Cnuc = 1.0e15, Tnuc = 10.0, nn = 0.3, Tgrw = 1e-12,),
 	],
 	[
-		ComponentVector(kr1 = 1e-12, krt = 1e-12, kr2 = 1e-12,
-		kr3 = 1e-12, kp1 = 1e-12, kpt = 1e-12, kp2 = 1e-12,),
+		ComponentVector(kr1 = 7e-32, krt = 5e3, kr2 = 3.5,
+		kr3 = 4.1e2, kp1 = 1.4e-27, kpt = 2.5e3, kp2 = 2.8,),
 	]
 ]
 
@@ -297,7 +310,7 @@ begin
 	for (i, (θ, ψ)) in enumerate(models)
         test = tests[θ]
         # prediction = ContinuumMechanicsBase.predict(ψ, test, p)
-		prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=2, iREXmethod=3, iGSmethod=4)
+		prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=2, iREXmethod=3, iGSmethod=1)
         # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
         scatter!(plt, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
                 markercolor=i,
@@ -378,7 +391,7 @@ end
 # ╔═╡ Cell order:
 # ╟─d534bf54-4c83-43d6-a62c-8e4a34f8f74d
 # ╠═5624f9cd-d46d-4dfd-ad46-e6185c120eba
-# ╠═5cacf487-3916-4b7a-8fbf-04c8b4c9a6d9
+# ╟─5cacf487-3916-4b7a-8fbf-04c8b4c9a6d9
 # ╠═5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
 # ╟─156a860c-e8a5-4dd8-b234-0a0e4419b5a5
 # ╠═398fa1e3-1d11-4285-ad23-b11a4d8628c5
@@ -390,7 +403,7 @@ end
 # ╟─bd66c9a7-cf0a-4d34-884b-f369722801a8
 # ╠═45ed6284-590e-40ee-93f2-439f264fa032
 # ╠═53926f5c-e18c-4cb6-b062-bb965ec41769
-# ╟─65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
+# ╠═65d0598f-fd0b-406b-b53c-3e8b5c4b3d40
 # ╠═22a08ebd-2461-4625-8f9b-3ec72cbb5a05
 # ╟─df492d79-2a80-4fb2-ad59-f57f4e2b99e9
 # ╟─ac027691-ae47-4450-b9d6-b814b5be79d5
