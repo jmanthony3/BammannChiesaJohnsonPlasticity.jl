@@ -1212,6 +1212,11 @@ function ContinuumMechanicsBase.predict(
     # begin prediction
     σ⃗ = []; push!(σ⃗, σ̲̲)
     ϵ⃗ = []; push!(ϵ⃗, ϵ̲̲)
+    α⃗ = []; push!(α⃗, sqrt_threehalves * norm_symvec(α̲̲))
+    κ⃗ = []; push!(κ⃗, κ)
+    ϕ⃗ = []; push!(ϕ⃗, ϕ)
+    X⃗ = []; push!(X⃗, X)
+    d⃗ = []; push!(d⃗, d)
     t       = 0.0
     for i ∈ range(2, M)
     # for i ∈ range(2, 3)
@@ -1222,11 +1227,21 @@ function ContinuumMechanicsBase.predict(
         σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d = update(ψ, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, damirr, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, p; kwargs...)
         push!(ϵ⃗, ϵ̲̲)
         push!(σ⃗, σ̲̲)
+        push!(α⃗, sqrt_threehalves * norm_symvec(α̲̲))
+        κ⃗ = []; push!(κ⃗, κ)
+        push!(ϕ⃗, ϕ)
+        push!(X⃗, X)
+        push!(d⃗, d)
         # if i > 2
         #     error("Just checking...")
         # end
     end
-    return (data=(ϵ=hcat(ϵ⃗...), σ=hcat(σ⃗...)),)
+    return (data=(
+        ϵ=hcat(ϵ⃗...), σ=hcat(σ⃗...),
+        α=hcat(α⃗...), κ=hcat(κ⃗...),
+        ϕ=hcat(ϕ⃗...), X=hcat(X⃗...),
+        d=hcat(d⃗...),
+    ),)
     # σ__     = zeros(T, 6)   # deviatoric stress
     # ϵₚ__    = zeros(T, 6)   # plastic strain
     # ϵ__     = zeros(T, 6)   # total strain

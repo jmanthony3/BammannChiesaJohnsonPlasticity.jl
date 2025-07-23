@@ -91,7 +91,11 @@ begin
 					# 			   ) " for (parameter, value) in zip(parameter_group, value_group)]
 					# Scrubbable(0.80 : 0.01 : 1.00, format=".0%", prefix="you are 🌝 ", suffix=" cool")
 					input_group = [md""" $(parameter): $(
-								   Child(parameter, Scrubbable(value .* logrange(1e-3, 1e3; length=1001); default=value, format=".03e")))
+								   Child(parameter, if value == 0.0
+								        Scrubbable(range(0.0, 1e3; length=1001); default=value, format=".01f")
+									else
+										Scrubbable(value .* logrange(1e-3, 1e3; length=1001); default=value, format=".03e")
+									end))
 								   ) """ for (parameter, value) in zip(parameter_group, value_group)]
 					push!(inputs, md" $(input_group...) ")
 					j += length(value_group)
@@ -197,18 +201,20 @@ begin
 	R 	= 8.31446261815324 # universal gas constant
 	# E⁺ 	= 82.0e3
 	E⁺ 	= 82.0
+	# E⁺ 	= 8.20e5
 	V⁺ 	= 0.0
 	z 	= 0.65
+	# z 	= 0.0
 	# d₀ 	= 10.0 # μm (Ghauri et al., 1990)
 	d₀ 	= 62.0 # μm (Tanner et al., 1990)
 	η₀ 	= 0.0
-	# Kic = 1000.0
-	Kic = 50.0
-	# 𝒹 	= 0.0
-	𝒹 	= 2e-5
+	Kic = 1000.0
+	# Kic = 50.0
+	𝒹 	= 0.0
+	# 𝒹 	= 2e-5
 	𝒻 	= 0.001
-	# R₀ 	= 0.0
-	R₀ 	= 1e-6
+	R₀ 	= 0.0
+	# R₀ 	= 1e-6
 	nothing
 end
 
@@ -262,41 +268,45 @@ p0 = [
 		ComponentVector(C₅ = 2.971, C₆ = 2548.0,),
 	],
 	[
-		ComponentVector(Pₖ₁ = 1e-12, Pₖ₂ = 1e-12, Pₖ₃ = 1e-12,),
+		ComponentVector(Pₖ₁ = 0.0, Pₖ₂ = 0.0, Pₖ₃ = 0.0,),
 	],
 	[
-		ComponentVector(C₇ = 0.1345, C₈ = 351.1, C₂₁ = 1e-12,),
-		ComponentVector(C₉ = 0.02869, C₁₀ = 1e-12, C₂₂ = 1e-12,),
-		ComponentVector(C₁₁ = 0.02928, C₁₂ = 4337.0, C₂₃ = 1e-12,),
+		ComponentVector(C₇ = 0.1345, C₈ = 351.1, C₂₁ = 0.0,),
+		ComponentVector(C₉ = 0.02869, C₁₀ = 0.0, C₂₂ = 0.0,),
+		ComponentVector(C₁₁ = 0.02928, C₁₂ = 4337.0, C₂₃ = 0.0,),
 	],
 	[
-		ComponentVector(C₁₃ = 0.05098, C₁₄ = 476.6, C₂₄ = 1e-12,),
-		ComponentVector(C₁₅ = 0.006924, C₁₆ = 1e-12, C₂₅ = 1e-12,),
-		ComponentVector(C₁₇ = 2.487, C₁₈ = 7611.0, C₂₆ = 1e-12,),
+		ComponentVector(C₁₃ = 0.05098, C₁₄ = 476.6, C₂₄ = 0.0,),
+		ComponentVector(C₁₅ = 0.006924, C₁₆ = 0.0, C₂₅ = 0.0,),
+		ComponentVector(C₁₇ = 2.487, C₁₈ = 7611.0, C₂₆ = 0.0,),
 		ComponentVector(NK = 2.0,),
 	],
 	[
-		ComponentVector(ca = 1e-12, cb = 1e-12,),
+		ComponentVector(ca = 0.0, cb = 0.0,),
 	],
 	[
-		ComponentVector(Cx1 = 1.78e6, Cx2 = 7.806e3, Cdp = 1e-12,),
-		ComponentVector(Cx3 = 5.401e4, Cx4 = 8943.0, Csp = 1e-12,),
+		ComponentVector(Cx1 = 1.78e6, Cx2 = 7.806e3, Cdp = 0.0,),
+		ComponentVector(Cx3 = 5.401e4, Cx4 = 8943.0, Csp = 0.0,),
 		ComponentVector(Cx5 = 5.0, Cxa = 0.8052, Cxb = 3.68, Cxc = 4.485,),
 	],
 	[
 		ComponentVector(Cg1 = 7.41e4, Cg2 = 0.8826, Cg3 = 1.185e-3,),
+		# ComponentVector(Cg1 = 7.40e4, Cg2 = 0.8800, Cg3 = 1.200e-3,),
 	],
 	[
-		# ComponentVector(a = 1e-12, b = 1e-12, c = 1e-12,),
-		ComponentVector(a = 1e-12, b = 1e-12, c = 3.3e4,),
+		ComponentVector(a = 0.0, b = 0.0, c = 0.0,),
+		# ComponentVector(a = 0.0, b = 0.0, c = 3.3e4,),
 	],
 	[
-		# ComponentVector(Cnuc = 1e-12, Tnuc = 1e-12, nn = 1e-12, Tgrw = 1e-12,),
-		ComponentVector(Cnuc = 1.0e15, Tnuc = 10.0, nn = 0.3, Tgrw = 1e-12,),
+		# ComponentVector(Cnuc = 0.0, Tnuc = 0.0, nn = 0.0, Tgrw = 0.0,),
+		ComponentVector(Cnuc = 0.0, Tnuc = 0.0, nn = 0.3, Tgrw = 0.0,),
+		# ComponentVector(Cnuc = 1.0e15, Tnuc = 10.0, nn = 0.3, Tgrw = 0.0,),
 	],
 	[
-		ComponentVector(kr1 = 7e-32, krt = 5e3, kr2 = 3.5,
-		kr3 = 4.1e2, kp1 = 1.4e-27, kpt = 2.5e3, kp2 = 2.8,),
+		ComponentVector(kr1 = 0.0, krt = 0.0, kr2 = 0.0,
+		kr3 = 0.0, kp1 = 0.0, kpt = 0.0, kp2 = 0.0,),
+		# ComponentVector(kr1 = 7e-32, krt = 5e3, kr2 = 3.5,
+		# kr3 = 4.1e2, kp1 = 1.4e-27, kpt = 2.5e3, kp2 = 2.8,),
 	]
 ]
 
@@ -311,6 +321,7 @@ begin
         test = tests[θ]
         # prediction = ContinuumMechanicsBase.predict(ψ, test, p)
 		prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=2, iREXmethod=3, iGSmethod=1)
+		# prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=2, iREXmethod=3, iGSmethod=1)
         # @show [vonMises(x) for x in eachcol(res.data.σ)] ./ 1e6
         scatter!(plt, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
                 markercolor=i,
