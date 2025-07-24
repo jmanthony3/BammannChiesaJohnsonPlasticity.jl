@@ -153,7 +153,7 @@ begin
 	# end
 
 	# ╔═╡ 5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
-	include("Cho2019UnifiedStaticDynamic-functions.jl")
+	include("Cho2019UnifiedStaticDynamic-functions+new.jl")
 
 	# ╔═╡ 398fa1e3-1d11-4285-ad23-b11a4d8628c5
 	df_Fig4a = CSV.read("Cho2019UnifiedStaticDynamic-Fig4a.csv", DataFrame;
@@ -164,20 +164,21 @@ begin
 		n 	= 2.0
 		ω₀ 	= 3.6e4
 		R 	= 8.31446261815324 # universal gas constant
-		# E⁺ 	= 82.0e3
-		E⁺ 	= 82.0
+		E⁺ 	= 82.0e3
+		# E⁺ 	= 82.0
 		V⁺ 	= 0.0
-		z 	= 0.65
+		# z 	= 0.65
+		z 	= 0.0
 		# d₀ 	= 10.0 # μm (Ghauri et al., 1990)
 		d₀ 	= 62.0 # μm (Tanner et al., 1990)
 		η₀ 	= 0.0
-		# Kic = 1000.0
-		Kic = 50.0
-		# 𝒹 	= 0.0
-		𝒹 	= 2.0e-5
+		Kic = 1000.0
+		# Kic = 50.0
+		𝒹 	= 0.0
+		# 𝒹 	= 2.0e-5
 		𝒻 	= 0.001
-		# R₀ 	= 0.0
-		R₀ 	= 1e-6
+		R₀ 	= 0.0
+		# R₀ 	= 1e-6
 		nothing
 	end
 
@@ -210,46 +211,59 @@ begin
 	# ╔═╡ 45ed6284-590e-40ee-93f2-439f264fa032
 	p0 = [
 		[
-			ComponentVector(C₁ = 5.637, C₂ = 112.6,),
-			ComponentVector(C₃ = 8.378, C₄ = 324.9,),
-			ComponentVector(C₅ = 2.971, C₆ = 2548.0,),
+			# ComponentVector(C₁ = 5.637, C₂ = 112.6,),
+			# ComponentVector(C₃ = 8.378, C₄ = 324.9,),
+			# ComponentVector(C₅ = 2.971, C₆ = 2548.0,),
+			ComponentVector(C₁ = 5.5, C₂ = 112.6,),
+			ComponentVector(C₃ = 5.278, C₄ = 324.9,),
+			ComponentVector(C₅ = 1970, C₆ = 2548.0,),
 		],
 		[
-			ComponentVector(Pₖ₁ = 1e-12, Pₖ₂ = 1e-12, Pₖ₃ = 1e-12,),
+			ComponentVector(Pₖ₁ = 0.0, Pₖ₂ = 0.0, Pₖ₃ = 0.0,),
 		],
 		[
-			ComponentVector(C₇ = 0.1345, C₈ = 351.1, C₂₁ = 1e-12,),
-			ComponentVector(C₉ = 0.02869, C₁₀ = 1e-12, C₂₂ = 1e-12,),
-			ComponentVector(C₁₁ = 0.02928, C₁₂ = 4337.0, C₂₃ = 1e-12,),
+			# ComponentVector(C₇ = 0.1345, C₈ = 351.1, C₂₁ = 0.0,),
+			# ComponentVector(C₉ = 0.02869, C₁₀ = 0.0, C₂₂ = 0.0,),
+			# ComponentVector(C₁₁ = 0.02928, C₁₂ = 4337.0, C₂₃ = 0.0,),
+			ComponentVector(C₇ = 0.1845, C₈ = 351.1, C₂₁ = 0.0,),
+			ComponentVector(C₉ = 0.0255, C₁₀ = 0.0, C₂₂ = 0.0,),
+			ComponentVector(C₁₁ = 40.28, C₁₂ = 4337.0, C₂₃ = 0.0,),
 		],
 		[
-			ComponentVector(C₁₃ = 0.05098, C₁₄ = 476.6, C₂₄ = 1e-12,),
-			ComponentVector(C₁₅ = 0.006924, C₁₆ = 1e-12, C₂₅ = 1e-12,),
-			ComponentVector(C₁₇ = 2.487, C₁₈ = 7611.0, C₂₆ = 1e-12,),
+			# ComponentVector(C₁₃ = 0.05098, C₁₄ = 476.6, C₂₄ = 0.0,),
+			# ComponentVector(C₁₅ = 0.006924, C₁₆ = 0.0, C₂₅ = 0.0,),
+			# ComponentVector(C₁₇ = 2.487, C₁₈ = 7611.0, C₂₆ = 0.0,),
+			# ComponentVector(NK = 2.0,),
+			ComponentVector(C₁₃ = 0.05098, C₁₄ = 476.6, C₂₄ = 0.0,),
+			ComponentVector(C₁₅ = 7.524e-3, C₁₆ = 0.0, C₂₅ = 0.0,),
+			ComponentVector(C₁₇ = 54.87, C₁₈ = 7611.0, C₂₆ = 0.0,),
 			ComponentVector(NK = 2.0,),
 		],
 		[
-			ComponentVector(ca = 1e-12, cb = 1e-12,),
+			ComponentVector(ca = 0.0, cb = 0.0,),
 		],
 		[
-			ComponentVector(Cx1 = 1.78e6, Cx2 = 7.806e3, Cdp = 1e-12,),
-			ComponentVector(Cx3 = 5.401e4, Cx4 = 8943.0, Csp = 1e-12,),
+			ComponentVector(Cx1 = 1.78e6, Cx2 = 7.806e3, Cdp = 0.0,),
+			ComponentVector(Cx3 = 5.401e4, Cx4 = 8943.0, Csp = 0.0,),
 			ComponentVector(Cx5 = 5.0, Cxa = 0.8052, Cxb = 3.68, Cxc = 4.485,),
 		],
 		[
-			ComponentVector(Cg1 = 7.41e4, Cg2 = 0.8826, Cg3 = 1.185e-3,),
+			# ComponentVector(Cg1 = 7.41e4, Cg2 = 0.8826, Cg3 = 1.185e-3, Cg4 = 0.0),
+			ComponentVector(Cg1 = 7.4e4, Cg2 = 0.8800, Cg3 = 1.2e-3, Cg4 = 0.0),
 		],
 		[
-			# ComponentVector(a = 1e-12, b = 1e-12, c = 1e-12,),
-			ComponentVector(a = 1e-12, b = 1e-12, c = 3.3e4,),
+			ComponentVector(a = 0.0, b = 0.0, c = 0.0,),
+			# ComponentVector(a = 0.0, b = 0.0, c = 3.3e4,),
 		],
 		[
-			# ComponentVector(Cnuc = 1e-12, Tnuc = 1e-12, nn = 1e-12, Tgrw = 1e-12,),
-			ComponentVector(Cnuc = 1.0e15, Tnuc = 10.0, nn = 0.3, Tgrw = 1e-12,),
+			ComponentVector(Cnuc = 0.0, Tnuc = 0.0, nn = 0.3, Tgrw = 0.0,),
+			# ComponentVector(Cnuc = 1.0e15, Tnuc = 10.0, nn = 0.3, Tgrw = 0.0,),
 		],
 		[
-			ComponentVector(kr1 = 7e-32, krt = 5e3, kr2 = 3.5,
-			kr3 = 4.1e2, kp1 = 1.4e-27, kpt = 2.5e3, kp2 = 2.8,),
+			ComponentVector(kr1 = 0.0, krt = 0.0, kr2 = 0.0,
+			kr3 = 0.0, kp1 = 0.0, kpt = 0.0, kp2 = 0.0,),
+			# ComponentVector(kr1 = 7e-32, krt = 5e3, kr2 = 3.5,
+			# kr3 = 4.1e2, kp1 = 1.4e-27, kpt = 2.5e3, kp2 = 2.8,),
 		]
 	]
 
@@ -258,10 +272,16 @@ begin
 	θ, ψ = first(models)
 	test = tests[θ]
 end
-prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=2, iREXmethod=3, iGSmethod=1)
+# prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=2, iREXmethod=3, iGSmethod=1)
+# prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=0, iREXmethod=3, iGSmethod=4)
+prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=0, iREXmethod=3, iGSmethod=5)
 
 begin
-	i, plt = 1, plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:outerright, widen=1.06)
+	# i, plt = 1, plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:outerright, widen=1.06)
+	i, plt = 1, plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:best, widen=1.06)
+	plt_α = deepcopy(plt)
+	plt_d = deepcopy(plt)
+	plt_X = deepcopy(plt)
 	scatter!(plt, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
 			markercolor=i,
 			label="$(θ)K:Exp",
@@ -270,4 +290,28 @@ begin
 			linecolor=i,
 			label="$(θ)K:Model",
 		)
+	plot!(plt_α, [first(x) for x in eachcol(prediction.data.ϵ)], vec(prediction.data.α),
+			linecolor=i,
+			linestyle=:dash,
+			label="$(θ)K:Model,α",
+		)
+	plot!(plt_α, [first(x) for x in eachcol(prediction.data.ϵ)], vec(prediction.data.κ),
+			linecolor=i,
+			label="$(θ)K:Model,κ",
+		)
+	# ? [20250723T1114] (JMA3): For some reason, `d` immediately goes to 0 which doesn't seem right.
+	plot!(plt_d, [first(x) for x in eachcol(prediction.data.ϵ)], vec(prediction.data.d),
+			linecolor=i,
+			label="$(θ)K:Model,d",
+		)
+	plot!(plt_X, [first(x) for x in eachcol(prediction.data.ϵ)], vec(prediction.data.X),
+			linecolor=i,
+			label="$(θ)K:Model,X",
+		)
+	plot!(plt_X, [first(x) for x in eachcol(prediction.data.ϵ)], vec(prediction.data.ϕ),
+			linecolor=i,
+			linestyle=:dash,
+			label="$(θ)K:Model,ϕ",
+		)
+	plot(plt, plt_α, plt_d, plt_X; layout=(2, 2))
 end

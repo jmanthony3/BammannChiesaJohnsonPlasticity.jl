@@ -375,7 +375,6 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         # # @show V, Y, f, C₁, C₂, C₃, C₄, C₅, C₆
         if dj2 == 0.0
             djr = 1.0 - ( ca * (4.0/27.0) )
-            # djh = 1.0 + ( cb * (4.0/27.0) )
             djh = 1.0 + ( ca * (4.0/27.0) )
         else
             djr = 1.0    -    (#=[=#
@@ -387,9 +386,11 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         end
         rd  =           C₇    * exp(    -C₈                  /        θ    )   *   djr
         h   = max(0.0,  C₉    * μ                                              *   djh)
+        # h   =           C₉    * μ                                              *   djh
         rs  =           C₁₁   * exp(    -C₁₂                 /        θ    )
         Rd  =           C₁₃   * exp(    -C₁₄                 /        θ    )   *   djr
         H   = max(0.0,  C₁₅   * μ                                              *   djh)
+        # H   =           C₁₅   * μ                                              *   djh
         # Rs  =           C₁₇   * exp(  -( C₁₈ + (1e6P*C₂₆) )  /  ( R * θ )  )
         Rs  =           C₁₇   * exp(    -C₁₈                 /      * θ    )
         Rdc = Rd * (ϵ̲̲̇′_mag^-0.0)
@@ -455,21 +456,16 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                 dXd = 0.0
                 dXs = 0.0
             elseif iREXmethod == 1 # Euler Method (explicit)
-                # KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
-                # dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
-                # dAlpha  = max(0.0, dAlpha)
-                # dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  (     κ ^ 2.0 )  )
-                # dKappa  = max(0.0, dKappa)
-                # KAlMu1  = μ  \  ( dKappa + dAlpha )
-                # Cxd     = Cx1   *   exp(  -( Cx2 + (P*Cdp) )  /  θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
-                # Cxs     = Cx3   *   exp(  -( Cx4 + (P*Csp) )  /  θ  )   *   (  KAlMu             *  Δt  )
-                # Ch      = Cx5 * KAlMu1 * Δt
                 KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
                 dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
                 dAlpha  = max(0.0, dAlpha)
+                # dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  (     κ ^ 2.0 )  )
                 dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* Rd*ϵ̲̲̇′_mag) + Rs )  *  (     κ ^ 2.0 )  )
                 dKappa  = max(0.0, dKappa)
+                # KAlMu1  = μ  \  ( dKappa + dAlpha )
                 KAlMu1  = κ  \  ( dKappa + dAlpha )
+                # Cxd     = Cx1   *   exp(  -( Cx2 + (P*Cdp) )  /  θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
+                # Cxs     = Cx3   *   exp(  -( Cx4 + (P*Csp) )  /  θ  )   *   (  KAlMu             *  Δt  )
                 Cxd     = Cx1   *   exp(  -( Cx2 + (P*1e6Cdp) )  /  θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
                 Cxs     = Cx3   *   exp(  -( Cx4 + (P*1e6Csp) )  /  θ  )   *   (  KAlMu             *  Δt  )
                 Ch      = Cx5 * KAlMu1 * Δt
@@ -497,20 +493,15 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                 xx      = X + dX
             elseif iREXmethod == 2 # explicit exponential integration algorithm
                 KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
-                # dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
-                # dAlpha  = max(0.0, dAlpha)
-                # dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  (     κ ^ 2.0 )  )
-                # dKappa  = max(0.0, dKappa)
-                # KAlMu1  = μ  \  ( dKappa + dAlpha )
-                # Cxd     = Cx1   *   exp(  -( Cx2 + (   P*Cdp) )  /        θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
-                # Cxs     = Cx3   *   exp(  -( Cx4 + (   P*Csp) )  /        θ  )   *   (  KAlMu             *  Δt  )
-                # Ch      = Cx5 * KAlMu1 * Δt
-                KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
                 dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
                 dAlpha  = max(0.0, dAlpha)
+                # dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  (     κ ^ 2.0 )  )
                 dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* Rd*ϵ̲̲̇′_mag) + Rs )  *  (     κ ^ 2.0 )  )
                 dKappa  = max(0.0, dKappa)
+                # KAlMu1  = μ  \  ( dKappa + dAlpha )
                 KAlMu1  = κ  \  ( dKappa + dAlpha )
+                # Cxd     = Cx1   *   exp(  -( Cx2 + (   P*Cdp) )  /        θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
+                # Cxs     = Cx3   *   exp(  -( Cx4 + (   P*Csp) )  /        θ  )   *   (  KAlMu             *  Δt  )
                 Cxd     = Cx1   *   exp(  -( Cx2 + (   P*1e6Cdp) )  /        θ  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  *  Δt  )
                 Cxs     = Cx3   *   exp(  -( Cx4 + (   P*1e6Csp) )  /        θ  )   *   (  KAlMu             *  Δt  )
                 Ch      = Cx5 * KAlMu1 * Δt
@@ -600,7 +591,6 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                         KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
                         dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *   ( α̲̲_mag ^ 2.0 )  )
                         dAlpha  = max(0.0, dAlpha)
-                        # dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *   (     κ ^ 2.0 )  )
                         dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* Rd*ϵ̲̲̇′_mag) + Rs )  *   (     κ ^  NK )  )
                         dKappa  = max(0.0, dKappa)
                         KAlMu1  = μ  \  ( dKappa + dAlpha )
@@ -618,7 +608,6 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                         KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
                         dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
                         dAlpha  = max(0.0, dAlpha)
-                        # dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  (     κ ^ 2.0 )  )
                         dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* Rd*ϵ̲̲̇′_mag) + Rs )  *  (     κ ^  NK )  )
                         dKappa  = max(0.0, dKappa)
                         KAlMu1  = μ  \  ( dKappa + dAlpha )
@@ -642,7 +631,6 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                         KAlMu   = μ  \  ( (κ^2.0) + (α̲̲_mag^2.0) )
                         dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 2.0 )  )
                         dAlpha  = max(0.0, dAlpha)
-                        # dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  (     κ ^ 2.0 )  )
                         dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* Rd*ϵ̲̲̇′_mag) + Rs )  *  (     κ ^  NK )  )
                         dKappa  = max(0.0, dKappa)
                         KAlMu1  = μ  \  ( dKappa + dAlpha )
@@ -686,7 +674,6 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             end
 
             # Final solution and estimate volume of DRX and SRX
-            # xx  = max(1e-6, min(0.9999999, xx))
             xx  = max(1e-10, min(0.9999999, xx))
             dX  = xx - X
             X0  = 1.0  -  ( dX / (1.0-X) )
@@ -722,16 +709,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                 # dss     = (sxk/(Cg3*sxn*0.3))^(1./(sxn-1.+Cg2))*Z^(-(1./(sxn-1.+Cg2)))
                 # # @show dr, dsgk, dsgg, dred, d
                 # error("Just checking...")
-            elseif iGSmethod == 2 # Explicit RK4
-                dr      = d
-                dsgk    = ω₀  *  exp( -E⁺ / (R*θ) )
-                Grd0    = Cg1 * (Xd^Cg4) * ϵ̲̲̇′_mag
-                gk1     = dsgk   /   (  n  *  (  dr            ^ (n-1.0) )  )   -   (  Grd0  *  (  dr            ^ Cg2 )  )
-                gk2     = dsgk   /   (  n  *  ( (dr+0.5gk1*Δt) ^ (n-1.0) )  )   -   (  Grd0  *  ( (dr+0.5gk1*Δt) ^ Cg2 )  )
-                gk3     = dsgk   /   (  n  *  ( (dr+0.5gk2*Δt) ^ (n-1.0) )  )   -   (  Grd0  *  ( (dr+0.5gk2*Δt) ^ Cg2 )  )
-                gk4     = dsgk   /   (  n  *  ( (dr+   gk3*Δt) ^ (n-1.0) )  )   -   (  Grd0  *  ( (dr+   gk3*Δt) ^ Cg2 )  )
-                d       = dr  +  ( 1.0 / 6.0 )  *  ( gk1 + 2.0(gk2+gk3) + gk4 )  *  Δt
-            elseif iGSmethod == 3 # Backward Euler: a = 1 (implicit); a = 0.5 (Crank-Nicholson)
+            elseif iGSmethod == 2 # Backward Euler: a = 1 (implicit); a = 0.5 (Crank-Nicholson)
                 λ       = 1.0
                 Nitmax  = 20
                 Convg   = 1e-6
@@ -739,8 +717,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                 # dsgk    = sxk*exp(-(sxE + P[i]*1.e6*sxV)/(R*θ))
                 # time downscaling factor for matching to n=4
                 tscl    = t  ^  ( (n/4.0) - 1.0 )
-                # dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )   *   tscl
-                dsgk    = ω₀   *   exp(  -( E⁺             )  /  ( R * θ )  )
+                dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )   *   tscl
                 xx      = dr
                 for k in range(0, Nitmax)
                     F   = dr      +      (#={=#     dsgk     *     Δt     /     (#=[=#    n    *    (
@@ -755,8 +732,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                     dxx = -F / dF
                     xx += dxx
 
-                    # if abs(dxx) <= Convg
-                    if abs(dxx/xx) <= Convg
+                    if abs(dxx) <= Convg
                         break
                     end
                     if k >= Nitmax - 1
@@ -764,58 +740,41 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                     end
                 end
                 d       = xx # ! update ISV
-                # prefct  = ( ω₀ * tscl / (Cg1*n*X) )  ^  ( 1.0 / (n-1.0+Cg2) )
-                # dsss    = prefct     *     (    (#=[=#
-                #         ϵ̲̲̇′_mag   *   exp(  ( E⁺ + (1e6P*V⁺) ) / ( R * θ )  )
-                #     #=]=#)    ^    (   -1.0   /   (  n  -  1.0  +  Cg2  )   )    )
-                prefct  = ( ω₀ / (Cg1*n*X) )  ^  ( 1.0 / (n-1.0+Cg2) )
+                prefct  = ( ω₀ * tscl / (Cg1*n*X) )  ^  ( 1.0 / (n-1.0+Cg2) )
                 dsss    = prefct     *     (    (#=[=#
-                        ϵ̲̲̇′_mag   *   exp(  ( E⁺             ) / ( R * θ )  )
+                        ϵ̲̲̇′_mag   *   exp(  ( E⁺ + (1e6P*V⁺) ) / ( R * θ )  )
                     #=]=#)    ^    (   -1.0   /   (  n  -  1.0  +  Cg2  )   )    )
-            elseif iGSmethod == 4 # analytical solution
+            elseif iGSmethod == 3 # analytical solution
                 # static grain growth
                 dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )
                 # ! update ISV
                 # // ? [20250401T1206] (JMA3): what is `d0`
                 # [20250422T1126] (JMA3): `d0` is the initial grain size.
                 d       = ψ.d₀    +    (   dsgk   *   t   *   (  t  ^  ( (n/4.0) - 1.0 )  )   )    ^    (   1.0   /   n   )
-            elseif iGSmethod == 5 # Initial model (Cho et al. (2019) IJP)
-                # original version of DRX grain size kinetics model
-                # P1      = 300.0
-                # P2      = 0.18
-                # P3      = 2.0
-                dr      = d
-                # tscl    = t  ^  ( (n/4.0) - 1.0 )
-                # dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )   *   tscl
-                # dssmax  = ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )
+            elseif iGSmethod == 4 # original version of DRX grain size kinetics model
+                P1      = 300.0
+                P2      = 0.18
+                P3      = 2.0
+                dr      = dim1
+                tscl    = t  ^  ( (n/4.0) - 1.0 )
+                dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )   *   tscl
+                dssmax  = ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )
                 # ? [20250331T1347] (JMA3): What even is this `if`-statement?
                 if ϵ̲̲̇′_mag * Δt == 0.0
-                    # dssr = ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )
+                    dssr = ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )
                     dssr = dr
                 else
-                    # dss0 = ϵ̲̲̇′_mag   *   exp(  ( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )
-                    # dssr = P1 * (dss0^-P2)
-                    dss0 = ϵ̲̲̇′_mag   *   exp(  ( E⁺             )  /  ( R * θ )  )
-                    dssr = Cg1 * (dss0^-Cg3)
+                    dss0 = ϵ̲̲̇′_mag   *   exp(  ( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )
+                    dssr = P1 * (dss0^-P2)
                 end
-                # # ? [20250331T1350] (JMA3): Why the addition, subtraction, and increment?
-                # ddgrw   = (  ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )  )   -   dr
-                # dr     += ddgrw
+                # ? [20250331T1350] (JMA3): Why the addition, subtraction, and increment?
+                ddgrw   = (  ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )  )   -   dr
+                dr     += ddgrw
                 dss     = min(dssr, dr)
-                # ddred   = -P3 * X * ϵ̲̲̇′_mag * Δt * dr * (dr-dss)
-                # # ddred = -Cg3*Xd[i]*dr*(dr - dss)*ddd*dt
-                # ddred   = max((dss-dr), ddred)
-                # d       = dr + ddred # ! update ISV
-                dsgk    = ω₀   *   exp(  -( E⁺             )  /  ( R * θ )  )
-                Grd0    = Cg3 * (Xd^Cg4) * ϵ̲̲̇′_mag
-                gk1     = dsgk   /   (  n  *  (   dr ^ (n-1.0) )  )   -   (  Grd0  *    dr  *  ( (  dr-dss) ^ 2.0 )  )
-                gkgt    = dr + (0.5gk1*Δt)
-                gk2     = dsgk   /   (  n  *  ( gkgt ^ (n-1.0) )  )   -   (  Grd0  *  gkgt  *  ( (gkgt-dss) ^ 2.0 )  )
-                gkgt    = dr + (0.5gk2*Δt)
-                gk3     = dsgk   /   (  n  *  ( gkgt ^ (n-1.0) )  )   -   (  Grd0  *  gkgt  *  ( (gkgt-dss) ^ 2.0 )  )
-                gkgt    = dr + (   gk3*Δt)
-                gk4     = dsgk   /   (  n  *  ( gkgt ^ (n-1.0) )  )   -   (  Grd0  *  gkgt  *  ( (gkgt-dss) ^ 2.0 )  )
-                d       = dr  +  ( 1.0 / 6.0 )  *  ( gk1 + 2.0(gk2+gk3) + gk4 )  *  dt
+                ddred   = -P3 * X * ϵ̲̲̇′_mag * Δt * dr * (dr-dss)
+                # ddred = -Cg3*Xd[i]*dr*(dr - dss)*ddd*dt
+                ddred   = max((dss-dr), ddred)
+                d       = dr + ddred # ! update ISV
             else
                 error("iGSmethod > 4 not supported")
             end
@@ -854,86 +813,83 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             σ̲̲′⁽ᵗʳ⁾ = ( σ̲̲′ .* ϕ₂⁽ᵗʳ⁾ )  +  ( twoμ .* Δϵ̲̲′ .* ϕ₁⁽ᵗʳ⁾)
         #--- use of Newton Method for DG and Kappa
         # iNewton = 0 # [20250422T1128] (JMA3): Commented out to let keyword argument have precendence.
-        # #--- irradiation hardening effect
-            # Hir = (1.0+Si) ^ 2.0
+        #--- irradiation hardening effect
+        Hir = (1.0+Si) ^ 2.0
         #--- trial kappa
-            # if iNewton == 0
-            # end
+        if iNewton == 0
             rdrsk   = 1.0   +   (  ( Rs + (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) )  *  Δt  *  ( κ ^ (NK-1.0) )  *  dzz1  )
             # Ktr     = κ * X0 * dzz0 / rdrsk
             κ⁽ᵗʳ⁾   = κ * X0 * dzz0 / rdrsk
-        # #--- trial M in isotropic hardening (output only)
-            # rdrssk  = 1.0   +   (  ( Rs + (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) )  *  Δt  *  ( κₛ ^ (NK-1.0) ) *  dzz1  )
-            # # Kstr    = κₛ * X0 * dzz0 / rdrssk
-            # κₛ⁽ᵗʳ⁾  = κₛ * X0 * dzz0 / rdrssk
-            # # @show twoμ .* Δϵ̲̲′
-            # # @show σ̲̲′⁽ᵗʳ⁾
-            # # @show Si, Hir, rdrsk, κ⁽ᵗʳ⁾, rdrssk, κₛ⁽ᵗʳ⁾
-            # # # @show d
-            # # # # ! update ISV
-            # # # ? [20250401T1206] (JMA3): Why are we updating this again?
-            # # # * [20250424T0936] (JMA3): Honestly, I have no idea. So let's comment it out for now.
-            # # # ! [20250722T1123] (JMA3): It seems as though HEC kept this definition on purpose.
-            # # # !                         So let's keep it for now and optimize later.
-            # # d       =           (  ( Rs + (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) )  *         ( κₛ ^ (NK-1.0) )          )
-            # # # @show d
-            # # error("Just checking...")
-            # if iNewton == 1 # Newton iteration (Backward Euler)
-            #     # Nitmax  = 20
-            #     # Ntol    = 1.e-06
-            #     # Rx0     = X0
-            #     # xx      = κ
-            #     # for k in range(0, Nitmax)
-            #     #     RSRD    = 1.0  +  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs ) * Δt * ( xx ^ (NK-1.0) )
-            #     #     F1      = (Rx0*κ/RSRD) - xx
-            #     #     dF1     = (  -Rx0  *  κ  *  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  Δt  *  ( NK - 1.0 )  *  ( xx ^ (NK-2.0) )  /  ( RSRD ^ 2.0 )  )   -   1.0
-            #     #     dxx     = -F1 / dF1
-            #     #     xxn     = xx
-            #     #     xx     += dxx
-            #     #     if abs(dxx / xxn) <= Ntol
-            #     #         break
-            #     #     end
-            #     #     if k >= Nitmax - 1
-            #     #         println("Ktr: N-R Conv Issue: k >= Nitmax", k)
-            #     #     end
-            #     # end
-            #     # κ⁽ᵗʳ⁾   = xx
-            #     # rdrsk   = 1.0   +   (  ( Rs + (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) )  *  Δt  *  ( xx ^ (NK-1.0) )  )
+        end
+        #--- trial M in isotropic hardening (output only)
+        rdrssk  = 1.0   +   (  ( Rs + (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) )  *  Δt  *  ( κₛ ^ (NK-1.0) ) *  dzz1  )
+        # Kstr    = κₛ * X0 * dzz0 / rdrssk
+        κₛ⁽ᵗʳ⁾  = κₛ * X0 * dzz0 / rdrssk
+        # @show twoμ .* Δϵ̲̲′
+        # @show σ̲̲′⁽ᵗʳ⁾
+        # @show Si, Hir, rdrsk, κ⁽ᵗʳ⁾, rdrssk, κₛ⁽ᵗʳ⁾
+        # # @show d
+        # # # ! update ISV
+        # # ? [20250401T1206] (JMA3): Why are we updating this again?
+        # # * [20250424T0936] (JMA3): Honestly, I have no idea. So let's comment it out for now.
+        # # ! [20250722T1123] (JMA3): It seems as though HEC kept this definition on purpose.
+        # # !                         So let's keep it for now and optimize later.
+        # d       =           (  ( Rs + (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) )  *         ( κₛ ^ (NK-1.0) )          )
+        # # @show d
+        # error("Just checking...")
+        if iNewton == 1 # Newton iteration (Backward Euler)
+            # Nitmax  = 20
+            # Ntol    = 1.e-06
+            # Rx0     = X0
+            # xx      = κ
+            # for k in range(0, Nitmax)
+            #     RSRD    = 1.0  +  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs ) * Δt * ( xx ^ (NK-1.0) )
+            #     F1      = (Rx0*κ/RSRD) - xx
+            #     dF1     = (  -Rx0  *  κ  *  ( (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) + Rs )  *  Δt  *  ( NK - 1.0 )  *  ( xx ^ (NK-2.0) )  /  ( RSRD ^ 2.0 )  )   -   1.0
+            #     dxx     = -F1 / dF1
+            #     xxn     = xx
+            #     xx     += dxx
+            #     if abs(dxx / xxn) <= Ntol
+            #         break
+            #     end
+            #     if k >= Nitmax - 1
+            #         println("Ktr: N-R Conv Issue: k >= Nitmax", k)
+            #     end
             # end
+            # κ⁽ᵗʳ⁾   = xx
+            # rdrsk   = 1.0   +   (  ( Rs + (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) )  *  Δt  *  ( xx ^ (NK-1.0) )  )
+        end
         #--- trial alpha
-            # * [20250331T1452] (JMA3): this is already defined above
-            # Al_mag = Al[0][i-1]^2 + Al[1][i-1]^2 + Al[2][i-1]^2 \
-            #        +(Al[3][i-1]^2 + Al[4][i-1]^2 + Al[5][i-1]^2)*2.
-            # Al_mag = sqrt(Al_mag)*sqrt_threehalves
-            # rdrsa   = 1.0   +   (  ( rs + (sqrt_twothirds* rd*ϵ̲̲̇′_mag) )  *  Δt  *  α̲̲_mag            *  dzz1  )
-            rdrsa   = 1.0   +   (  ( rs + (                rd*ϵ̲̲̇′_mag) )  *  Δt  *  α̲̲_mag            *  dzz1  )
-            # for k in range(0, 6)
-            #     Altr[k] = Al[k][i-1] * X0 * dzz0 / rdrsa
-            # end
-            # α̲̲⁽ᵗʳ⁾
-            # Altr = α̲̲ .* X0 .* dzz0 ./ rdrsa
-            α̲̲⁽ᵗʳ⁾ = α̲̲ .* X0 .* dzz0 ./ rdrsa
+        # * [20250331T1452] (JMA3): this is already defined above
+        # Al_mag = Al[0][i-1]^2 + Al[1][i-1]^2 + Al[2][i-1]^2 \
+        #        +(Al[3][i-1]^2 + Al[4][i-1]^2 + Al[5][i-1]^2)*2.
+        # Al_mag = sqrt(Al_mag)*sqrt_threehalves
+        rdrsa   = 1.0   +   (  ( rs + (sqrt_twothirds* rd*ϵ̲̲̇′_mag) )  *  Δt  *  α̲̲_mag            *  dzz1  )
+        # for k in range(0, 6)
+        #     Altr[k] = Al[k][i-1] * X0 * dzz0 / rdrsa
+        # end
+        # α̲̲⁽ᵗʳ⁾
+        # Altr = α̲̲ .* X0 .* dzz0 ./ rdrsa
+        α̲̲⁽ᵗʳ⁾ = α̲̲ .* X0 .* dzz0 ./ rdrsa
         #--- Plastic direction tensor N
-            # for k in range(0, 6)
-            #     Xi[k] = Str[k] - ( (2.0/3.0) * Altr[k] )
-            # end
-            # Xi_mag2 = Xi[0]^2 + Xi[1]^2 + Xi[2]^2 \
-            #         +(Xi[3]^2 + Xi[4]^2 + Xi[5]^2)*2.0
-            # Xi_mag = sqrt(Xi_mag2)
-            # for k in range(0, 6)
-            #     N[k] = Xi[k] / Xi_mag
-            # end
-            # ξ̲̲⁽ᵗʳ⁾
-            # ξ̲̲⁽ᵗʳ⁾_mag
-            # n̂
-            # Xi = σ̲̲′⁽ᵗʳ⁾  -  ( (2.0/3.0) .* α̲̲⁽ᵗʳ⁾ )
-            # Xi_mag = norm_symvec(Xi)
-            # N = Xi ./ Xi_mag
-            # ξ̲̲′⁽ᵗʳ⁾      = σ̲̲′⁽ᵗʳ⁾  -  ( (2.0/3.0) .* α̲̲⁽ᵗʳ⁾ )
-            ξ̲̲′⁽ᵗʳ⁾      = σ̲̲′⁽ᵗʳ⁾  -  (              α̲̲⁽ᵗʳ⁾ )
-            ξ̲̲′⁽ᵗʳ⁾_mag  = norm_symvec(ξ̲̲′⁽ᵗʳ⁾)
-            n̂′          = ξ̲̲′⁽ᵗʳ⁾ ./ ξ̲̲′⁽ᵗʳ⁾_mag
-            n̂′         .= norm_symvec(n̂′)
+        # for k in range(0, 6)
+        #     Xi[k] = Str[k] - ( (2.0/3.0) * Altr[k] )
+        # end
+        # Xi_mag2 = Xi[0]^2 + Xi[1]^2 + Xi[2]^2 \
+        #         +(Xi[3]^2 + Xi[4]^2 + Xi[5]^2)*2.0
+        # Xi_mag = sqrt(Xi_mag2)
+        # for k in range(0, 6)
+        #     N[k] = Xi[k] / Xi_mag
+        # end
+        # ξ̲̲⁽ᵗʳ⁾
+        # ξ̲̲⁽ᵗʳ⁾_mag
+        # n̂
+        # Xi = σ̲̲′⁽ᵗʳ⁾  -  ( (2.0/3.0) .* α̲̲⁽ᵗʳ⁾ )
+        # Xi_mag = norm_symvec(Xi)
+        # N = Xi ./ Xi_mag
+        ξ̲̲′⁽ᵗʳ⁾      = σ̲̲′⁽ᵗʳ⁾  -  ( (2.0/3.0) .* α̲̲⁽ᵗʳ⁾ )
+        ξ̲̲′⁽ᵗʳ⁾_mag  = norm_symvec(ξ̲̲′⁽ᵗʳ⁾)
+        n̂′          = ξ̲̲′⁽ᵗʳ⁾ ./ ξ̲̲′⁽ᵗʳ⁾_mag
     # check plasticity
         ak     = Y + κ⁽ᵗʳ⁾ + Be + Yₚ
         critra = ξ̲̲′⁽ᵗʳ⁾_mag - (sqrt_twothirds*ak*ϕ₁⁽ᵗʳ⁾)
@@ -959,7 +915,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         # for k in range(0, 3)
         #     Sig[k][i] = Sig[k][i] + P_H
         # end
-        σ̲̲ = σ̲̲′ + volumetric(P) # ! update ISV
+        σ̲̲ = σ̲̲′⁽ᵗʳ⁾ + volumetric(P_H) # ! update ISV
         # von Mises stress update
         # vM[i]  = S[0][i]^2 + S[1][i]^2 + S[2][i]^2 \
         #         +(S[3][i]^2 + S[4][i]^2 + S[5][i]^2)*2.
@@ -972,9 +928,9 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         # end
         # α̲̲ = α̲̲⁽ᵗʳ⁾
         α̲̲ = α̲̲⁽ᵗʳ⁾ # ! update ISV
-        # # [20250402T1156] (JMA3):   This (v) may not be needed since `ϵ̲̲′` is evaluated
-        # #                           at the top and should be updated in `predict()`.
-        # ϵ̲̲′ += Δϵ̲̲′
+        # [20250402T1156] (JMA3):   This (v) may not be needed since `ϵ̲̲′` is evaluated
+        #                           at the top and should be updated in `predict()`.
+        ϵ̲̲′ += Δϵ̲̲′
         # kinematic hardening update
         # [20250402T1156] (JMA3):   This (v) may not be needed since `ϵ̲̲′` is evaluated
         #                           at the top and should be updated in `predict()`.
@@ -985,34 +941,28 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         # isotropic hardening update
         # K[i]   = Ktr
         κ = κ⁽ᵗʳ⁾ # ! update ISV
-        # # irradiation hardening update
-        # # Ks[i]  = Kstr
-        # κₛ = κₛ⁽ᵗʳ⁾ # ! update ISV
-        # # total equivalent strain update
-        # # [20250402T1156] (JMA3):   This (v) may not be needed since `ϵ̲̲′` is evaluated
-        # #                           at the top and should be updated in `predict()`.
-        # # TEm[i] = TEm[i-1] + (ddd*dt)
-        # ϵ̲̲′_mag += ϵ̲̲̇′_mag*Δt
-        # # volumetric strain update
-        # # [20250402T1156] (JMA3):   This (v) may not be needed since `ϵ̲̲′` is evaluated
-        # #                           at the top and should be updated in `predict()`.
-        # # VE[i]  = VE[i-1] + (3.0*davg)
-        # ϵ̲̲⁽ᴴ⁾ += 3.0Δϵ̲̲⁽ᴴ⁾
+        # irradiation hardening update
+        # Ks[i]  = Kstr
+        κₛ = κₛ⁽ᵗʳ⁾ # ! update ISV
+        # total equivalent strain update
+        # [20250402T1156] (JMA3):   This (v) may not be needed since `ϵ̲̲′` is evaluated
+        #                           at the top and should be updated in `predict()`.
+        # TEm[i] = TEm[i-1] + (ddd*dt)
+        ϵ̲̲′_mag += ϵ̲̲̇′_mag*Δt
+        # volumetric strain update
+        # [20250402T1156] (JMA3):   This (v) may not be needed since `ϵ̲̲′` is evaluated
+        #                           at the top and should be updated in `predict()`.
+        # VE[i]  = VE[i-1] + (3.0*davg)
+        ϵ̲̲⁽ᴴ⁾ += 3.0Δϵ̲̲⁽ᴴ⁾
         # damage update
         # Phi[i] = Phi[i-1]
         # Nuc[i] = Nuc[i-1]
         # Vod[i] = Vod[i-1]
         # dPhi[i] = 0.0
-        ϕ   = ϕ # ! update ISV
-        η   = η # ! update ISV
-        νᵥ  = νᵥ # ! update ISV
-        ϕ̇   = 0.0 # ! update ISV
-        # Recrystallization update
-        XR  = XR + dXs
-        XH  = XH
-        Xd  = Xd
-        Xs  = Xs + dXs
-        X   = X  + dXs
+        ϕ = ϕ # ! update ISV
+        η = η # ! update ISV
+        νᵥ = νᵥ # ! update ISV
+        ϕ̇ = 0.0 # ! update ISV
 
         # // [20250401T1450] (JMA3): I'm not really sure what this is doing; maybe TERRAfit?
         # [20250422T1129] (JMA3): Yes. Just for visualization in TERRAfit. Not actually needed.
@@ -1024,12 +974,9 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         EPflag = 2
         #--- Plastic strain increment solution
         if     iNewton == 0 # analytical solution for DG
-            # Δγ = (    ξ̲̲′⁽ᵗʳ⁾_mag    -    (   sqrt_twothirds   *   ak   *   ϕ₁⁽ᵗʳ⁾   )    )     /     (
-            #     (   ϕ₁⁽ᵗʳ⁾   *   twoμ   )    +    (   ϕ₁⁽ᵗʳ⁾   *   (  2.0  /  3.0  )   *   (
-            #             ( (1.0-X) ^ NK )  *  dzz1  *  ( (h/rdrsa) + (H*Hir/rdrsk) )  )   )    )
-            Δγ = (    ξ̲̲′⁽ᵗʳ⁾_mag    -    (   ak   *   ϕ₁⁽ᵗʳ⁾   )    )     /     (
+            Δγ = (    ξ̲̲′⁽ᵗʳ⁾_mag    -    (   sqrt_twothirds   *   ak   *   ϕ₁⁽ᵗʳ⁾   )    )     /     (
                 (   ϕ₁⁽ᵗʳ⁾   *   twoμ   )    +    (   ϕ₁⁽ᵗʳ⁾   *   (  2.0  /  3.0  )   *   (
-                        Rx  *  dzz1  *  ( (h/rdrsa) + (H/rdrsk) )  )   )    )
+                        ( (1.0-X) ^ NK )  *  dzz1  *  ( (h/rdrsa) + (H*Hir/rdrsk) )  )   )    )
         elseif iNewton == 1 # Newton-Rapson for DG and Kappa
             # Δγ = (    ξ̲̲′⁽ᵗʳ⁾_mag    -    (   sqrt_twothirds   *   ak   *   ϕ₁⁽ᵗʳ⁾   )    )     /     (
             #     (   ϕ₁⁽ᵗʳ⁾   *   twoμ   )    +    (   ϕ₁⁽ᵗʳ⁾   *   (  2.0  /  3.0  )   *   (
@@ -1081,59 +1028,6 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             # end
             # Δγ  = xx1
             # κ   = xx2 # ! update ISV
-
-
-
-            Δγ = (    ξ̲̲′⁽ᵗʳ⁾_mag    -    (   ak   *   ϕ₁⁽ᵗʳ⁾   )    )     /     (
-                (   ϕ₁⁽ᵗʳ⁾   *   twoμ   )    +    (   ϕ₁⁽ᵗʳ⁾   *   (  2.0  /  3.0  )   *   (
-                        Rx  *  dzz1  *  ( (h/rdrsa) + (H/rdrsk) )  )   )    )
-
-            Nitmax  = 100
-            Ntol    = 1e-4
-            xx1     = Δγ
-            xx2     = κ
-            κ₀      = κ
-            # Rx      = (1.0-X) ^ NK
-            th      = 1.0 # 1-Backward Euler; 0.5-Midpoint; 0-Forward Euler
-            for k in range(0, Nitmax)
-                thK0thK     = (  ( 1.0 - th )  *  ( κ₀ ^ (NK-1.0) )  )   +   (  th  *  ( xx2 ^ (NK-1.0) )  )
-                Rdxx1Rsdt   = 1.0  +  (  ( (sqrt_twothirds* Rd*xx1) + (Rs*Δt) )  *  thK0thK  )
-                F₁      = ξ̲̲′⁽ᵗʳ⁾_mag   -   (  twoμ * ϕ₁⁽ᵗʳ⁾ * xx1  )   -   (
-                        sqrt_twothirds  *  ( κ₀ + (Rx*H*ϕ₁⁽ᵗʳ⁾*xx1) )  /  Rdxx1Rsdt  )   -   (
-                        sqrt_twothirds  *  ( Be + Y + Yₚ )  )
-                ∂F₁╱∂x₁ = -twoμ     *     ϕ₁⁽ᵗʳ⁾     -     (    sqrt_twothirds    *    (
-                    (  Rx  *  H  *  ϕ₁⁽ᵗʳ⁾  /  Rdxx1Rsdt  )   -   (
-                        ( κ₀ + (Rx*H*ϕ₁⁽ᵗʳ⁾*xx1) )  *  sqrt_twothirds  *  Rd  *  thK0thK  /  ( Rdxx1Rsdt ^ 2.0 )  )   )    )
-                ∂F₁╱∂x₂ = -1.0 * sqrt_twothirds
-                F₂      = (  ( κ₀ + (Rx*H*ϕ₁⁽ᵗʳ⁾*xx1) )  /  Rdxx1Rsdt  )   -   xx2
-                ∂F₂╱∂x₁ = (  Rx  *  H  *  ϕ₁⁽ᵗʳ⁾  /  Rdxx1Rsdt  )   -   (
-                    ( κ₀ + (Rx*H*ϕ₁⁽ᵗʳ⁾*xx1) )  *  sqrt_twothirds  *  Rd  *  thK0thK  /  ( Rdxx1Rsdt ^ 2.0 )  )
-                ∂F₂╱∂x₂ = -( κ₀ + (Rx*H*ϕ₁⁽ᵗʳ⁾*xx1) )  *  (
-                    (sqrt_twothirds*Rd*xx1) + (Rs*Δt) )  *  th  *  ( NK - 1.0 )  *  ( xx2 ^ (NK-2.0) )
-                ∂F₂╱∂x₂ = ( ∂F₂╱∂x₂ / (Rdxx1Rsdt^2.0) )  -  1.0
-
-                a₁₁     = ∂F₁╱∂x₁
-                a₁₂     = ∂F₁╱∂x₂
-                a₂₁     = ∂F₂╱∂x₁
-                a₂₂     = ∂F₂╱∂x₂
-                dxx2    = ( (-F₂*a₁₁/a₂₁) + F₁ )  /  ( (a₂₂ * (a₁₁/a₂₁)) - a₁₂ )
-                dxx1    = ( (-a₁₂*dxx2)   - F₁ )  /  a₁₁
-
-                xx1n    = xx1
-                xx2n    = xx2
-
-                xx1    += dxx1
-                xx2    += dxx2
-
-                if abs(dxx1/xx1n) <= Ntol && abs(dxx2/xx2n) <= Ntol
-                    break
-                end
-                if k >= Nitmax - 1
-                    println("Gamma-K: N-R Conv. Issue: k >= Nitmax", abs(dxx2/xx2n))
-                end
-            end
-            Δγ  = xx1
-            κ   = xx2 # ! update ISV
         end
         #--- stress solution
             # deviatoric stress update
@@ -1148,48 +1042,42 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             # for k in range(3, 6)
             #     Sig[k][i] = S[k][i]
             # end
-            # σ̲̲ = σ̲̲′ + volumetric(P_H) # ! update state variable
-            σ̲̲ = σ̲̲′ + volumetric(P) # ! update state variable
+            σ̲̲ = σ̲̲′ + volumetric(P_H) # ! update state variable
             # von Mises stress update
             # vM[i] = S[0][i]^2 + S[1][i]^2 + S[2][i]^2 \
             #         +(S[3][i]^2 + S[4][i]^2 + S[5][i]^2)*2.
             # vM[i] = sqrt(vM[i])*sqrt_threehalves
             vM = sqrt_threehalves * norm_symvec(σ̲̲′)
-        # #--- total deviatoric strain
-            # # for k in range(0, 6)
-            # #     TE[k][i] = TE[k][i-1] + DE[k]
-            # # end
-            # ϵ̲̲ += Δϵ̲̲
-            # # ϵ̲̲′ += Δϵ̲̲′
+        #--- total deviatoric strain
+        # for k in range(0, 6)
+        #     TE[k][i] = TE[k][i-1] + DE[k]
+        # end
+        ϵ̲̲ += Δϵ̲̲
+        # ϵ̲̲′ += Δϵ̲̲′
         #--- total plastic strain
-            # PE[i] = PE[i-1] + (sqrt_twothirds * DG)
-            # @show ϵ̲̲⁽ᵖ⁾[1] + (sqrt_twothirds*Δγ)
-            ϵ̲̲⁽ᵖ⁾ += ( (sqrt_twothirds*Δγ) .* n̂′ ) # ! update ISV
-        # #--- total volumetric strain
-            # # VE[i] = VE[i-1] + (3.0 * davg)
-            # ϵ̲̲⁽ᴴ⁾ += 3.0Δϵ̲̲⁽ᴴ⁾
-            # # ϵ̲̲ += ( (sqrt_twothirds*Δγ) .* n̂′ ) + volumetric(Δϵ̲̲⁽ᴴ⁾) # ! update ISV
-            # # ϵ̲̲ += ( (sqrt_twothirds*Δγ) .* n̂′ ) + volumetric(sqrt_twothirds*Δγ) # ! update ISV
-            # # ϵ̲̲ += (Δϵ̲̲′ - ( (sqrt_twothirds*Δγ) .* n̂′ ))  + volumetric(Δϵ̲̲⁽ᴴ⁾) # ! update ISV
+        # PE[i] = PE[i-1] + (sqrt_twothirds * DG)
+        # @show ϵ̲̲⁽ᵖ⁾[1] + (sqrt_twothirds*Δγ)
+        ϵ̲̲⁽ᵖ⁾ += ( (sqrt_twothirds*Δγ) .* n̂′ ) # ! update ISV
+        #--- total volumetric strain
+        # VE[i] = VE[i-1] + (3.0 * davg)
+        ϵ̲̲⁽ᴴ⁾ += 3.0Δϵ̲̲⁽ᴴ⁾
+        # ϵ̲̲ += ( (sqrt_twothirds*Δγ) .* n̂′ ) + volumetric(Δϵ̲̲⁽ᴴ⁾) # ! update ISV
+        # ϵ̲̲ += ( (sqrt_twothirds*Δγ) .* n̂′ ) + volumetric(sqrt_twothirds*Δγ) # ! update ISV
+        # ϵ̲̲ += (Δϵ̲̲′ - ( (sqrt_twothirds*Δγ) .* n̂′ ))  + volumetric(Δϵ̲̲⁽ᴴ⁾) # ! update ISV
         #--- alpha solution
-            # for k in range(0, 6)
-            #     Al[k][i] = Altr[k]   +   (
-            #         ( (1.0-X[i]) ^ NK )  *  dzz1  *  dam1  *  h  *  DG  *  N[k]  /  rdrsa  )
-            # end
-            # α̲̲ = α̲̲⁽ᵗʳ⁾    +    ( # ! update ISV
-            #         (  ( (1.0-X) ^ NK )  *  dzz1  *  ϕ₁⁽ᵗʳ⁾  *  h  *  Δγ  )   .*   n̂′   ./   rdrsa   )
-            α̲̲ = α̲̲⁽ᵗʳ⁾    +    ( # ! update ISV
-                    (  Rx  *  dzz1  *  ϕ₁⁽ᵗʳ⁾  *  sqrt_twothirds  *  h  *  Δγ  )   .*   n̂′   ./   rdrsa   )
+        # for k in range(0, 6)
+        #     Al[k][i] = Altr[k]   +   (
+        #         ( (1.0-X[i]) ^ NK )  *  dzz1  *  dam1  *  h  *  DG  *  N[k]  /  rdrsa  )
+        # end
+        α̲̲ = α̲̲⁽ᵗʳ⁾    +    ( # ! update ISV
+                (  ( (1.0-X) ^ NK )  *  dzz1  *  ϕ₁⁽ᵗʳ⁾  *  h  *  Δγ  )   .*   n̂′   ./   rdrsa   )
         #--- kappa solution # ! update ISV
-            # κ = (   iNewton   !=   0   )    ?    (   xx2   )    :    (#=[=#   κ⁽ᵗʳ⁾   +   (
-            #         ( (1.0-X) ^ NK )  *  sqrt_twothirds  *  dzz1  *  ϕ₁⁽ᵗʳ⁾  *  H  *  Hir  *  Δγ  /  rdrsk  )   #=]=#)
-            κ = (   iNewton   !=   0   )    ?    (   xx2   )    :    (#=[=#   κ⁽ᵗʳ⁾   +   (
-                    Rx  *  dzz1  *  ϕ₁⁽ᵗʳ⁾  *  H  *  Δγ  /  rdrsk  )   #=]=#)
-        # #--- irradiation hardening solution in isotropic hardening
-            # Sir = Si^2.0
-            # κₛ  = κₛ⁽ᵗʳ⁾   +   ( # ! update ISV
-            #     ( (1.0-X) ^ NK )  *  sqrt_twothirds  *  dzz1  *  ϕ₁⁽ᵗʳ⁾  *  H  *  Sir  *  Δγ  /  rdrssk  )
-        # various print statements for debugging
+        κ = (   iNewton   !=   0   )    ?    (   xx2   )    :    (#=[=#   κ⁽ᵗʳ⁾   +   (
+                ( (1.0-X) ^ NK )  *  sqrt_twothirds  *  dzz1  *  ϕ₁⁽ᵗʳ⁾  *  H  *  Hir  *  Δγ  /  rdrsk  )   #=]=#)
+        #--- irradiation hardening solution in isotropic hardening
+        Sir = Si^2.0
+        κₛ  = κₛ⁽ᵗʳ⁾   +   ( # ! update ISV
+            ( (1.0-X) ^ NK )  *  sqrt_twothirds  *  dzz1  *  ϕ₁⁽ᵗʳ⁾  *  H  *  Sir  *  Δγ  /  rdrssk  )
         # @show Δγ
         # @show σ̲̲′
         # @show σ̲̲, vM
@@ -1245,11 +1133,8 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             # # @show di1, dj2, dj3, JJ1, JJ2, JJ3
         ##--- nucleation (RK4 integration)
             ddff= ( 𝒹 ^ 0.5 )  /  ( 𝒻 ^ (1.0/3.0) )
-            # Δη₀ = ϵ̲̲̇′_mag   *   ddff   /   Kic   *   (  a  *  ( (4.0/27.0) - JJ1 )  +  ( b * JJ2 )  +  (
-            #     c * damirr * abs(JJ3) )  )   *   exp(  Tnuc  /  θ  )
-            #     #+ pcc*(1.+sinh(kp1*Si))*abs(JJ3))*exp(pTnuc/θ)
             Δη₀ = ϵ̲̲̇′_mag   *   ddff   /   Kic   *   (  a  *  ( (4.0/27.0) - JJ1 )  +  ( b * JJ2 )  +  (
-                c * abs(JJ3) )  )   *   exp(  Tnuc  /  θ  )
+                c * damirr * abs(JJ3) )  )   *   exp(  Tnuc  /  θ  )
                 #+ pcc*(1.+sinh(kp1*Si))*abs(JJ3))*exp(pTnuc/θ)
             k₁  = Δη₀  *    η
             k₂  = Δη₀  *  ( η + (0.5k₁*Δt) )
@@ -1257,10 +1142,8 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             k₄  = Δη₀  *  ( η + (   k₃*Δt) )
             # # @show η
             η  += 6.0  \  Δt  *  ( k₁ + 2.0(k₂+k₃) + k₄ ) # ! update ISV
-            # Δη  = η   *   ϵ̲̲̇′_mag   *   ddff   /   Kic   *   (  a  *  ( (4.0/27.0) - JJ1 )  +  ( b * JJ2 )  +  (
-            #     c * damirr * abs(JJ3) )  )   *   exp(  Tnuc  /  θ  )
             Δη  = η   *   ϵ̲̲̇′_mag   *   ddff   /   Kic   *   (  a  *  ( (4.0/27.0) - JJ1 )  +  ( b * JJ2 )  +  (
-                c * abs(JJ3) )  )   *   exp(  Tnuc  /  θ  )
+                c * damirr * abs(JJ3) )  )   *   exp(  Tnuc  /  θ  )
             # # @show k₁, k₂, k₃, k₄
             # @show ddff, Δη₀, η, Δη
 
@@ -1275,20 +1158,17 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             ### Implementation (Euler method)
             #dvod = 4./3.*((sqrt(3.)/2.*prr0*ddd/(1.-pnn) \
             #     * sinh(sqrt(3.)*(1.-pnn)*sqrt(2.)/3.*JJ3)) \
-            #     * exp(pTgrw*temp))**3
-            Δνᵥ = (  ( √(3.0) / 2.0 )  *  R₀  *  ϵ̲̲′_mag  /  ( 1.0 - nn )
-                    * sinh( √(3.0) * (1.0-nn) * (√(2.0)/3.0) * JJ3 )
-                )   *   exp(  Tgrw  *  θ  )   *   νᵥ
-            νᵥ += Δνᵥ*Δt
+            #     * exp(pTgrw*θ))^3              
+            #Vod[i] = Vod[i-1] + dvod*dt
 
-            # ### Implementation (Horstemeyer et al., 2000)
-            # νᵥ₀ = νᵥ
-            # # ! update ISV
-            # νᵥ = (    4.0    /    3.0    )     *     (#={=#    (   R₀   *   exp(#=[=#
-            #         ϵ̲̲′_mag  *  sqrt( 3.0 )  /  ( 2.0 * (1.0-nn) )  *  sinh(
-            #             sqrt(3.0) * (1.0-nn) * sqrt(2.0) / 3.0 * JJ3 )  *  exp( Tgrw * θ )
-            #     #=]=#)   )    ^    3.0    #=}=#)
-            # Δνᵥ = νᵥ - νᵥ₀
+            ### Implementation (Horstemeyer et al., 2000)
+            νᵥ₀ = νᵥ
+            # ! update ISV
+            νᵥ = (    4.0    /    3.0    )     *     (#={=#    (   R₀   *   exp(#=[=#
+                    ϵ̲̲′_mag  *  sqrt( 3.0 )  /  ( 2.0 * (1.0-nn) )  *  sinh(
+                        sqrt(3.0) * (1.0-nn) * sqrt(2.0) / 3.0 * JJ3 )  *  exp( Tgrw * θ )
+                #=]=#)   )    ^    3.0    #=}=#)
+            Δνᵥ = νᵥ - νᵥ₀
 
             # @show νᵥ₀, ϵ̲̲′_mag, νᵥ, Δνᵥ
 
@@ -1308,8 +1188,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         # # @show ϕ
         ϕ     = ϕ₀ + ϕ̇*Δt
         # # @show ϕ
-        # ϕ     = max( min(ϕ,0.99999) , 0.0000000001 ) # ! update ISV
-        ϕ     = max( min(ϕ,0.999999999) , 0.0000000001 ) # ! update ISV
+        ϕ     = max( min(ϕ,0.99999) , 0.0000000001 ) # ! update ISV
         # # @show ϕ
 
         ϕ̇ = (ϕ-ϕ₀) / Δt # ! update ISV
@@ -1374,7 +1253,6 @@ function ContinuumMechanicsBase.predict(
     κ       = 1e-7          # isotropic hardening
     κₛ      = 1e-7          # irradiation hardening
     ## damage
-    # ϕ       = 1.0e-5       # damage
     ϕ       = 1.0e-10       # damage
     # η       = ψ.η₀          # void nucleation
     η       = p.Cnuc          # void nucleation

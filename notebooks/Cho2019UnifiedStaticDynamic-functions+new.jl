@@ -27,32 +27,32 @@ hydrostatic(x)                  = I₁(x) / 3.0
 deviatoric(x::Vector{<:Real})   = x - volumetric(hydrostatic(x))
 deviatoric(x)                   = x - volumetric(hydrostatic(x))
 
-# """
-# Structure for viscoplasticity model with loading conditions and material properties.
-# Here, uses the effective strain rate based on applied strain rate and loading direction.
-# """
-# struct Cho2019UnifiedStaticDynamic{T<:AbstractFloat} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
-# # struct Cho2019Unified{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
-#     θ       ::T         # applied temperature
-#     n       ::T
-#     ω₀      ::T
-#     E⁺      ::T
-#     V⁺      ::T
-#     R       ::T
-#     d₀      ::T
-#     z       ::T
-#     Kic     ::T
-#     𝒹       ::T
-#     𝒻       ::T
-#     η₀      ::T
-#     R₀      ::T
-#     P       ::T         # pressure
-#     ϵ̇_eff   ::T         # strain rate (effective)
-#     ϵₙ      ::T         # final strain
-#     N       ::Integer   # number of strain increments
-#     Δϵ̲̲      ::Vector{T} # S         # total strain tensor step
-#     Δt      ::T         # time step
-# end
+"""
+Structure for viscoplasticity model with loading conditions and material properties.
+Here, uses the effective strain rate based on applied strain rate and loading direction.
+"""
+struct Cho2019UnifiedStaticDynamic{T<:AbstractFloat} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
+# struct Cho2019Unified{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: AbstractBCJMetalModel
+    θ       ::T         # applied temperature
+    n       ::T
+    ω₀      ::T
+    E⁺      ::T
+    V⁺      ::T
+    R       ::T
+    d₀      ::T
+    z       ::T
+    Kic     ::T
+    𝒹       ::T
+    𝒻       ::T
+    η₀      ::T
+    R₀      ::T
+    P       ::T         # pressure
+    ϵ̇_eff   ::T         # strain rate (effective)
+    ϵₙ      ::T         # final strain
+    N       ::Integer   # number of strain increments
+    Δϵ̲̲      ::Vector{T} # S         # total strain tensor step
+    Δt      ::T         # time step
+end
 
 """
     $(SIGNATURES)
@@ -148,7 +148,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             # n, ω₀, # E⁺, V⁺, R,
             ## grain size
             # d₀, Cg1, Cg2, Cg3, z,
-            Cg1, Cg2, Cg3, # z,
+            Cg1, Cg2, Cg3, Cg4, # z,
             ## damage
             ### nucleation
             # 𝒹, 𝒻, Kic, a, b, c,
@@ -186,7 +186,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         ϵ̲̲⁽ᴴ⁾    = hydrostatic(ϵ̲̲)
         # dt      = ψ.Δt
         Δt      = ψ.Δt
-        t      += Δt    # ! update state variable
+        # t      += Δt    # ! update state variable
         # ϵ̲̲      += ψ.Δϵ̲̲  # ! update state variable
         M       = N + 1
         T       = typeof(float(θ))
@@ -373,6 +373,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         Y   = C₃ * exp( C₄/θ)
         f   = C₅ * exp(-C₆/θ)
         # # @show V, Y, f, C₁, C₂, C₃, C₄, C₅, C₆
+        # error("Just checking...")
         if dj2 == 0.0
             djr = 1.0 - ( ca * (4.0/27.0) )
             # djh = 1.0 + ( cb * (4.0/27.0) )
@@ -391,8 +392,10 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         Rd  =           C₁₃   * exp(    -C₁₄                 /        θ    )   *   djr
         H   = max(0.0,  C₁₅   * μ                                              *   djh)
         # Rs  =           C₁₇   * exp(  -( C₁₈ + (1e6P*C₂₆) )  /  ( R * θ )  )
-        Rs  =           C₁₇   * exp(    -C₁₈                 /      * θ    )
+        Rs  =           C₁₇   * exp(    -C₁₈                 /        θ    )
         Rdc = Rd * (ϵ̲̲̇′_mag^-0.0)
+        # # @show C₁₅, μ, djh
+        # # @show C₁₅ * μ * djh
         # # @show djr, djh, rd, h, rs, Rd, H, Rs, Rdc
         # error("Just checking...")
     # yield surface parameters
@@ -445,7 +448,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         α̲̲_mag   = norm_symvec(α̲̲)
         # α̲̲_mag  *= sqrt_threehalves
         α̲̲_mag  /= sqrt_threehalves
-        # # @show α̲̲_mag
+        # @show α̲̲_mag
     # REX Model
         ## REX calculation: separated DRX and SRX equations
             if     iREXmethod == 0
@@ -556,17 +559,21 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                 # # # @show dXd, dXs, dXR, dXH
                 # # error("Just checking...")
                 # K = 10.
-                KAlMu   = μ  \  ( (κ^2.0) + ((sqrt_twothirds*α̲̲_mag)^2.0) )
+                KAlMu   = μ  \  ( (κ^2.0) + ((sqrt_threehalves*α̲̲_mag)^2.0) )
                 # dAlpha  = (  h  *  ϵ̲̲̇′_mag  )   -   (  ( (sqrt_twothirds* rd*ϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^ 3.0 )  )
-                dAl = [(h*ϵ̲̲′[k]/Δt - ((rd*ϵ̲̲̇′_mag +rs)*α̲̲_mag*α̲̲[k])) for k in range(1, 6)]
+                dAl = [(h*Δϵ̲̲′[k]/Δt - ((rd*ϵ̲̲̇′_mag +rs)*α̲̲_mag*α̲̲[k])) for k in [1, 4, 6, 2, 3, 5]]
+                # # @show h, Δt, rd, ϵ̲̲̇′_mag, rs, α̲̲_mag
+                # # @show Δϵ̲̲′
+                # # @show α̲̲
+                # error("Just checking...", dAl)
                 dAlpha  = sum(dAl[[1, 4, 6]] .^ 2.0)
-                dAlpha += 2(dAl[[2, 3, 5]] .^ 2.0)
+                dAlpha += sum(2.0 .* (dAl[[2, 3, 5]] .^ 2.0))
                 dAlpha  = √(3dAlpha/2)
                 dAlpha  = max(0.0, dAlpha)
                 dKappa  = (  H  *  ϵ̲̲̇′_mag  )   -   (  ( (                Rd*ϵ̲̲̇′_mag) + Rs )  *  (     κ ^  NK )  )
                 dKappa  = max(0.0, dKappa)
                 KAlMu1  = μ  \  ( dKappa + dAlpha )
-                Cxd     = Cx1   *   exp(  -( Cx2              )  /  (     θ )  )   *   (  KAlMu  *  ϵ̲̲̇′_mag  )
+                Cxd     = Cx1   *   exp(  -( Cx2              )  /        θ    )   *   (  KAlMu  *  ϵ̲̲̇′_mag  )
                 Cxs     = Cx3   *   exp(  -( Cx4              )  /        θ    )   *      KAlMu
                 Ch      = Cx5 * KAlMu1
                 CC      = Cxd + Cxs
@@ -574,6 +581,15 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                 k₁      = k₁ -    (   Ch   *   (    X                 ^  Cxc  )   )
                 k₂      = CC    *    (   (  X  +  0.5( Δt * k₁ )  )   ^   Cxa   )    *    (   (  1.0  -  ( X + 0.5(Δt*k₁) )  )   ^   Cxb   )
                 k₂      = k₂ -    (   Ch   *   (  ( X + 0.5(Δt*k₁) )  ^  Cxc  )   )
+                # # @show i, d
+                # # @show μ, κ, sqrt_threehalves*α̲̲_mag
+                # # @show KAlMu, dAl
+                # # @show CC, X, Δt, k₂, Cxa, Cxb
+                # # @show (X + 0.5*Δt*k₂)
+                # # @show (X + 0.5*Δt*k₂)^Cxa
+                # # @show 1. - (X + 0.5*Δt*k₂)
+                # # @show CC*((X + 0.5*Δt*k₂)^Cxa)*(1. - (X + 0.5*Δt*k₂))^Cxb
+                # error("Just checking...")
                 k₃      = CC    *    (   (  X  +  0.5( Δt * k₂ )  )   ^   Cxa   )    *    (   (  1.0  -  ( X + 0.5(Δt*k₂) )  )   ^   Cxb   )
                 k₃      = k₃ -    (   Ch   *   (  ( X + 0.5(Δt*k₂) )  ^  Cxc  )   )
                 k₄      = CC    *    (   (  X  +     ( Δt * k₃ )  )   ^   Cxa   )    *    (   (  1.0  -  ( X +    (Δt*k₃) )  )   ^   Cxb   )
@@ -789,14 +805,17 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                 # dsgk    = ω₀   *   exp(  -( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )   *   tscl
                 # dssmax  = ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )
                 # ? [20250331T1347] (JMA3): What even is this `if`-statement?
-                if ϵ̲̲̇′_mag * Δt == 0.0
+                # if ϵ̲̲̇′_mag * Δt == 0.0
+                # # @show ϵ̲̲̇′_mag == 0.0
+                if ϵ̲̲̇′_mag == 0.0
                     # dssr = ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )
                     dssr = dr
                 else
                     # dss0 = ϵ̲̲̇′_mag   *   exp(  ( E⁺ + (1e6P*V⁺) )  /  ( R * θ )  )
                     # dssr = P1 * (dss0^-P2)
                     dss0 = ϵ̲̲̇′_mag   *   exp(  ( E⁺             )  /  ( R * θ )  )
-                    dssr = Cg1 * (dss0^-Cg3)
+                    dssr = Cg1 * (dss0^-Cg2)
+                    # # @show dss0, dssr, Cg1, Cg2
                 end
                 # # ? [20250331T1350] (JMA3): Why the addition, subtraction, and increment?
                 # ddgrw   = (  ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )  )   -   dr
@@ -809,13 +828,18 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                 dsgk    = ω₀   *   exp(  -( E⁺             )  /  ( R * θ )  )
                 Grd0    = Cg3 * (Xd^Cg4) * ϵ̲̲̇′_mag
                 gk1     = dsgk   /   (  n  *  (   dr ^ (n-1.0) )  )   -   (  Grd0  *    dr  *  ( (  dr-dss) ^ 2.0 )  )
+                # # @show dsgk, n, dr, Grd0, dss, gk1
+                # error("Just checking...")
                 gkgt    = dr + (0.5gk1*Δt)
                 gk2     = dsgk   /   (  n  *  ( gkgt ^ (n-1.0) )  )   -   (  Grd0  *  gkgt  *  ( (gkgt-dss) ^ 2.0 )  )
                 gkgt    = dr + (0.5gk2*Δt)
                 gk3     = dsgk   /   (  n  *  ( gkgt ^ (n-1.0) )  )   -   (  Grd0  *  gkgt  *  ( (gkgt-dss) ^ 2.0 )  )
                 gkgt    = dr + (   gk3*Δt)
                 gk4     = dsgk   /   (  n  *  ( gkgt ^ (n-1.0) )  )   -   (  Grd0  *  gkgt  *  ( (gkgt-dss) ^ 2.0 )  )
-                d       = dr  +  ( 1.0 / 6.0 )  *  ( gk1 + 2.0(gk2+gk3) + gk4 )  *  dt
+                d       = dr  +  ( 1.0 / 6.0 )  *  ( gk1 + 2.0(gk2+gk3) + gk4 )  *  Δt
+                # # @show gk1, gk2, gk3, gk4
+                # # @show dr, dsgk, Grd0, d
+                # error("Just checking...")
             else
                 error("iGSmethod > 4 not supported")
             end
@@ -824,7 +848,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             # // ? [20250401T1206] (JMA3): what is `d0`
             # [20250422T1126] (JMA3): `d0` is the initial grain size.
             dzz1, dzz0 = if idzz == 0
-                # @show ψ.d₀, d, ψ.d₀/d
+                # # @show ψ.d₀, d, ψ.d₀/d
                 ( (ψ.d₀/d) ^ z,             1.0 )
             elseif idzz == 1
                 (         1.0,     (dim1/d) ^ z )
@@ -933,17 +957,17 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             ξ̲̲′⁽ᵗʳ⁾      = σ̲̲′⁽ᵗʳ⁾  -  (              α̲̲⁽ᵗʳ⁾ )
             ξ̲̲′⁽ᵗʳ⁾_mag  = norm_symvec(ξ̲̲′⁽ᵗʳ⁾)
             n̂′          = ξ̲̲′⁽ᵗʳ⁾ ./ ξ̲̲′⁽ᵗʳ⁾_mag
-            n̂′         .= norm_symvec(n̂′)
+            # n̂′         .= norm_symvec(n̂′)
     # check plasticity
         ak     = Y + κ⁽ᵗʳ⁾ + Be + Yₚ
         critra = ξ̲̲′⁽ᵗʳ⁾_mag - (sqrt_twothirds*ak*ϕ₁⁽ᵗʳ⁾)
         #if(TEm[i-1] > 0.02): critra = 100.
-    # @show α̲̲_mag, rdrsa
-    # @show α̲̲⁽ᵗʳ⁾
-    # @show ξ̲̲′⁽ᵗʳ⁾
-    # @show ξ̲̲′⁽ᵗʳ⁾_mag
-    # @show n̂′
-    # @show ak, critra
+    # # @show α̲̲_mag, rdrsa
+    # # @show α̲̲⁽ᵗʳ⁾
+    # # @show ξ̲̲′⁽ᵗʳ⁾
+    # # @show ξ̲̲′⁽ᵗʳ⁾_mag
+    # # @show n̂′
+    # # @show ak, critra
     # error("Just checking...")
     # Radial-Return
     if critra <= 0.0 # elastic solution update
@@ -1030,6 +1054,9 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             Δγ = (    ξ̲̲′⁽ᵗʳ⁾_mag    -    (   ak   *   ϕ₁⁽ᵗʳ⁾   )    )     /     (
                 (   ϕ₁⁽ᵗʳ⁾   *   twoμ   )    +    (   ϕ₁⁽ᵗʳ⁾   *   (  2.0  /  3.0  )   *   (
                         Rx  *  dzz1  *  ( (h/rdrsa) + (H/rdrsk) )  )   )    )
+            # # @show ξ̲̲′⁽ᵗʳ⁾_mag, ak, ϕ₁⁽ᵗʳ⁾, twoμ
+            # # @show Rx, dzz1, h, rdrsa, H, rdrsk
+            # error("Just checking...")
         elseif iNewton == 1 # Newton-Rapson for DG and Kappa
             # Δγ = (    ξ̲̲′⁽ᵗʳ⁾_mag    -    (   sqrt_twothirds   *   ak   *   ϕ₁⁽ᵗʳ⁾   )    )     /     (
             #     (   ϕ₁⁽ᵗʳ⁾   *   twoμ   )    +    (   ϕ₁⁽ᵗʳ⁾   *   (  2.0  /  3.0  )   *   (
@@ -1155,6 +1182,13 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             #         +(S[3][i]^2 + S[4][i]^2 + S[5][i]^2)*2.
             # vM[i] = sqrt(vM[i])*sqrt_threehalves
             vM = sqrt_threehalves * norm_symvec(σ̲̲′)
+            # # @show σ̲̲′⁽ᵗʳ⁾
+            # # @show ϕ₁⁽ᵗʳ⁾, twoμ, Δγ
+            # # @show n̂′
+            # # @show σ̲̲′⁽ᵗʳ⁾  -  ( (ϕ₁⁽ᵗʳ⁾*(89066.17)*(0.01089263427151211)) .* n̂′ )
+            # # @show σ̲̲′, vM
+            # # @show σ̲̲
+            # error("Just checking...")
         # #--- total deviatoric strain
             # # for k in range(0, 6)
             # #     TE[k][i] = TE[k][i-1] + DE[k]
@@ -1163,7 +1197,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             # # ϵ̲̲′ += Δϵ̲̲′
         #--- total plastic strain
             # PE[i] = PE[i-1] + (sqrt_twothirds * DG)
-            # @show ϵ̲̲⁽ᵖ⁾[1] + (sqrt_twothirds*Δγ)
+            # # @show ϵ̲̲⁽ᵖ⁾[1] + (sqrt_twothirds*Δγ)
             ϵ̲̲⁽ᵖ⁾ += ( (sqrt_twothirds*Δγ) .* n̂′ ) # ! update ISV
         # #--- total volumetric strain
             # # VE[i] = VE[i-1] + (3.0 * davg)
@@ -1190,14 +1224,14 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             # κₛ  = κₛ⁽ᵗʳ⁾   +   ( # ! update ISV
             #     ( (1.0-X) ^ NK )  *  sqrt_twothirds  *  dzz1  *  ϕ₁⁽ᵗʳ⁾  *  H  *  Sir  *  Δγ  /  rdrssk  )
         # various print statements for debugging
-        # @show Δγ
-        # @show σ̲̲′
-        # @show σ̲̲, vM
-        # @show ϵ̲̲′
-        # @show ϵ̲̲⁽ᵖ⁾
-        # @show ϵ̲̲⁽ᴴ⁾
-        # @show α̲̲
-        # @show κ, Sir, κₛ
+        # # @show Δγ
+        # # @show σ̲̲′
+        # # @show σ̲̲, vM
+        # # @show ϵ̲̲′
+        # # @show ϵ̲̲⁽ᵖ⁾
+        # # @show ϵ̲̲⁽ᴴ⁾
+        # # @show α̲̲
+        # # @show κ
         # error("Just checking...")
         #--- damage
             # for k in range(0, 3)
@@ -1261,8 +1295,8 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             #     c * damirr * abs(JJ3) )  )   *   exp(  Tnuc  /  θ  )
             Δη  = η   *   ϵ̲̲̇′_mag   *   ddff   /   Kic   *   (  a  *  ( (4.0/27.0) - JJ1 )  +  ( b * JJ2 )  +  (
                 c * abs(JJ3) )  )   *   exp(  Tnuc  /  θ  )
-            # # @show k₁, k₂, k₃, k₄
-            # @show ddff, Δη₀, η, Δη
+            # # # @show k₁, k₂, k₃, k₄
+            # # @show ddff, Δη₀, η, Δη
 
             ### Implementation (Horstemeyer et al., 2000)
             #Nuc[i] = Cnuc*exp(TEm[i-1]*ddff/pKic*(paa*(4./27.-JJ1) + pbb*(JJ2) \
@@ -1290,7 +1324,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             #     #=]=#)   )    ^    3.0    #=}=#)
             # Δνᵥ = νᵥ - νᵥ₀
 
-            # @show νᵥ₀, ϵ̲̲′_mag, νᵥ, Δνᵥ
+            # # @show νᵥ₀, ϵ̲̲′_mag, νᵥ, Δνᵥ
 
             #vod0 = PE[i]*sqrt(3.)/(2.*(1.-pnn)) \
             #     * sinh(sqrt(3.)*(1.-pnn)*sqrt(2.)/3.*JJ3)*exp(pTgrw*θ)
@@ -1316,7 +1350,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
 
         ϵ̲̲⁽ᴴ⁾ = JJ3
 
-        # @show ϕ₀, η, νᵥ, C, ϕ, ϕ̇, ϵ̲̲⁽ᴴ⁾
+        # # @show ϕ₀, η, νᵥ, C, ϕ, ϕ̇, ϵ̲̲⁽ᴴ⁾
         # error("Just checking...")
 
         # // ? [20250401T1510] (JMA3): I'm not really sure what this section does either
@@ -1343,6 +1377,24 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         #     vMₛₐₜ = Be + Y + Yₚ + α̲̲ₛₐₜ_mag + κₛₐₜ
         #     vMₛₐₜ = κₛₐₜ + Be
     end
+    # @show t
+    # @show σ̲̲
+    # @show deviatoric(σ̲̲)
+    # @show Δγ
+    # @show ϵ̲̲
+    # @show deviatoric(ϵ̲̲)
+    # @show ϵ̲̲⁽ᵖ⁾
+    # @show @show ϵ̲̲⁽ᵖ⁾[1] + (sqrt_twothirds*Δγ)
+    # @show α̲̲
+    # @show κ
+    # @show ϕ
+    # @show η
+    # @show νᵥ
+    # @show ϕ̇
+    # @show d
+    # if i > 3
+    #     error("Just checking...")
+    # end
     # return (vM,ϵ̲̲′_mag,α̲̲_mag,κ,X,d,ϕ,η,νᵥ,vMₛₐₜ,ϵ̲̲̲̇′⁽ᵖ⁾_mag,t)
     return σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d
 end
@@ -1400,10 +1452,10 @@ function ContinuumMechanicsBase.predict(
     t       = 0.0
     for i ∈ range(2, M)
     # for i ∈ range(2, 3)
-        # t += ψ.Δt
-        # # @show t, ψ.Δt
-        # println("")
-        @show i, d
+        t += ψ.Δt
+        ϵ̲̲ += ψ.Δϵ̲̲
+        println("")
+        @show i, t, ψ.Δt, d
         σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d = update(ψ, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, damirr, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, p; kwargs...)
         push!(ϵ⃗, ϵ̲̲)
         push!(σ⃗, σ̲̲)
@@ -1412,9 +1464,6 @@ function ContinuumMechanicsBase.predict(
         push!(ϕ⃗, ϕ)
         push!(X⃗, X)
         push!(d⃗, d)
-        # if i > 2
-        #     error("Just checking...")
-        # end
     end
     return (data=(
         ϵ=hcat(ϵ⃗...), σ=hcat(σ⃗...),
@@ -1492,7 +1541,7 @@ ContinuumMechanicsBase.parameters(::Cho2019UnifiedStaticDynamic) = (
     # :n, :ω₀, # E⁺, V⁺, R,
     ## grain size
     # d₀, Cg1, Cg2, Cg3, z,
-    :Cg1, :Cg2, :Cg3, # :z,
+    :Cg1, :Cg2, :Cg3, :Cg4, # :z,
     ## damage
     ### nucleation
     # 𝒹, 𝒻, Kic, a, b, c,
