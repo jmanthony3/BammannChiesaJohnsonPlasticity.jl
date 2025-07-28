@@ -445,10 +445,17 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         # `\rvboxline`  : ⎹
         # `\mid`        : ∣
         # `\Vert`       : ‖
-        α̲̲_mag   = norm_symvec(α̲̲)
+        # α̲̲_mag   = norm_symvec(α̲̲)
+        α̲̲_mag = t <= Δt ? 0.0 : norm_symvec(α̲̲)
         # α̲̲_mag  *= sqrt_threehalves
-        α̲̲_mag  /= sqrt_threehalves
+        # @show α̲̲
+        # @show sqrt_threehalves, α̲̲_mag
+        # # α̲̲_mag  /= sqrt_threehalves
         # @show α̲̲_mag
+        # # error("Just checking...")
+        # if t > Δt
+        #     error("Just checking...")
+        # end
     # REX Model
         ## REX calculation: separated DRX and SRX equations
             if     iREXmethod == 0
@@ -806,7 +813,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                 # dssmax  = ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )
                 # ? [20250331T1347] (JMA3): What even is this `if`-statement?
                 # if ϵ̲̲̇′_mag * Δt == 0.0
-                # # @show ϵ̲̲̇′_mag == 0.0
+                # @show ϵ̲̲̇′_mag == 0.0
                 if ϵ̲̲̇′_mag == 0.0
                     # dssr = ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )
                     dssr = dr
@@ -815,7 +822,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                     # dssr = P1 * (dss0^-P2)
                     dss0 = ϵ̲̲̇′_mag   *   exp(  ( E⁺             )  /  ( R * θ )  )
                     dssr = Cg1 * (dss0^-Cg2)
-                    # # @show dss0, dssr, Cg1, Cg2
+                    # @show dss0, dssr, Cg1, Cg2
                 end
                 # # ? [20250331T1350] (JMA3): Why the addition, subtraction, and increment?
                 # ddgrw   = (  ( (dsgk*Δt) + (dr^n) )  ^  ( 1.0 / n )  )   -   dr
@@ -828,8 +835,11 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                 dsgk    = ω₀   *   exp(  -( E⁺             )  /  ( R * θ )  )
                 Grd0    = Cg3 * (Xd^Cg4) * ϵ̲̲̇′_mag
                 gk1     = dsgk   /   (  n  *  (   dr ^ (n-1.0) )  )   -   (  Grd0  *    dr  *  ( (  dr-dss) ^ 2.0 )  )
-                # # @show dsgk, n, dr, Grd0, dss, gk1
-                # error("Just checking...")
+                # @show dsgk, n, dr, Grd0, dss, gk1
+                # # error("Just checking...")
+                # if t > Δt
+                #     error("Just checking...")
+                # end
                 gkgt    = dr + (0.5gk1*Δt)
                 gk2     = dsgk   /   (  n  *  ( gkgt ^ (n-1.0) )  )   -   (  Grd0  *  gkgt  *  ( (gkgt-dss) ^ 2.0 )  )
                 gkgt    = dr + (0.5gk2*Δt)
@@ -837,9 +847,12 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                 gkgt    = dr + (   gk3*Δt)
                 gk4     = dsgk   /   (  n  *  ( gkgt ^ (n-1.0) )  )   -   (  Grd0  *  gkgt  *  ( (gkgt-dss) ^ 2.0 )  )
                 d       = dr  +  ( 1.0 / 6.0 )  *  ( gk1 + 2.0(gk2+gk3) + gk4 )  *  Δt
-                # # @show gk1, gk2, gk3, gk4
-                # # @show dr, dsgk, Grd0, d
-                # error("Just checking...")
+                # @show gk1, gk2, gk3, gk4
+                # @show dr, dsgk, Grd0, d
+                # # error("Just checking...")
+                # if t > Δt
+                #     error("Just checking...")
+                # end
             else
                 error("iGSmethod > 4 not supported")
             end
@@ -931,6 +944,13 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             # Al_mag = sqrt(Al_mag)*sqrt_threehalves
             # rdrsa   = 1.0   +   (  ( rs + (sqrt_twothirds* rd*ϵ̲̲̇′_mag) )  *  Δt  *  α̲̲_mag            *  dzz1  )
             rdrsa   = 1.0   +   (  ( rs + (                rd*ϵ̲̲̇′_mag) )  *  Δt  *  α̲̲_mag            *  dzz1  )
+            # @show rs, rd
+            # @show ϵ̲̲̇′_mag, Δt, α̲̲_mag, dzz1
+            # @show rdrsa
+            # # error("Just checking...")
+            # if t > Δt
+            #     error("Just checking...")
+            # end
             # for k in range(0, 6)
             #     Altr[k] = Al[k][i-1] * X0 * dzz0 / rdrsa
             # end
@@ -957,7 +977,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             ξ̲̲′⁽ᵗʳ⁾      = σ̲̲′⁽ᵗʳ⁾  -  (              α̲̲⁽ᵗʳ⁾ )
             ξ̲̲′⁽ᵗʳ⁾_mag  = norm_symvec(ξ̲̲′⁽ᵗʳ⁾)
             n̂′          = ξ̲̲′⁽ᵗʳ⁾ ./ ξ̲̲′⁽ᵗʳ⁾_mag
-            # n̂′         .= norm_symvec(n̂′)
+            n̂′        ./= norm_symvec(n̂′)
     # check plasticity
         ak     = Y + κ⁽ᵗʳ⁾ + Be + Yₚ
         critra = ξ̲̲′⁽ᵗʳ⁾_mag - (sqrt_twothirds*ak*ϕ₁⁽ᵗʳ⁾)
@@ -1051,12 +1071,16 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             # Δγ = (    ξ̲̲′⁽ᵗʳ⁾_mag    -    (   sqrt_twothirds   *   ak   *   ϕ₁⁽ᵗʳ⁾   )    )     /     (
             #     (   ϕ₁⁽ᵗʳ⁾   *   twoμ   )    +    (   ϕ₁⁽ᵗʳ⁾   *   (  2.0  /  3.0  )   *   (
             #             ( (1.0-X) ^ NK )  *  dzz1  *  ( (h/rdrsa) + (H*Hir/rdrsk) )  )   )    )
-            Δγ = (    ξ̲̲′⁽ᵗʳ⁾_mag    -    (   ak   *   ϕ₁⁽ᵗʳ⁾   )    )     /     (
+            Δγ = (    ξ̲̲′⁽ᵗʳ⁾_mag    -    (   sqrt_twothirds   *   ak   *   ϕ₁⁽ᵗʳ⁾   )    )     /     (
                 (   ϕ₁⁽ᵗʳ⁾   *   twoμ   )    +    (   ϕ₁⁽ᵗʳ⁾   *   (  2.0  /  3.0  )   *   (
                         Rx  *  dzz1  *  ( (h/rdrsa) + (H/rdrsk) )  )   )    )
-            # # @show ξ̲̲′⁽ᵗʳ⁾_mag, ak, ϕ₁⁽ᵗʳ⁾, twoμ
-            # # @show Rx, dzz1, h, rdrsa, H, rdrsk
-            # error("Just checking...")
+            # @show ξ̲̲′⁽ᵗʳ⁾_mag, ak, ϕ₁⁽ᵗʳ⁾, twoμ
+            # @show Rx, dzz1, h, rdrsa, H, rdrsk
+            # @show Δγ
+            # # error("Just checking...")
+            # if t > Δt
+            #     error("Just checking...")
+            # end
         elseif iNewton == 1 # Newton-Rapson for DG and Kappa
             # Δγ = (    ξ̲̲′⁽ᵗʳ⁾_mag    -    (   sqrt_twothirds   *   ak   *   ϕ₁⁽ᵗʳ⁾   )    )     /     (
             #     (   ϕ₁⁽ᵗʳ⁾   *   twoμ   )    +    (   ϕ₁⁽ᵗʳ⁾   *   (  2.0  /  3.0  )   *   (
@@ -1182,13 +1206,16 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             #         +(S[3][i]^2 + S[4][i]^2 + S[5][i]^2)*2.
             # vM[i] = sqrt(vM[i])*sqrt_threehalves
             vM = sqrt_threehalves * norm_symvec(σ̲̲′)
-            # # @show σ̲̲′⁽ᵗʳ⁾
-            # # @show ϕ₁⁽ᵗʳ⁾, twoμ, Δγ
-            # # @show n̂′
+            # @show σ̲̲′⁽ᵗʳ⁾
+            # @show ϕ₁⁽ᵗʳ⁾, twoμ, Δγ
+            # @show n̂′
             # # @show σ̲̲′⁽ᵗʳ⁾  -  ( (ϕ₁⁽ᵗʳ⁾*(89066.17)*(0.01089263427151211)) .* n̂′ )
-            # # @show σ̲̲′, vM
-            # # @show σ̲̲
-            # error("Just checking...")
+            # @show σ̲̲′, vM
+            # @show σ̲̲
+            # # error("Just checking...")
+            # if t > Δt
+            #     error("Just checking...")
+            # end
         # #--- total deviatoric strain
             # # for k in range(0, 6)
             # #     TE[k][i] = TE[k][i-1] + DE[k]
@@ -1197,8 +1224,12 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
             # # ϵ̲̲′ += Δϵ̲̲′
         #--- total plastic strain
             # PE[i] = PE[i-1] + (sqrt_twothirds * DG)
-            # # @show ϵ̲̲⁽ᵖ⁾[1] + (sqrt_twothirds*Δγ)
-            ϵ̲̲⁽ᵖ⁾ += ( (sqrt_twothirds*Δγ) .* n̂′ ) # ! update ISV
+            # @show ϵ̲̲⁽ᵖ⁾[1], Δγ
+            # @show ϵ̲̲⁽ᵖ⁾[1] + (Δγ)
+            # ϵ̲̲⁽ᵖ⁾ += ( (sqrt_twothirds*Δγ) .* n̂′ ) # ! update ISV
+            ϵ̲̲⁽ᵖ⁾ += ( (Δγ) .* (n̂′) ) # ! update ISV
+            # @show ϵ̲̲⁽ᵖ⁾[1]
+            # @show norm_symvec(ϵ̲̲⁽ᵖ⁾)
         # #--- total volumetric strain
             # # VE[i] = VE[i-1] + (3.0 * davg)
             # ϵ̲̲⁽ᴴ⁾ += 3.0Δϵ̲̲⁽ᴴ⁾
@@ -1377,22 +1408,27 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         #     vMₛₐₜ = Be + Y + Yₚ + α̲̲ₛₐₜ_mag + κₛₐₜ
         #     vMₛₐₜ = κₛₐₜ + Be
     end
-    # @show t
-    # @show σ̲̲
-    # @show deviatoric(σ̲̲)
-    # @show Δγ
-    # @show ϵ̲̲
-    # @show deviatoric(ϵ̲̲)
-    # @show ϵ̲̲⁽ᵖ⁾
+    @show t
+    @show ϕ₁⁽ᵗʳ⁾
+    @show twoμ
+    @show Δγ
+    @show n̂′
+    @show σ̲̲
+    @show deviatoric(σ̲̲)
+    @show ϵ̲̲
+    @show deviatoric(ϵ̲̲)
+    @show ϵ̲̲⁽ᵖ⁾
     # @show @show ϵ̲̲⁽ᵖ⁾[1] + (sqrt_twothirds*Δγ)
-    # @show α̲̲
-    # @show κ
-    # @show ϕ
-    # @show η
-    # @show νᵥ
-    # @show ϕ̇
-    # @show d
-    # if i > 3
+    @show @show norm_symvec(ϵ̲̲⁽ᵖ⁾)
+    @show α̲̲
+    @show κ
+    @show ϕ
+    @show η
+    @show νᵥ
+    @show ϕ̇
+    @show d
+    # # error("Just checking...")
+    # if t > 50Δt
     #     error("Just checking...")
     # end
     # return (vM,ϵ̲̲′_mag,α̲̲_mag,κ,X,d,ϕ,η,νᵥ,vMₛₐₜ,ϵ̲̲̲̇′⁽ᵖ⁾_mag,t)
@@ -1450,12 +1486,13 @@ function ContinuumMechanicsBase.predict(
     X⃗ = []; push!(X⃗, X)
     d⃗ = []; push!(d⃗, d)
     t       = 0.0
-    for i ∈ range(2, M)
+    # for i ∈ range(2, M)
+    for i ∈ range(2, ψ.N)
     # for i ∈ range(2, 3)
         t += ψ.Δt
         ϵ̲̲ += ψ.Δϵ̲̲
         println("")
-        @show i, t, ψ.Δt, d
+        @show i, t, ψ.θ, ψ.Δt, d
         σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d = update(ψ, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, damirr, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, p; kwargs...)
         push!(ϵ⃗, ϵ̲̲)
         push!(σ⃗, σ̲̲)

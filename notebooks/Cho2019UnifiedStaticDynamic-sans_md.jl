@@ -156,14 +156,17 @@ begin
 	include("Cho2019UnifiedStaticDynamic-functions+new.jl")
 
 	# ╔═╡ 398fa1e3-1d11-4285-ad23-b11a4d8628c5
-	df_Fig4a = CSV.read("Cho2019UnifiedStaticDynamic-Fig4a.csv", DataFrame;
+	# df_Fig4a = CSV.read("Cho2019UnifiedStaticDynamic-Fig4a.csv", DataFrame;
+	# 	header=true, delim=',', skipto=3, types=Float64)
+	df_Fig4a = CSV.read("data-SS.csv", DataFrame;
 		header=true, delim=',', skipto=3, types=Float64)
 
 	# ╔═╡ b63e916b-4601-4b61-97ae-9aa07515050c
 	begin
 		n 	= 2.0
 		ω₀ 	= 3.6e4
-		R 	= 8.31446261815324 # universal gas constant
+		# R 	= 8.31446261815324 # universal gas constant
+		R 	= 8.314 # universal gas constant
 		E⁺ 	= 82.0e3
 		# E⁺ 	= 82.0
 		V⁺ 	= 0.0
@@ -189,7 +192,8 @@ begin
 		tests = Dict()
 		domains = Dict()
 		models = Dict()
-		for (i, θ) in enumerate((298, 407, 475, 509, 542, 559, 576, 610, 678, 814))
+		# for (i, θ) in enumerate((298, 407, 475, 509, 542, 559, 576, 610, 678, 814))
+		for (i, θ) in enumerate((298.15,))
 			θ_str = match(r"(.*)K(.*)", names(df_Fig4a)[4(i - 1) + 1])[1]
 			θ_flt = parse(Float64, θ_str)
 			x = filter(!ismissing, df_Fig4a[!, 4(i - 1) + 1])
@@ -198,7 +202,8 @@ begin
 			y = filter(!ismissing, df_Fig4a[!, 4(i - 1) + 2])[idx_sort] .* 1e6
 			@show (4(i - 1) + 1, 4(i - 1) + 2), θ_str, ϵ̇, last(x), 4length(x)
 			tests[θ_str] = BCJMetalUniaxialTest(x, y, name="$(θ_flt)K")
-			domains[θ_str] = BCJMetalStrainControl(θ_flt, ϵ̇, last(x), 4length(x), :tension)
+			# domains[θ_str] = BCJMetalStrainControl(θ_flt, ϵ̇, last(x), 4length(x), :compression)
+			domains[θ_str] = BCJMetalStrainControl(θ_flt, ϵ̇, last(x), 100, :compression)
 			models[θ_str] = Cho2019UnifiedStaticDynamic(domains[θ_str], n, ω₀, E⁺, V⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀)
 		end
 		
@@ -234,6 +239,10 @@ begin
 			# ComponentVector(C₁₅ = 0.006924, C₁₆ = 0.0, C₂₅ = 0.0,),
 			# ComponentVector(C₁₇ = 2.487, C₁₈ = 7611.0, C₂₆ = 0.0,),
 			# ComponentVector(NK = 2.0,),
+			# ComponentVector(C₁₃ = 0.05098, C₁₄ = 476.6, C₂₄ = 0.0,),
+			# ComponentVector(C₁₅ = 7.524e-3, C₁₆ = 0.0, C₂₅ = 0.0,),
+			# ComponentVector(C₁₇ = 54.87, C₁₈ = 7611.0, C₂₆ = 0.0,),
+			# ComponentVector(NK = 2.0,),
 			ComponentVector(C₁₃ = 0.05098, C₁₄ = 476.6, C₂₄ = 0.0,),
 			ComponentVector(C₁₅ = 7.524e-3, C₁₆ = 0.0, C₂₅ = 0.0,),
 			ComponentVector(C₁₇ = 54.87, C₁₈ = 7611.0, C₂₆ = 0.0,),
@@ -249,7 +258,8 @@ begin
 		],
 		[
 			# ComponentVector(Cg1 = 7.41e4, Cg2 = 0.8826, Cg3 = 1.185e-3, Cg4 = 0.0),
-			ComponentVector(Cg1 = 7.4e4, Cg2 = 0.8800, Cg3 = 1.2e-3, Cg4 = 0.0),
+			# ComponentVector(Cg1 = 7.4e4, Cg2 = 0.8800, Cg3 = 1.2e-3, Cg4 = 0.0),
+			ComponentVector(Cg1 = 7.4e4, Cg2 = 0.8800, Cg3 = 1.2e-2, Cg4 = 0.0),
 		],
 		[
 			ComponentVector(a = 0.0, b = 0.0, c = 0.0,),
