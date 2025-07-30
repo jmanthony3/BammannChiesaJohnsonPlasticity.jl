@@ -154,6 +154,8 @@ begin
 	# 	end
 	# end
 
+	default(fontfamily="Computer Modern", linewidth=1, framestyle=:box)
+
 	# ╔═╡ 5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
 	# include("Cho2019UnifiedStaticDynamic-functions+new.jl")
 	include("Cho2019UnifiedStaticDynamic-functions.jl")
@@ -290,10 +292,11 @@ begin
 	plt_α = deepcopy(plt)
 	plt_d = deepcopy(plt)
 	plt_X = deepcopy(plt)
-	@sync @distributed for (i, (θ, ψ)) in collect(enumerate(models))
+	# @sync @distributed for (i, (θ, ψ)) in collect(enumerate(models))
+	for (i, (θ, ψ)) in collect(enumerate(models))
 		test = tests[θ]
-		prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=0, iREXmethod=3, iGSmethod=5)
-		# prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=0, iREXmethod=3, iGSmethod=3)
+		prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=0, iREXmethod=6, iGSmethod=5)
+		# prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=0, iREXmethod=6, iGSmethod=3)
 		@info i, θ
 		@show vonMises(last(eachcol(prediction.data.σ)))
 		@show last(prediction.data.α), last(prediction.data.κ)
