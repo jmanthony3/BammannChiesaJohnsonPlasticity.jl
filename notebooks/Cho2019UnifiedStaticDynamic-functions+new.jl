@@ -896,7 +896,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         #--- trial kappa
             # if iNewton == 0
             # end
-            rdrsk   = 1.0   +   (  ( Rs + (sqrt_twothirds*Rdc*ϵ̲̲̇′_mag) )  *  Δt  *  ( κ ^ (NK-1.0) )  *  dzz1  )
+            rdrsk   = 1.0   +   (  ( Rs + (sqrt_twothirds* Rd*ϵ̲̲̇′_mag) )  *  Δt  *  ( κ ^ (NK-1.0) )  *  dzz1  )
             # Ktr     = κ * X0 * dzz0 / rdrsk
             κ⁽ᵗʳ⁾   = κ * X0 * dzz0 / rdrsk
         # #--- trial M in isotropic hardening (output only)
@@ -1415,6 +1415,7 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
     @show n̂′
     @show σ̲̲
     @show deviatoric(σ̲̲)
+    @show vM
     @show ϵ̲̲
     @show deviatoric(ϵ̲̲)
     @show ϵ̲̲⁽ᵖ⁾
