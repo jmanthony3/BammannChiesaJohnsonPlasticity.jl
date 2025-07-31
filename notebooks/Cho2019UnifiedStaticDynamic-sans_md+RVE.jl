@@ -211,7 +211,7 @@ end
 				tests[θ_str] = BCJMetalUniaxialTest(x, y, name="$(θ_flt)K")
 				# domains[θ_str] = BCJMetalStrainControl(θ_flt, ϵ̇, last(x), 4length(x), :compression)
 				domains[θ_str] = BCJMetalStrainControl(θ_flt, ϵ̇, ceil(1.01last(x); sigdigits=2), N, :compression)
-				models[θ_str] = Cho2019UnifiedStaticDynamic(domains[θ_str], n, ω₀, E⁺, V⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀)
+				models[θ_str] = Cho2019UnifiedStaticDynamicTensor(domains[θ_str], n, ω₀, E⁺, V⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀)
 			# end
 		end
 		
