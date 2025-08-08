@@ -1,7 +1,8 @@
-/Manifest.toml
-/docs/Manifest.toml
-/docs/build/
-/notebooks/Manifest.toml
-/notebooks/*backup*.jl
-/notebooks/*.csv
-/test/Manifest.toml
+Manifest.toml
+docs/Manifest.toml
+docs/build/
+notebooks/Manifest.toml
+notebooks/*backup*.jl
+notebooks/*.csv
+notebooks/*.vtu
+test/Manifest.toml

@@ -158,7 +158,7 @@ begin
 
 	# ╔═╡ 5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
 	# include("Cho2019UnifiedStaticDynamic-functions+new.jl")
-	include("Cho2019UnifiedStaticDynamic-functions.jl")
+	include("Cho2019UnifiedStaticDynamic-functions+RVE.jl")
 end
 @time begin
 	# ╔═╡ 398fa1e3-1d11-4285-ad23-b11a4d8628c5
@@ -210,8 +210,8 @@ end
 				@show (4(i - 1) + 1, 4(i - 1) + 2), θ_str, ϵ̇, ceil(1.01last(x); sigdigits=2), 4length(x)
 				tests[θ_str] = BCJMetalUniaxialTest(x, y, name="$(θ_flt)K")
 				# domains[θ_str] = BCJMetalStrainControl(θ_flt, ϵ̇, last(x), 4length(x), :compression)
-				domains[θ_str] = BCJMetalStrainControl(θ_flt, ϵ̇, ceil(1.01last(x); sigdigits=2), N, :compression)
-				models[θ_str] = Cho2019UnifiedStaticDynamicTensor(domains[θ_str], n, ω₀, E⁺, V⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀)
+				domains[θ_str] = BCJMetalStrainControl(θ_flt, ϵ̇, ceil(1.01last(x); sigdigits=2), N, :tension)
+				models[θ_str] = Cho2019UnifiedStaticDynamicTensor(domains[θ_str], 0.3, n, ω₀, E⁺, V⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀)
 			# end
 		end
 		
@@ -298,37 +298,39 @@ end
 		test = tests[θ]
 		prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=0, iREXmethod=6, iGSmethod=5)
 		# prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=0, iREXmethod=6, iGSmethod=3)
-		@info i, θ
-		@show vonMises(last(eachcol(prediction.data.σ)))
-		@show last(prediction.data.α), last(prediction.data.κ)
-		@show last(prediction.data.ϕ), last(prediction.data.X), last(prediction.data.d)
+		ϵ = [first(x) for x in test.data.ϵ]
+		# @show ϵ
+		σ = [first(x) for x in test.data.σ] ./ 1e6
+		# @show σ
+		# ϵ̂ = [first(x) for x in eachcol(prediction.data.ϵ)]
+		ϵ̂ = vec(prediction.data.ϵ)
+		# @show ϵ̂
+		# σ̂ = [vonMises(x) for x in eachcol(prediction.data.σ)]
+		σ̂ = vec(prediction.data.σ)
+		# @show prediction.data.σ
+		# @show [first(x) for x in eachcol(prediction.data.σ)]
+		# @show σ̂
+		# s = linear_interpolation(ϵ̂, σ̂, extrapolation_bc=Line()).(ϵ)
+		# @show typeof(σ̂), typeof(ϵ̂), typeof(ϵ)
+		# @show size(σ̂), size(ϵ̂), size(ϵ)
+		s = CubicSpline(σ̂, ϵ̂; extrapolation=ExtrapolationType.Linear).(ϵ)
+		@info "Finished set $i for θ=$θ K" ϵₙ=last(prediction.data.ϵ) σₙ=last(prediction.data.σ) rmse=rmse((ϵ, σ), (ϵ, s)) αₙ=last(prediction.data.α) κₙ=last(prediction.data.κ) ϕₙ=last(prediction.data.ϕ) X=last(prediction.data.X) dₙ=last(prediction.data.d)
 		begin
 			# # i, plt = 1, plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:outerright, widen=1.06)
 			# i, plt = 1, plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:best, widen=1.06)
 			# plt_α = deepcopy(plt)
 			# plt_d = deepcopy(plt)
 			# plt_X = deepcopy(plt)
-			scatter!(plt, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
+			# scatter!(plt, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
+			scatter!(plt, ϵ, σ,
 					markercolor=i,
 					label="$(θ)K:Exp",
 				)
-			plot!(plt, [first(x) for x in eachcol(prediction.data.ϵ)], [vonMises(x) for x in eachcol(prediction.data.σ)],
+			# plot!(plt, [first(x) for x in eachcol(prediction.data.ϵ)], [vonMises(x) for x in eachcol(prediction.data.σ)],
+			plot!(plt, ϵ̂, σ̂,
 					linecolor=i,
 					label="$(θ)K:Model",
 				)
-			ϵ = [first(x) for x in test.data.ϵ]
-			# @show ϵ
-			σ = [first(x) for x in test.data.σ] ./ 1e6
-			# @show σ
-			ϵ̂ = [first(x) for x in eachcol(prediction.data.ϵ)]
-			# @show ϵ̂
-			σ̂ = [vonMises(x) for x in eachcol(prediction.data.σ)]
-			# @show prediction.data.σ
-			# @show [first(x) for x in eachcol(prediction.data.σ)]
-			# @show σ̂
-			# s = linear_interpolation(ϵ̂, σ̂, extrapolation_bc=Line()).(ϵ)
-			s = CubicSpline(σ̂, ϵ̂; extrapolation=ExtrapolationType.Linear).(ϵ)
-			println(rmse((ϵ, σ), (ϵ, s)))
 			plot!(plt_α, [first(x) for x in eachcol(prediction.data.ϵ)], vec(prediction.data.α),
 					linecolor=i,
 					linestyle=:dash,

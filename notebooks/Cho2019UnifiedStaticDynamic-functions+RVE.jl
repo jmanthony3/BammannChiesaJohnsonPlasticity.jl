@@ -11,7 +11,12 @@ using CSV, DataFrames
 using Ferrite, FerriteGmsh
 using Plots, Printf
 using SparseArrays, Tensors, WriteVTK
-include("src/functions/preamble.jl")
+include("preamble.jl")
+
+ContinuumMechanicsBase.I₁(x::Union{Matrix, SecondOrderTensor}) = sum(diag(x))
+# ContinuumMechanicsBase.I₂(x::Union{Matrix, SecondOrderTensor}) = 2.0 \ (  ( I₁(x) ^ 2.0 )  -  ( I₁(x .^ 2.0) )  )
+ContinuumMechanicsBase.I₂(x::Union{Matrix, SecondOrderTensor}) = 0.5((sum(diag(x) .^ 2.0)) + 2.0(sum(vcat(UpperTriangular(x)...) .^ 2.0)))
+ContinuumMechanicsBase.I₃(x::Union{Matrix, SecondOrderTensor}) = det(x)
 
 ContinuumMechanicsBase.I₁(x::Vector{<:Real}) = sum(x[[1, 4, 6]])
 # ContinuumMechanicsBase.I₂(x::Vector{<:Real}) = 2.0 \ (  ( I₁(x) ^ 2.0 )  -  ( I₁(x .^ 2.0) )  )
@@ -19,23 +24,29 @@ ContinuumMechanicsBase.I₂(x::Vector{<:Real}) = 0.5((sum(x[[1, 4, 6]] .^ 2.0)) 
 ContinuumMechanicsBase.I₃(x::Vector{<:Real}) = det([x[1] x[2] x[3]; x[2] x[4] x[5]; x[3] x[5] x[6]])
 
 "Maps a scalar onto the volumetric portion of the flat vector representation of a second-rank tensor."
+volumetric(x::SecondOrderTensor)= x # .* diagm(diag(ones(typeof(x))))
 volumetric(x::AbstractFloat)    = x .* [1, 0, 0, 1, 0, 1]
 volumetric(x)                   = x .* [1, 0, 0, 1, 0, 1]
 
 "Returns the scalar, hydrostatic portion from the flat vector representation of a second-rank tensor."
+hydrostatic(x::SecondOrderTensor)= I₁(x) / 3.0
 hydrostatic(x::Vector{<:Real})  = I₁(x) / 3.0
 hydrostatic(x)                  = I₁(x) / 3.0
 
 "Returns the deviatoric of the flat vector representation of a second-rank tensor."
+deviatoric(x::SecondOrderTensor)= x - volumetric(SymmetricTensor{2, 3}(hydrostatic(x) .* diagm(diag(ones(typeof(x))))))
 deviatoric(x::Vector{<:Real})   = x - volumetric(hydrostatic(x))
 deviatoric(x)                   = x - volumetric(hydrostatic(x))
+
+norm_symvec(tensor::Matrix) = √( sum(diag(tensor) .^ 2.0) + 2sum(vcat(UpperTriangular(tensor)...) .^ 2.0) )
+norm_symvec(tensor::SecondOrderTensor) = √( sum(diag(tensor) .^ 2.0) + 2sum(vcat(UpperTriangular(tensor)...) .^ 2.0) )
 
 """
 Structure for viscoplasticity model with loading conditions and material properties.
 Here, uses the effective strain rate based on applied strain rate and loading direction.
 """
 # struct Cho2019UnifiedStaticDynamic{T<:AbstractFloat} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
-struct Cho2019UnifiedStaticDynamicTensor{T<:AbstractFloat, S<:SymmetricTensor{2, 3, T}} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
+struct Cho2019UnifiedStaticDynamicTensor{T<:AbstractFloat, S<:SymmetricTensor{4, 3, T}} <: BammannChiesaJohnsonPlasticity.AbstractBCJMetalModel
     θ       ::T         # applied temperature
     ν       ::T         # Poisson's ratio
     μ       ::T         # shear modulus
@@ -88,22 +99,22 @@ function Cho2019UnifiedStaticDynamicTensor(Ω::BammannChiesaJohnsonPlasticity.BC
     # Δϵ̲̲      = zeros(T, 6)       # strain increment
     # G = E / 2(1 + ν)
     # K = E / 3(1 - 2ν)
-    μ = 5.47e4    - (34.1*ψ.θ)
+    μ = 5.47e4    - (34.1*Ω.θ)
     K = 70000.0
     temp(i,j,k,l) = 2.0μ * (0.5*(δ(i,k)*δ(j,l) + δ(i,l)*δ(j,k)) + ν/(1.0-2.0ν)*δ(i,j)*δ(k,l))
     D⁽ᵉ⁾ = SymmetricTensor{4, 3}(temp)
     # S       = SymmetricTensor{2, 3, T}
     # Δϵ      = zero(S) # strain increment
-    Δt      = (ϵₙ / Ω.N) / ϵ̇
-    return Cho2019UnifiedStaticDynamicTensor(Ω.θ, ν, μ, K, n, ω₀, E⁺, V⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀, P, ϵ̇_eff, ϵₙ, Ω.N, D⁽ᵉ⁾, Δt)
+    Δt      = abs((ϵₙ / Ω.N) / ϵ̇)
+    return Cho2019UnifiedStaticDynamicTensor(Ω.θ, ν, μ, K, n, ω₀, E⁺, V⁺, R, d₀, z, Kic, 𝒹, 𝒻, η₀, R₀, P, ϵ̇, ϵₙ, Ω.N, D⁽ᵉ⁾, Δt)
 end
 
 struct MaterialState{T, S <: SecondOrderTensor{3, T}}
     # store "converged" values
-    σ   ::S # stress
-    ϵ   ::S
-    ϵᵖ  ::S # plastic strain
-    α   ::S
+    σ̲̲   ::S # stress
+    ϵ̲̲   ::S
+    ϵ̲̲⁽ᵖ⁾::S # plastic strain
+    α̲̲   ::S
     κ   ::T # hardening variable
     ϕ   ::T
     η   ::T
@@ -140,13 +151,14 @@ function MaterialState(ψ)
     Xs      = 0.5e-10       # total statically recrystallized volume fraction
     d       = ψ.d₀          # average grain size
     return MaterialState(σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xs, Xd, d)
+end
 
 """
 Using the equations and constants from [Cho et. al. (2019)](@cite choUnifiedStaticDynamic2019), this kernel function maps the current material state and ISVs onto the next configuration.
 Currently, is a literal translation of the Python code used for that publication and includes the various options for calculating recrystallization and grain growth.
 Also currently includes the support for pressure-dependent systems.
 """
-function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
+function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, Δϵ̲̲, (;
             # BCJ-plasticity
             ## yield surface
             # base, exponent
@@ -193,7 +205,7 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
         ); imat=0, iYS=0, tanβ₀=0.0, iREXmethod=3, iGSmethod=4, iNewton=0, kwargs...)
     # get fields from model
         σ̲̲       = state.σ̲̲
-        ϵ̲̲       = state.ϵ̲̲
+        ϵ̲̲       = state.ϵ̲̲ + Δϵ̲̲
         ϵ̲̲⁽ᵖ⁾    = state.ϵ̲̲⁽ᵖ⁾
         α̲̲       = state.α̲̲
         κ       = state.κ
@@ -207,19 +219,19 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
         Xd      = state.Xd
         Xs      = state.Xs
         d       = state.d
-        # # @show t
-        # # @show σ̲̲
-        # # @show deviatoric(σ̲̲)
-        # # @show ϵ̲̲
-        # # @show deviatoric(ϵ̲̲)
-        # # @show ϵ̲̲⁽ᵖ⁾
-        # # @show α̲̲
-        # # @show κ
-        # # @show κₛ
-        # # @show ϕ
-        # # @show η
-        # # @show νᵥ
-        # # @show ϕ̇
+        # # # @show t
+        # # # @show σ̲̲
+        # # # @show deviatoric(σ̲̲)
+        # # # @show ϵ̲̲
+        # # # @show deviatoric(ϵ̲̲)
+        # # # @show ϵ̲̲⁽ᵖ⁾
+        # # # @show α̲̲
+        # # # @show κ
+        # # # @show κₛ
+        # # # @show ϕ
+        # # # @show η
+        # # # @show νᵥ
+        # # # @show ϕ̇
     # calculation constants/functions
         sqrt_twothirds = √(2.0/3.0)
         sqrt_threehalves = √(3.0/2.0)
@@ -320,14 +332,16 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
            μ = 4.5e4     - (20.0*ψ.θ)
            K = 85000.0
         end
-        # # @show ψ.θ, ψ.ϵₙ, ψ.N, t, μ, K
+        # # # @show ψ.θ, ψ.ϵₙ, ψ.N, t, μ, K
         # error("Just checking...")
     # deviatoric strain and effective strain rate
         ϵ̲̲′      = deviatoric(ϵ̲̲)
         ϵ̲̲′_mag  = norm_symvec(ϵ̲̲′)
         # ϵ̲̲′⁽ᵖ⁾   = deviatoric(ϵ̲̲⁽ᵖ⁾)
-        Δϵ̲̲⁽ᴴ⁾   = hydrostatic(ψ.Δϵ̲̲) # davg
-        Δϵ̲̲′     = deviatoric(ψ.Δϵ̲̲) # DE
+        # Δϵ̲̲⁽ᴴ⁾   = hydrostatic(ψ.Δϵ̲̲) # davg
+        # Δϵ̲̲′     = deviatoric(ψ.Δϵ̲̲) # DE
+        Δϵ̲̲⁽ᴴ⁾   = hydrostatic(Δϵ̲̲) # davg
+        Δϵ̲̲′     = deviatoric(Δϵ̲̲) # DE
         # # Horstemeyer, et. al. (2000): https://www.sciencedirect.com/science/article/pii/S016784429900049X?ref=pdf_download&fr=RR-2&rr=9674f0426d71c595
         # Δϵ̲̲̇′_mag  = norm_symvec(Δϵ̲̲′) / ψ.Δt # ddd
         # # modified in Cho, et. al. (2017): https://onlinelibrary.wiley.com/doi/epdf/10.1002/9781119018377.ch7?saml_referrer=
@@ -337,8 +351,10 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
         Δϵ̲̲̇′_mag *= sqrt_twothirds
     # trial damage
         ϕ₁⁽ᵗʳ⁾ = 1.0 - ϕ # dam1
+        # @show ϕ, ϕ₁⁽ᵗʳ⁾
         ϕ₂⁽ᵗʳ⁾ = 1.0 - min(1.0, ϕ̇*ψ.Δt/ϕ₁⁽ᵗʳ⁾) # dam2
         if ϕ >= Dc
+            # @info "Exceeded damage criterion. Consider this element as failed..." Dc
             σ̲̲   .= 0.0      # deviatoric stress update
             ϵ̲̲⁽ᵖ⁾ = ϵ̲̲⁽ᵖ⁾     # plastic strain update
             α̲̲   .= α̲̲        # kinematic hardening & Total strain update
@@ -353,7 +369,7 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
             Xd   = Xd
             Xs   = Xs
             d    = d        # grain size update
-            return σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d
+            return MaterialState(σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d)
         end
     # hydrostatic pressure
         P = if ψ.P > 0.0
@@ -370,10 +386,12 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
         dj2 = I₂(σ̲̲′)
         dj3 = I₃(σ̲̲′)
         JJ1 = (dj3^2.0) / (dj2^3.0)
+        # # @show σ̲̲′, typeof(σ̲̲′)
+        # # @show di1, dj2, dj3, JJ1
         JJ2 = (dj3    ) / (dj2^1.5)
         JJ3 = (di1    ) / (dj2^0.5)
-        # # # @show σ̲̲′
-        # # # @show di1, dj2, dj3
+        # # # # @show σ̲̲′
+        # # # # @show di1, dj2, dj3
         # error("Just checking...")
     # temperature dependent constants
         V   = C₁ * exp(-C₂/ψ.θ)
@@ -384,7 +402,7 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
         # Y   = C₃ * exp(-C₄/ψ.θ) * ((ψ.d₀/d)^ψ.z) * 0.5(1+tanh(C₁₉*(C₂₀-ψ.θ)))
         Y   = C₃ * exp( C₄/ψ.θ)
         f   = C₅ * exp(-C₆/ψ.θ)
-        # # # @show V, Y, f, C₁, C₂, C₃, C₄, C₅, C₆
+        # # # # @show V, Y, f, C₁, C₂, C₃, C₄, C₅, C₆
         # error("Just checking...")
         # these modifiers come from Horstemeyer, et. al. (2000): https://www.sciencedirect.com/science/article/pii/S016784429900049X?ref=pdf_download&fr=RR-2&rr=9674f0426d71c595
         if dj2 == 0.0
@@ -405,9 +423,9 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
         Rd  =           C₁₃   * exp(  -( C₁₄ + (1e6P*C₂₄) )  /        ψ.θ    )   *   djr
         H   = max(0.0,  C₁₅   * μ                                                *   djh    -    (  C₁₆  *  ψ.θ  )   )
         Rs  =           C₁₇   * exp(  -( C₁₈ + (1e6P*C₂₆) )  /        ψ.θ    )
-        # # # @show C₁₅, μ, djh
-        # # # @show C₁₅ * μ * djh
-        # # # @show djr, djh, rd, h, rs, Rd, H, Rs, Rdc
+        # # # # @show C₁₅, μ, djh
+        # # # # @show C₁₅ * μ * djh
+        # # # # @show djr, djh, rd, h, rs, Rd, H, Rs, Rdc
         # error("Just checking...")
     # yield surface parameters
         # iYS: 0-Pressure insensitive (Mises);
@@ -433,7 +451,7 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
             #Yp = (Pk1*(1. + exp(-Pk2/ψ.θ))^(-Pk3))*tanh(B2*P[i])
             β₁ = max(  1e-10,    ( Pₖ₁ - (Pₖ₂*ψ.θ) )  )
             Yₚ = β₁  *  tanh( (Pₖ₃/β₁) * P )
-            # # # @show β₁, ψ.θ, Pₖ₁, Pₖ₂, Pₖ₃, P, Yₚ
+            # # # # @show β₁, ψ.θ, Pₖ₁, Pₖ₂, Pₖ₃, P, Yₚ
             # error("Just checking...")
         else
             error("iYS > 2 which is not supported.")
@@ -454,7 +472,7 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
         # β = V * asinh(sqrt_twothirds*Δϵ̲̲̇′_mag/f)
         # β = V * asinh(Δϵ̲̲̇′_mag/f)
         β = V * asinh(Δϵ̲̲̇′_mag/f)
-        # # # @show Yₚ, Be, V, Δϵ̲̲̇′_mag, NK, f
+        # # # # @show Yₚ, Be, V, Δϵ̲̲̇′_mag, NK, f
         # error("Just checking...")
     # previous alpha magnitude
         # # Horstemeyer, et. al. (2000): https://www.sciencedirect.com/science/article/pii/S016784429900049X?ref=pdf_download&fr=RR-2&rr=9674f0426d71c595
@@ -465,10 +483,10 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
         α̲̲_mag   = t <= 1.01ψ.Δt ? 0.0 : norm_symvec(α̲̲)
         α̲̲_mag  *= sqrt_threehalves
         # α̲̲_mag  /= sqrt_threehalves
-        # # @show α̲̲
-        # # @show sqrt_threehalves, α̲̲_mag
+        # # # @show α̲̲
+        # # # @show sqrt_threehalves, α̲̲_mag
         # # α̲̲_mag  /= sqrt_threehalves
-        # # @show α̲̲_mag
+        # # # @show α̲̲_mag
         # # error("Just checking...")
         # if t > ψ.Δt
         #     error("Just checking...")
@@ -561,9 +579,9 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
                 # # dAlpha  = (  h  *  ( 1 - X )  *  (Δϵ̲̲̇′_mag*ψ.Δt)  )   -   (  ( (sqrt_twothirds* rd*(Δϵ̲̲̇′_mag*ψ.Δt)) + rs )  *  ( α̲̲_mag ^  NK )  )
                 # # dAlpha  = (  h  *  Δϵ̲̲̇′_mag  )   -   (  ( (                rd*Δϵ̲̲̇′_mag) + rs )  *  ( α̲̲_mag ^  NK )  )
                 dAl = [(h*Δϵ̲̲′[k]/ψ.Δt - ((rd*Δϵ̲̲̇′_mag+rs)*α̲̲_mag*α̲̲[k])) for k in [1, 4, 6, 2, 3, 5]]
-                # # # @show h, ψ.Δt, rd, Δϵ̲̲̇′_mag, rs, α̲̲_mag
-                # # # @show Δϵ̲̲′
-                # # # @show α̲̲
+                # # # # @show h, ψ.Δt, rd, Δϵ̲̲̇′_mag, rs, α̲̲_mag
+                # # # # @show Δϵ̲̲′
+                # # # # @show α̲̲
                 # error("Just checking...", dAl)
                 dAlpha  = sum(dAl[[1, 4, 6]] .^ 2.0)
                 dAlpha += sum(2.0 .* (dAl[[2, 3, 5]] .^ 2.0))
@@ -591,14 +609,14 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
                 k₁      = k₁    -    (   Ch   *   (    X                          ^   Cxc   )   )
                 k₂      = CC    *    (            (    X  + 0.5( ψ.Δt * k₁ )  )   ^   Cxa       )    *    (   (  1.0  -  ( X + 0.5(ψ.Δt*k₁) )  )   ^   Cxb   )
                 k₂      = k₂    -    (   Ch   *   (  ( X  + 0.5( ψ.Δt * k₁ )  )   ^   Cxc   )   )
-                # # # @show i, d
-                # # # @show μ, κ, sqrt_threehalves*α̲̲_mag
-                # # # @show KAlMu, dAl
-                # # # @show CC, X, ψ.Δt, k₂, Cxa, Cxb
-                # # # @show (X + 0.5*ψ.Δt*k₂)
-                # # # @show (X + 0.5*ψ.Δt*k₂)^Cxa
-                # # # @show 1. - (X + 0.5*ψ.Δt*k₂)
-                # # # @show CC*((X + 0.5*ψ.Δt*k₂)^Cxa)*(1. - (X + 0.5*ψ.Δt*k₂))^Cxb
+                # # # # @show i, d
+                # # # # @show μ, κ, sqrt_threehalves*α̲̲_mag
+                # # # # @show KAlMu, dAl
+                # # # # @show CC, X, ψ.Δt, k₂, Cxa, Cxb
+                # # # # @show (X + 0.5*ψ.Δt*k₂)
+                # # # # @show (X + 0.5*ψ.Δt*k₂)^Cxa
+                # # # # @show 1. - (X + 0.5*ψ.Δt*k₂)
+                # # # # @show CC*((X + 0.5*ψ.Δt*k₂)^Cxa)*(1. - (X + 0.5*ψ.Δt*k₂))^Cxb
                 # error("Just checking...")
                 k₃      = CC    *    (            (    X  + 0.5( ψ.Δt * k₂ )  )   ^   Cxa       )    *    (   (  1.0  -  ( X + 0.5(ψ.Δt*k₂) )  )   ^   Cxb   )
                 k₃      = k₃    -    (   Ch   *   (  ( X  + 0.5( ψ.Δt * k₂ )  )   ^   Cxc   )   )
@@ -613,9 +631,9 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
                 dXs     = Cxs  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )
                 dXR     = pX0  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )
                 dXH     =  Ch  *  ( xx ^ Cxc )
-                # # # @show KAlMu, dKappa, dAlpha, KAlMu1
-                # # # @show Cxd, Cxs, Ch, pX0
-                # # # @show dXd, dXs, dXR, dXH
+                # # # # @show KAlMu, dKappa, dAlpha, KAlMu1
+                # # # # @show Cxd, Cxs, Ch, pX0
+                # # # # @show dXd, dXs, dXR, dXH
                 # error("Just checking...")
             elseif iREXmethod >= 4 # implicitly solve functions using Newton-Rapson method
                 Nitmax = 20
@@ -738,8 +756,8 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
             Xd += dXd * ψ.Δt # ! update ISV
             Xs += dXs * ψ.Δt # ! update ISV
             Rx  = (1.0-X) ^ NK
-            # # # @show xx, dX, X0, X
-            # # # @show XR, XH, Xd, Xs
+            # # # # @show xx, dX, X0, X
+            # # # # @show XR, XH, Xd, Xs
             # error("Just checking...")
         ## Grain size kinetics (SGG and grain refinement rate)
             # Grain size rate integration method
@@ -759,7 +777,7 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
                 d       = dg  +  ( (dsgg-dred) * ψ.Δt ) # ! update ISV
                 # Z       = ddd*exp((sxE + P[i]*1.e6*sxV)/(ψ.R*ψ.θ))
                 # dss     = (sxk/(Cg3*sxn*0.3))^(1./(sxn-1.+Cg2))*Z^(-(1./(sxn-1.+Cg2)))
-                # # # @show dr, dsgk, dsgg, dred, d
+                # # # # @show dr, dsgk, dsgg, dred, d
                 # error("Just checking...")
             elseif iGSmethod == 2 # Explicit RK4
                 dg      = d
@@ -786,14 +804,14 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
                     F   = dg      +      (#={=#     ω     *     ψ.Δt     /     (#=[=#    ψ.n    *    (
                             (  ( 1.0 - λ )  *  ( dg ^ (ψ.n-1.0) )  )   +   (  λ  *  ( xx ^ (ψ.n-1.0) )  )
                         )    #=]=#)     #=}=#)
-                    # # @show dg, ω, ψ.Δt, ψ.n, λ, xx, Cg1, X, Δϵ̲̲̇′_mag, Cg2
-                    # # @show Cg1 * X * Δϵ̲̲̇′_mag * ψ.Δt
-                    # # @show dg^Cg2
-                    # # @show ( (1.0-λ) * (dg^Cg2) )
-                    # # @show xx^Cg2
-                    # # @show ( λ * (xx^Cg2) )
-                    # # @show ( (1.0-λ) * (dg^Cg2) ) + ( λ * ((xx+0im)^Cg2) )
-                    # # @show (Cg1 * X * Δϵ̲̲̇′_mag * ψ.Δt) * (( (1.0-λ) * (dg^Cg2) ) + ( λ * ((xx+0im)^Cg2) ))
+                    # # # @show dg, ω, ψ.Δt, ψ.n, λ, xx, Cg1, X, Δϵ̲̲̇′_mag, Cg2
+                    # # # @show Cg1 * X * Δϵ̲̲̇′_mag * ψ.Δt
+                    # # # @show dg^Cg2
+                    # # # @show ( (1.0-λ) * (dg^Cg2) )
+                    # # # @show xx^Cg2
+                    # # # @show ( λ * (xx^Cg2) )
+                    # # # @show ( (1.0-λ) * (dg^Cg2) ) + ( λ * ((xx+0im)^Cg2) )
+                    # # # @show (Cg1 * X * Δϵ̲̲̇′_mag * ψ.Δt) * (( (1.0-λ) * (dg^Cg2) ) + ( λ * ((xx+0im)^Cg2) ))
                     F  -= Cg1   *   X   *   Δϵ̲̲̇′_mag   *   ψ.Δt   *   (
                             ( (1.0-λ) * (dg^Cg2) )  +  ( λ * (xx^Cg2) )  )
                     # F  -= Cg1   *   X   *   (sqrt_twothirds*Δϵ̲̲̇′_mag)   *   ψ.Δt   *   (
@@ -847,14 +865,19 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
                     # Z =                 Δϵ̲̲̇′_mag    *   exp(  ( ψ.E⁺               )  /  ( ψ.R * ψ.θ )  )
                     # Z = (sqrt_twothirds*Δϵ̲̲̇′_mag)   *   exp(  ( ψ.E⁺ + (1e6P*ψ.V⁺) )  /  ( ψ.R * ψ.θ )  )
                     # # @show Z, Cg1, Cg2, Cg1 * (Z^-Cg2)
+                    # error("Just checking...")
                     Cg1 * (Z^-Cg2)
                 end
                 # ? [20250331T1350] (JMA3): Why the addition, subtraction, and increment?
                 # ddgrw   = (  ( (ω*ψ.Δt) + (dg^ψ.n) )  ^  ( 1.0 / ψ.n )  )   -   dg
                 # dg     += ddgrw
+                # # @show ω, ψ.n, dg,  ω   /   (  ψ.n  *  ( dg ^ (ψ.n-1.0) )  )
+                # error("Just checking...")
                 ddgrw   = ω   /   (  ψ.n  *  ( dg ^ (ψ.n-1.0) )  )
                 dg     += ddgrw*ψ.Δt
                 ds      = min(dss, dg)
+                # # @show ddgrw, dg, ds
+                # error("Just checking...")
                 # ddred   = -Cg3  *  Xd  *  Δϵ̲̲̇′_mag  *  ψ.Δt  *  dg  *    (dg-ds)
                 # ddred   = Cg3  *  dXd  *  Δϵ̲̲̇′_mag  *  ψ.Δt  *  dg  *  ( (ds-dg) ^ 2.0 )
                 ddred   = Cg3  *  dXd  *  dg  *  ( (ds-dg) ^ 2.0 )
@@ -868,7 +891,7 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
                 # # Grd0= Cg3 * (Xd^Cg4) * Δϵ̲̲̇′_mag
                 # Grd0= Cg3 * dXd # * Δϵ̲̲̇′_mag
                 # gk1 = ω   /   (  n  *  (   dg ^ (n-1.0) )  )   -   (  Grd0  *    dg  *  ( (ds-dg) ^ 2.0 )  )
-                # # @show dsgk, n, dg, Grd0, ds, gk1
+                # # # @show dsgk, n, dg, Grd0, ds, gk1
                 # # # error("Just checking...")
                 # # if t > ψ.Δt
                 # #     error("Just checking...")
@@ -880,8 +903,8 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
                 # gkgt= dg + (   gk3*ψ.Δt)
                 # gk4 = ω   /   (  n  *  ( gkgt ^ (n-1.0) )  )   -   (  Grd0  *  gkgt  *  ( (ds-gkgt) ^ 2.0 )  )
                 # d   = dg  +  ( 1.0 / 6.0 )  *  ( gk1 + 2.0(gk2+gk3) + gk4 )  *  ψ.Δt # ! update ISV
-                # # @show gk1, gk2, gk3, gk4
-                # # @show dg, dsgk, Grd0, d
+                # # # @show gk1, gk2, gk3, gk4
+                # # # @show dg, dsgk, Grd0, d
                 # # # error("Just checking...")
                 # # if t > ψ.Δt
                 # #     error("Just checking...")
@@ -894,7 +917,8 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
             # // ? [20250401T1206] (JMA3): what is `d0`
             # [20250422T1126] (JMA3): `d0` is the initial grain size.
             dzz1, dzz0 = if idzz == 0
-                # # # @show ψ.d₀, d, ψ.d₀/d
+                # # @show ψ.d₀, d, ψ.d₀/d
+                # error("Just checking...")
                 ( (ψ.d₀/d) ^ ψ.z,             1.0 )
             elseif idzz == 1
                 (         1.0,     (dim1/d) ^ ψ.z )
@@ -903,7 +927,7 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
             else
                 error("idzz > 2 which is not supported.")
             end
-            # # # @show idzz, dzz1, dzz0
+            # # # # @show idzz, dzz1, dzz0
             # error("Just checking...")
             # [20250401T1042] (JMA3): these comments (v) are from HEC's original code
             # d0 = 1. !Turn on if absolute grain size-stress relation is used
@@ -933,17 +957,17 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
             # rdrssk  = 1.0   +   (  ( Rs + (sqrt_twothirds*Rdc*Δϵ̲̲̇′_mag) )  *  ψ.Δt  *  ( κₛ ^ (NK-1.0) ) *  dzz1  )
             # # Kstr    = κₛ * X0 * dzz0 / rdrssk
             # κₛ⁽ᵗʳ⁾  = κₛ * X0 * dzz0 / rdrssk
-            # # # @show twoμ .* Δϵ̲̲′
-            # # # @show σ̲̲′⁽ᵗʳ⁾
-            # # # @show Si, Hir, rdrsk, κ⁽ᵗʳ⁾, rdrssk, κₛ⁽ᵗʳ⁾
-            # # # # @show d
+            # # # # @show twoμ .* Δϵ̲̲′
+            # # # # @show σ̲̲′⁽ᵗʳ⁾
+            # # # # @show Si, Hir, rdrsk, κ⁽ᵗʳ⁾, rdrssk, κₛ⁽ᵗʳ⁾
+            # # # # # @show d
             # # # # ! update ISV
             # # # ? [20250401T1206] (JMA3): Why are we updating this again?
             # # # * [20250424T0936] (JMA3): Honestly, I have no idea. So let's comment it out for now.
             # # # ! [20250722T1123] (JMA3): It seems as though HEC kept this definition on purpose.
             # # # !                         So let's keep it for now and optimize later.
             # # d       =           (  ( Rs + (sqrt_twothirds*Rdc*Δϵ̲̲̇′_mag) )  *         ( κₛ ^ (NK-1.0) )          )
-            # # # # @show d
+            # # # # # @show d
             # # error("Just checking...")
             # if iNewton == 1 # Newton iteration (Backward Euler)
             #     # Nitmax  = 20
@@ -968,8 +992,13 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
             #     # rdrsk   = 1.0   +   (  ( Rs + (sqrt_twothirds*Rdc*Δϵ̲̲̇′_mag) )  *  ψ.Δt  *  ( xx ^ (NK-1.0) )  )
             # end
         #--- trial alpha
+            # # @show rs, rd, Δϵ̲̲̇′_mag, ψ.Δt, α̲̲_mag, NK, dzz1
+            # error("Just checking...")
             rdrsa   = 1.0   +   (  ( rs + (sqrt_twothirds* rd*Δϵ̲̲̇′_mag) )  *  ψ.Δt  *  ( α̲̲_mag ^ (NK-1.0) )  *  dzz1  )
             # rdrsa   = 1.0   +   (  ( rs + (                rd*Δϵ̲̲̇′_mag) )  *  ψ.Δt  *  ( α̲̲_mag ^ (NK-1.0) )  *  dzz1  )
+            # # @show α̲̲
+            # # @show X0, dzz0, rdrsa
+            # error("Just checking...")
             α̲̲⁽ᵗʳ⁾ = α̲̲ * (X0*dzz0/rdrsa) # Altr
             # # Horstemeyer, et. al. (2000): https://www.sciencedirect.com/science/article/pii/S016784429900049X?ref=pdf_download&fr=RR-2&rr=9674f0426d71c595
             # # modified in Cho, et. al. (2017): https://onlinelibrary.wiley.com/doi/epdf/10.1002/9781119018377.ch7?saml_referrer=
@@ -981,6 +1010,9 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
         #--- Plastic direction tensor N
             ξ̲̲′⁽ᵗʳ⁾      = σ̲̲′⁽ᵗʳ⁾  -  ( (2.0/3.0) .* α̲̲⁽ᵗʳ⁾ ) # Xi
             # ξ̲̲′⁽ᵗʳ⁾      = σ̲̲′⁽ᵗʳ⁾  -  (              α̲̲⁽ᵗʳ⁾ ) # Xi
+            # # @show σ̲̲′⁽ᵗʳ⁾
+            # # @show α̲̲⁽ᵗʳ⁾
+            # error("Just checking...")
             ξ̲̲′⁽ᵗʳ⁾_mag  = norm_symvec(ξ̲̲′⁽ᵗʳ⁾) # Xi_mag
             n̂′          = ξ̲̲′⁽ᵗʳ⁾ ./ ξ̲̲′⁽ᵗʳ⁾_mag # N
             # # # Horstemeyer, et. al. (2000): https://www.sciencedirect.com/science/article/pii/S016784429900049X?ref=pdf_download&fr=RR-2&rr=9674f0426d71c595
@@ -1005,20 +1037,21 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
         # # ℱ   = (sqrt_threehalves*ξ̲̲′⁽ᵗʳ⁾_mag) - (               ak*ϕ₁⁽ᵗʳ⁾)
         # # ℱ   = (                 ξ̲̲′⁽ᵗʳ⁾_mag) - (               ak*ϕ₁⁽ᵗʳ⁾)
         # ℱ   = (                 ξ̲̲′⁽ᵗʳ⁾_mag) - (               ak*ϕ₁⁽ᵗʳ⁾)
-    # # # @show α̲̲_mag, rdrsa
-    # # # @show α̲̲⁽ᵗʳ⁾
-    # # # @show ξ̲̲′⁽ᵗʳ⁾
-    # # # @show ξ̲̲′⁽ᵗʳ⁾_mag
-    # # # @show n̂′
-    # # # @show ak, critra
+    # # # # @show α̲̲_mag, rdrsa
+    # # # # @show α̲̲⁽ᵗʳ⁾
+    # # # # @show ξ̲̲′⁽ᵗʳ⁾
+    # # # # @show ξ̲̲′⁽ᵗʳ⁾_mag
+    # # # # @show n̂′
+    # # # # @show ak, critra
     # error("Just checking...")
     # Radial-Return
     if ℱ <= 0.0 # elastic solution update
+        # @info "Elastic" ℱ σ̲̲′⁽ᵗʳ⁾ α̲̲⁽ᵗʳ⁾ κ⁽ᵗʳ⁾ ϕ η νᵥ ϕ̇ XR XH Xd Xs X
         # deviatoric stress update
         # σ̲̲ = @. σ̲̲⁽ᵗʳ⁾
         σ̲̲′ = σ̲̲′⁽ᵗʳ⁾
         # Cauchy stress update
-        σ̲̲ = σ̲̲′ + volumetric(P) # ! update ISV
+        σ̲̲ = σ̲̲′ + volumetric(SymmetricTensor{2, 3}(P .* diagm(diag(ones(typeof(σ̲̲)))))) # ! update ISV
         # kinematic hardening & total strain update
         α̲̲ = α̲̲⁽ᵗʳ⁾ # ! update ISV
         # isotropic hardening update
@@ -1037,6 +1070,7 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
         Xs  = Xs + dXs
         X   = X  + dXs
     else # plastic solution (Radial return starts)
+        # @info "Plastic" ℱ σ̲̲′⁽ᵗʳ⁾ α̲̲⁽ᵗʳ⁾ κ⁽ᵗʳ⁾ ϕ η νᵥ ϕ̇ XR XH Xd Xs X
         #--- Plastic strain increment solution
         if     iNewton == 0 # analytical solution for DG
             # Δγ = (    ξ̲̲′⁽ᵗʳ⁾_mag    -    (   sqrt_twothirds   *   ak   *   ϕ₁⁽ᵗʳ⁾   )    )     /     (
@@ -1060,7 +1094,7 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
             # # @show ξ̲̲′⁽ᵗʳ⁾_mag, ak, ϕ₁⁽ᵗʳ⁾, twoμ
             # # @show Rx, dzz1, h, rdrsa, H, rdrsk
             # # @show Δγ
-            # # error("Just checking...")
+            # error("Just checking...")
             # if t > ψ.Δt
             #     error("Just checking...")
             # end
@@ -1171,16 +1205,31 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
         end
         #--- stress solution
             # deviatoric stress update
+            # # @show σ̲̲′⁽ᵗʳ⁾
+            # # @show ϕ₁⁽ᵗʳ⁾, twoμ, Δγ, ϕ₁⁽ᵗʳ⁾*twoμ*Δγ
+            # # @show n̂′
+            # # @show σ̲̲′⁽ᵗʳ⁾  -  ( (ϕ₁⁽ᵗʳ⁾*twoμ*Δγ) .* n̂′ )
             σ̲̲′ = σ̲̲′⁽ᵗʳ⁾  -  ( (ϕ₁⁽ᵗʳ⁾*twoμ*Δγ) .* n̂′ )
             # Cauchy stress update
             # σ̲̲ = σ̲̲′ + volumetric(P) # ! update state variable
-            σ̲̲ = σ̲̲′ + volumetric((hydrostatic(σ̲̲)*ϕ₁⁽ᵗʳ⁾) + (ϕ₁⁽ᵗʳ⁾*ψ.Δt*K*I₁(ϵ̲̲))) # ! update state variable
-            # # @show σ̲̲′⁽ᵗʳ⁾
-            # # @show ϕ₁⁽ᵗʳ⁾, twoμ, Δγ
-            # # @show n̂′
-            # # # @show σ̲̲′⁽ᵗʳ⁾  -  ( (ϕ₁⁽ᵗʳ⁾*(89066.17)*(0.01089263427151211)) .* n̂′ )
-            # # @show σ̲̲′, vM
-            # # @show σ̲̲
+            # @show σ̲̲
+            # @show hydrostatic(σ̲̲)
+            # @show ϕ₁⁽ᵗʳ⁾, ψ.Δt, K
+            # @show ϵ̲̲
+            # @show I₁(ϵ̲̲)
+            # @show hydrostatic(σ̲̲)*ϕ₁⁽ᵗʳ⁾
+            # @show ϕ₁⁽ᵗʳ⁾*ψ.Δt*K*I₁(ϵ̲̲)
+            # @show (hydrostatic(σ̲̲)*ϕ₁⁽ᵗʳ⁾) + (ϕ₁⁽ᵗʳ⁾*ψ.Δt*K*I₁(ϵ̲̲))
+            # @show ((hydrostatic(σ̲̲)*ϕ₁⁽ᵗʳ⁾) + (ϕ₁⁽ᵗʳ⁾*ψ.Δt*K*I₁(ϵ̲̲))) .* diagm(diag(ones(typeof(σ̲̲))))
+            # @show SymmetricTensor{2, 3}(((hydrostatic(σ̲̲)*ϕ₁⁽ᵗʳ⁾) + (ϕ₁⁽ᵗʳ⁾*ψ.Δt*K*I₁(ϵ̲̲))) .* diagm(diag(ones(typeof(σ̲̲)))))
+            # @show σ̲̲′
+            σ̲̲ = σ̲̲′ + SymmetricTensor{2, 3}(((hydrostatic(σ̲̲)*ϕ₁⁽ᵗʳ⁾) + (ϕ₁⁽ᵗʳ⁾*ψ.Δt*K*I₁(ϵ̲̲))) .* diagm(diag(ones(typeof(σ̲̲))))) # ! update state variable
+            # # # @show σ̲̲′⁽ᵗʳ⁾
+            # # # @show ϕ₁⁽ᵗʳ⁾, twoμ, Δγ
+            # # # @show n̂′
+            # # # # @show σ̲̲′⁽ᵗʳ⁾  -  ( (ϕ₁⁽ᵗʳ⁾*(89066.17)*(0.01089263427151211)) .* n̂′ )
+            # # # @show σ̲̲′, vM
+            # # # @show σ̲̲
             # # error("Just checking...")
             # if t > ψ.Δt
             #     error("Just checking...")
@@ -1188,7 +1237,7 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
         #--- total plastic strain
             ϵ̲̲⁽ᵖ⁾ += ( (sqrt_twothirds*Δγ) .* n̂′ ) # ! update ISV
             # ϵ̲̲⁽ᵖ⁾ += ( (               Δγ) .* (n̂′) ) # ! update ISV
-            # # @show norm_symvec(ϵ̲̲⁽ᵖ⁾)
+            # # # @show norm_symvec(ϵ̲̲⁽ᵖ⁾)
         #--- alpha solution
             # α̲̲ = α̲̲⁽ᵗʳ⁾    +    ( # ! update ISV
             #         (  ( (1.0-X) ^ NK )  *  dzz1  *  ϕ₁⁽ᵗʳ⁾  *  h  *  Δγ  )   .*   n̂′   ./   rdrsa   )
@@ -1216,28 +1265,28 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
             # κₛ  = κₛ⁽ᵗʳ⁾   +   ( # ! update ISV
             #     ( (1.0-X) ^ NK )  *  sqrt_twothirds  *  dzz1  *  ϕ₁⁽ᵗʳ⁾  *  H  *  Sir  *  Δγ  /  rdrssk  )
         # various print statements for debugging
-            # # # @show Δγ
-            # # # @show σ̲̲′
-            # # # @show σ̲̲, vM
-            # # # @show ϵ̲̲′
-            # # # @show ϵ̲̲⁽ᵖ⁾
-            # # # @show ϵ̲̲⁽ᴴ⁾
-            # # # @show α̲̲
-            # # # @show κ
+            # # # # @show Δγ
+            # # # # @show σ̲̲′
+            # # # # @show σ̲̲, vM
+            # # # # @show ϵ̲̲′
+            # # # # @show ϵ̲̲⁽ᵖ⁾
+            # # # # @show ϵ̲̲⁽ᴴ⁾
+            # # # # @show α̲̲
+            # # # # @show κ
             # error("Just checking...")
         #--- damage
             di1 = I₁(σ̲̲)
             dj2 = I₂(σ̲̲′)
             dj3 = I₃(σ̲̲′)
-            # # # @show σ̲̲′, di1, dj2, dj3
+            # # # # @show σ̲̲′, di1, dj2, dj3
             JJ1 = (dj3^2.0) / (dj2^3.0)
             JJ2 = (dj3    ) / (dj2^1.5)
             JJ3 = (di1    ) / (dj2^0.5)
-            # [20250401T1042] (JMA3): this comment (v) is from HEC's original code
-            # here I controlled stress triaxiality to 1 (tension (Horstemeyer et al., 2000))
-            JJ3 = 1.0
-            # # # @show σ̲̲′
-            # # # @show di1, dj2, dj3, JJ1, JJ2, JJ3
+            # # [20250401T1042] (JMA3): this comment (v) is from HEC's original code
+            # # here I controlled stress triaxiality to 1 (tension (Horstemeyer et al., 2000))
+            # JJ3 = 1.0
+            # # # # @show σ̲̲′
+            # # # # @show di1, dj2, dj3, JJ1, JJ2, JJ3
         ##--- nucleation (RK4 integration)
             ddff= ( ψ.𝒹 ^ 0.5 )  /  ( ψ.𝒻 ^ (1.0/3.0) )
             # # Δη₀ = Δϵ̲̲̇′_mag   *   ddff   /   ψ.Kic   *   (  a  *  ( (4.0/27.0) - JJ1 )  +  ( b * JJ2 )  +  (
@@ -1250,14 +1299,14 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
             # k₂  = η̇₀  *  ( η + (0.5k₁*ψ.Δt) )
             # k₃  = η̇₀  *  ( η + (0.5k₂*ψ.Δt) )
             # k₄  = η̇₀  *  ( η + (   k₃*ψ.Δt) )
-            # # # # @show η
+            # # # # # @show η
             # η  += 6.0  \  ψ.Δt  *  ( k₁ + 2.0(k₂+k₃) + k₄ ) # ! update ISV
             # # η̇  = η   *   Δϵ̲̲̇′_mag   *   ddff   /   ψ.Kic   *   (  a  *  ( (4.0/27.0) - JJ1 )  +  ( b * JJ2 )  +  (
             # #     c * damirr * abs(JJ3) )  )   *   exp(  Tnuc  /  ψ.θ  )
             # η̇   = η   *   Δϵ̲̲̇′_mag   *   ddff   /   ψ.Kic   *   (  a  *  ( (4.0/27.0) - JJ1 )  +  ( b * JJ2 )  +  (
             #     c * abs(JJ3) )  )   *   exp(  Tnuc  /  ψ.θ  )
-            # # # # # @show k₁, k₂, k₃, k₄
-            # # # # @show ddff, Δη₀, η, Δη
+            # # # # # # @show k₁, k₂, k₃, k₄
+            # # # # # @show ddff, Δη₀, η, Δη
 
             ### Implementation (Horstemeyer et al., 2000)
             # Horstemeyer, et. al. (2000): https://www.sciencedirect.com/science/article/pii/S016784429900049X?ref=pdf_download&fr=RR-2&rr=9674f0426d71c595
@@ -1303,13 +1352,21 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
             #         ( ϵ̲̲′_mag + (Δϵ̲̲̇′_mag*ψ.Δt) )  *  sqrt( 3.0 )  /  ( 2.0 * (1.0-nn) )  *  sinh(
             #             sqrt(3.0) * (1.0-nn) * sqrt(2.0) / 3.0 * JJ3 )  *  exp( Tgrw * ψ.θ )
             #     #=]=#)   )    ^    3.0    #=}=#)
-            νᵥ = (    4.0    /    3.0    )     *     (#={=#    (   ψ.R₀   *   exp(#=[=#
-                    ϵ̲̲′_mag  *  sqrt( 3.0 )  /  ( 2.0 * (1.0-nn) )  *  sinh(
-                        sqrt(3.0) * (1.0-nn) * sqrt(2.0) / 3.0 * JJ3 )  *  exp( Tgrw * ψ.θ )
-                #=]=#)   )    ^    3.0    #=}=#)
+            νᵥ = (    4.0    /    3.0    )     *     (#={=#    (   ψ.R₀   *   begin
+                    x = exp(#=[=#
+                        ϵ̲̲′_mag  *  sqrt( 3.0 )  /  ( 2.0 * (1.0-nn) )  *  sinh(
+                            sqrt(3.0) * (1.0-nn) * sqrt(2.0) / 3.0 * JJ3 )  *  exp( Tgrw * ψ.θ )
+                    #=]=#)
+                    x = isinf(x) ? 0.0 : x
+                end)    ^    3.0    #=}=#)
             ν̇ᵥ = (νᵥ-νᵥ₀) / ψ.Δt
+            # @show νᵥ₀, ψ.R₀, ϵ̲̲′_mag, nn, JJ3, Tgrw, ψ.θ, νᵥ, ν̇ᵥ
+            # @show ϵ̲̲′_mag  *  sqrt( 3.0 )  /  ( 2.0 * (1.0-nn) )
+            # @show sinh(sqrt(3.0) * (1.0-nn) * sqrt(2.0) / 3.0 * JJ3 )
+            # @show exp( Tgrw * ψ.θ )
+            # @show (   exp(#=[=# ϵ̲̲′_mag  *  sqrt( 3.0 )  /  ( 2.0 * (1.0-nn) )  *  sinh( sqrt(3.0) * (1.0-nn) * sqrt(2.0) / 3.0 * JJ3 )  *  exp( Tgrw * ψ.θ ) #=]=#)   )
 
-            # # # @show νᵥ₀, ϵ̲̲′_mag, νᵥ, Δνᵥ
+            # # # # @show νᵥ₀, ϵ̲̲′_mag, νᵥ, Δνᵥ
 
             #vod0 = PE[i]*sqrt(3.)/(2.*(1.-pnn)) \
             #     * sinh(sqrt(3.)*(1.-pnn)*sqrt(2.)/3.*JJ3)*exp(pTgrw*ψ.θ)
@@ -1318,55 +1375,55 @@ function update(ψ::Cho2019UnifiedStaticDynamicTensor, t, state, (;
         C = 1.0 # ! update ISV
         ##--- damage rate
         ϕ̇ = (η̇*νᵥ) + (η*ν̇ᵥ) # ! update ISV
-        # # # @show ϕ̇
+        # # # # @show ϕ̇
         ##--- total damage at current step
         # ? [2025T1048] (JMA3): why the blazes does this phi have 3 re-assignments?
         ϕ₀    = ϕ
-        # # # @show ϕ₀
+        # # # # @show ϕ₀
         # # Horstemeyer, et. al. (2000): https://www.sciencedirect.com/science/article/pii/S016784429900049X?ref=pdf_download&fr=RR-2&rr=9674f0426d71c595
         # # modified in Cho, et. al. (2017): https://onlinelibrary.wiley.com/doi/epdf/10.1002/9781119018377.ch7?saml_referrer=
         # # modified (again) in Cho, et. al. (2019): https://www.sciencedirect.com/science/article/pii/S0749641918303139?casa_token=tQbSk0wbfLwAAAAA:vQJyOp3-HPScV3EmVpZOT3Hpx6cCBa_Gwft4WzdFHHLRqSpD1s66BdkpqM8BIl4AC-Qn1bUDZg
         # # ϕ   = C*η*νᵥ
         # # ϕ   = C*η*νᵥ * ((ψ.d₀/d)^ψ.z) * exp(Tgrw*ψ.θ)
         # ϕ   = C*η*νᵥ
-        # # # @show ϕ
+        # # # # @show ϕ
         ϕ  += ϕ̇*ψ.Δt
-        # # # @show ϕ
+        # # # # @show ϕ
         # ϕ     = max( min(ϕ,0.99999) , 0.0000000001 ) # ! update ISV
         ϕ   = max( min(ϕ,0.999999999) , 0.0000000001 ) # ! update ISV
-        # # # @show ϕ
+        # # # # @show ϕ
 
         ϕ̇ = (ϕ-ϕ₀) / ψ.Δt # ! update ISV
 
-        # # # @show ϕ₀, η, νᵥ, C, ϕ, ϕ̇, ϵ̲̲⁽ᴴ⁾
+        # # # # @show ϕ₀, η, νᵥ, C, ϕ, ϕ̇, ϵ̲̲⁽ᴴ⁾
         # error("Just checking...")
     end
-    # @show t
-    # @show ϕ₁⁽ᵗʳ⁾
-    # @show twoμ
-    # @show Δγ
-    # @show n̂′
-    # @show σ̲̲
-    # @show deviatoric(σ̲̲)
-    # @show vM
-    # @show ϵ̲̲
-    # @show deviatoric(ϵ̲̲)
-    # @show ϵ̲̲⁽ᵖ⁾
-    # # @show # @show ϵ̲̲⁽ᵖ⁾[1] + (sqrt_twothirds*Δγ)
-    # @show # @show norm_symvec(ϵ̲̲⁽ᵖ⁾)
-    # @show α̲̲
-    # @show κ
-    # @show ϕ
-    # @show η
-    # @show νᵥ
-    # @show ϕ̇
-    # @show X
-    # @show d
+    # # @show t
+    # # @show ϕ₁⁽ᵗʳ⁾
+    # # @show twoμ
+    # # @show Δγ
+    # # @show n̂′
+    # # @show σ̲̲
+    # # @show deviatoric(σ̲̲)
+    # # @show vM
+    # # @show ϵ̲̲
+    # # @show deviatoric(ϵ̲̲)
+    # # @show ϵ̲̲⁽ᵖ⁾
+    # # # @show # # @show ϵ̲̲⁽ᵖ⁾[1] + (sqrt_twothirds*Δγ)
+    # # @show # # @show norm_symvec(ϵ̲̲⁽ᵖ⁾)
+    # # @show α̲̲
+    # # @show κ
+    # # @show ϕ
+    # # @show η
+    # # @show νᵥ
+    # # @show ϕ̇
+    # # @show X
+    # # @show d
     # # error("Just checking...")
     # if t > 50Δt
     #     error("Just checking...")
     # end
-    return MaterialState(σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xs, Xd, d)
+    return MaterialState(SymmetricTensor{2, 3}(σ̲̲), ϵ̲̲, SymmetricTensor{2, 3}(ϵ̲̲⁽ᵖ⁾), SymmetricTensor{2, 3}(α̲̲), κ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xs, Xd, d)
 end
 
 function ContinuumMechanicsBase.predict(
@@ -1374,7 +1431,7 @@ function ContinuumMechanicsBase.predict(
             test::BammannChiesaJohnsonPlasticity.AbstractBCJMetalTest{T},
             p;
             kwargs...,
-        ) where {T<:AbstractFloat} # , S<:SymmetricTensor{2, 3, T}}
+        ) where {T<:AbstractFloat, S<:SymmetricTensor{4, 3, T}}
     M = ψ.N + 1
     # numerical constants
     sqrt_threehalves = √(3.0/2.0)
@@ -1419,10 +1476,11 @@ function ContinuumMechanicsBase.predict(
     add!(ch, Dirichlet(:u, getfacetset(grid, "back_yz"), (x, t) -> [0.0], [1]))
     add!(ch, Dirichlet(:u, getfacetset(grid, "back_xz"), (x, t) -> [0.0], [2]))
     add!(ch, Dirichlet(:u, getfacetset(grid, "back_xy"), (x, t) -> [0.0], [3]))
+    close!(ch)
 
     # define boundary conditions and time steps
     # displacement = do_verify ? collect(range(first(expdata_strain), last(expdata_strain); length=n_timesteps)) : nothing
-    displacement = collect(range(0.0, ψ.ϵₙ; length=M)) : nothing
+    displacement = collect(range(0.0, ψ.ϵₙ; length=M))
     # V = -1
     # V = do_verify ? expdata_ϵ̇ : -1.3477876909913353 # initial velocity onto Right plate in local reference frame
     V = ψ.ϵ̇_eff # initial velocity onto Right plate in local reference frame
@@ -1490,7 +1548,12 @@ function ContinuumMechanicsBase.predict(
     strain_max      = zeros(M)
     strainrate_max  = zeros(M)
     stress_max      = zeros(M)
-    pvd             = paraview_collection(filename)
+    α_max           = zeros(M) # hcat(α⃗...)
+    κ_max           = zeros(M) # hcat(κ_vec...)
+    ϕ_max           = zeros(M) # hcat(ϕ⃗...)
+    X_max           = zeros(M) # hcat(X⃗...)
+    d_max           = zeros(M) # hcat(d⃗...)
+    pvd             = paraview_collection("rve")
 
     gridnodes = deepcopy(getnodes(grid))
     gridnodes_view = @view gridnodes[[1:gridnnodes...]]
@@ -1541,23 +1604,27 @@ function ContinuumMechanicsBase.predict(
     # ϕ⃗ = []; push!(ϕ⃗, ϕ)
     # X⃗ = []; push!(X⃗, X)
     # d⃗ = []; push!(d⃗, d)
-    # t       = 0.0
+    # ϵ̲̲       = zero(SymmetricTensor{2, 3}) # zeros(ψ.Δϵ̲̲)
+    t       = 0.0
 
     # march through time
-    NEWTON_TOL = 1 # 1 N
+    NEWTON_TOL = 1e9 # 1 # 1 N
     NEWTON_M = 10
-    println("\nStarting Netwon iterations:")
+    # println("\nStarting Netwon iterations:")
     # Δt = do_verify ? (time_domain[2] - time_domain[1]) : (time_n / (n_timesteps - 1))
     for i ∈ range(2, M)
     # for i ∈ range(2, ψ.N)
     # for i ∈ range(2, 3)
         t += ψ.Δt
-        ϵ̲̲ += ψ.Δϵ̲̲
+        # ϵ̲̲ += ψ.Δϵ̲̲
+        # if i > 3
+        #     error("Just checking...")
+        # end
         ###########################################################
         # @printf("\n Time step %d (t = %.6f s) @ %.4f m/s:\n", timestep - 1, t, V) # -1 to match ParaView
         VV[i] = V
         ΔV = 0.
-        p = 0.
+        # p = 0.
         # state_material = states_material
         # state_material_old = states_material_old
         # # println(first(state_material).σ == first(state_material_old).σ)
@@ -1587,13 +1654,15 @@ function ContinuumMechanicsBase.predict(
         # # (^)                                   (^)
         apply!(u, ch)  # set the prescribed values in the solution vector
         if i > 1 # t > 0
-            ΔX[i] = ψ.Δϵ̲̲
+            # ΔX[i] = ψ.Δϵ̲̲
+            ΔX[i] = displacement[i]
             dbcs_t = ConstraintHandler(dh)
             add!(dbcs_t, Dirichlet(:u, getfacetset(grid, "front_xz"), (x, t) -> [ΔX[i]], [2]))
             close!(dbcs_t)
             apply!(u, dbcs_t)  # set the prescribed values in the solution vector
         end
-        @printf("\n Time step %d (t = %.6f s) @ %.6f mm:\n", i - 1, t, ΔX[i]) # -1 to match ParaView
+        # @printf("\n Time step %d (t = %.6f s) @ %.6f mm:\n", i - 1, t, ΔX[i]) # -1 to match ParaView
+        # @show t, ΔX[i]
         println_i_rve(n) = @printf("\ti:%05d | n₃:%.6f [m] | u₃:%.6f [m] | ΔX:%.6f [m]\n",
             n, get_node_coordinate(gridnodes[n])[2], u[vectorstrafe_i(n)][2], ΔX[n])
         println_i_rve(n, trac, et, ee, ep, p, ΔV) = @printf("\ti:%05d | n₃:%.6f [m] | u₃:%.6f [m] | ΔX:%.6f [m] | T:%.3e [Pa] | Eᵗₘₐₓ:%.3e [J] | Eᵉₘₐₓ:%.3e [J] | Eᵖₘₐₓ:%.3e [J] | %%_diff(E):%.3f [%%] | ΔV:%.6f [m/s]\n",
@@ -1614,6 +1683,7 @@ function ContinuumMechanicsBase.predict(
                     fill!(re, 0)
                     eldofs = celldofs(cell)
                     ue = u[eldofs]
+                    # @show ue
                     # re = @view r[eldofs]
                     # ke = @view K[eldofs, eldofs]
                     state = @view state_material[:, cell.cellid]
@@ -1636,6 +1706,9 @@ function ContinuumMechanicsBase.predict(
                         # ϵ = function_symmetric_gradient(cellvalues, q_point, ue) # Total strain
                         # σ, D, state[q_point] = compute_stress_tangent(ϵ, material, state_old[q_point])
                         Δϵ = function_symmetric_gradient(cellvalues, q_point, ue) - state[q_point].ϵ̲̲ # Total strain
+                        # @show state[q_point].ϵ̲̲
+                        # @show Δϵ
+                        # @show state[q_point].ϵ̲̲ + Δϵ
                         σ_prev, ϵ_prev, ϵᵖ_prev = state[q_point].σ̲̲, state[q_point].ϵ̲̲, state[q_point].ϵ̲̲⁽ᵖ⁾
                         # if q_point == 1
                         #     # println(size(function_symmetric_gradient(cellvalues, q_point, ue)))
@@ -1643,7 +1716,8 @@ function ContinuumMechanicsBase.predict(
                         # end
                         # Δϵ, σ, D, state[q_point] = compute_stress_tangent(Δϵ, material, state[q_point])
                         # σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d = 
-                        state[q_point] = update(material, t, state[q_point], p; kwargs...)
+                        state[q_point] = update(material, t, state[q_point], Δϵ, p; kwargs...)
+                        # @show state[q_point].ϵ̲̲
                         ϵ = state[q_point].ϵ̲̲
                         σ = state[q_point].σ̲̲
                         # σ_prev, ϵ_prev, ϵᵖ_prev = state[q_point].σ, state[q_point].ϵ, state[q_point].ϵᵖ
@@ -1665,8 +1739,9 @@ function ContinuumMechanicsBase.predict(
                             re[i] += ((δϵ - strain[q_point][i]) ⊡ (σ - σ_prev)) * dΩ
                             for j in 1:i # loop only over lower half
                                 Δϵ = shape_symmetric_gradient(cellvalues, q_point, j)
-                                # ke[i, j] += δϵ ⊡ D ⊡ Δϵ * dΩ
-                                ke[i, j] += (δϵ - strain[q_point][i]) ⊡ D ⊡ (Δϵ - strain[q_point][j]) * dΩ
+                                # # ke[i, j] += δϵ ⊡ D ⊡ Δϵ * dΩ
+                                # ke[i, j] += (δϵ - strain[q_point][i]) ⊡ D ⊡ (Δϵ - strain[q_point][j]) * dΩ
+                                ke[i, j] += (δϵ - strain[q_point][i]) ⊡ ψ.D⁽ᵉ⁾ ⊡ (Δϵ - strain[q_point][j]) * dΩ
                             end
                             strain[q_point][i] = δϵ
                         end
@@ -1681,7 +1756,7 @@ function ContinuumMechanicsBase.predict(
                 rf = zeros(facet_basefuncs)                      # element residual vector
                 for fc in FacetIterator(dh, getfacetset(grid, "front_xz"))
                     # Add traction as a negative contribution to the element residual `re`:
-                    reinit!(facetvalues, fc)
+                    Ferrite.reinit!(facetvalues, fc)
                     fill!(rf, 0)
                     # rf = @view r[celldofs(fc)]
                     # rf .= 0.0
@@ -1716,7 +1791,7 @@ function ContinuumMechanicsBase.predict(
 
             # break if within tolerance
             norm_r = norm(r[Ferrite.free_dofs(ch)])
-            @printf("\tIteration: %02d \tresidual: %.9f\n", newton_itr, norm_r) # \titx coords: $intersecting_coords") # , $(@sprintf("%.9f", norm_s))")
+            # @printf("\tIteration: %02d \tresidual: %.9f\n", newton_itr, norm_r) # \titx coords: $intersecting_coords") # , $(@sprintf("%.9f", norm_s))")
             if norm_r < NEWTON_TOL
                 break
             end
@@ -1785,6 +1860,22 @@ function ContinuumMechanicsBase.predict(
             sigma_12            = zeros(gridncells)
             sigma_13            = zeros(gridncells)
             sigma_21            = zeros(gridncells)
+            # α_max[i]        = maximum(abs, alpha_vonMises) # hcat(α⃗...)
+            # κ_max[i]        = maximum(abs, kappa) # hcat(κ_vec...)
+            # ϕ_max[i]        = maximum(abs, phi) # hcat(ϕ⃗...)
+            # X_max[i]        = maximum(abs, X) # hcat(X⃗...)
+            # d_max[i]        = maximum(abs, d) # hcat(d⃗...)
+            alpha_vonMises      = zeros(gridncells)
+            alpha_11            = zeros(gridncells)
+            alpha_22            = zeros(gridncells)
+            alpha_33            = zeros(gridncells)
+            alpha_12            = zeros(gridncells)
+            alpha_13            = zeros(gridncells)
+            alpha_21            = zeros(gridncells)
+            kappa               = zeros(gridncells)
+            phi                 = zeros(gridncells)
+            X                   = zeros(gridncells)
+            d                   = zeros(gridncells)
             # κ_values = zeros(gridncells)
             # for (el, state_cells) in enumerate(eachcol(state_material))
             for ((el, state_cells), state_old_cells) in zip(enumerate(eachcol(state_material)), eachcol(state_material_old))
@@ -1797,20 +1888,20 @@ function ContinuumMechanicsBase.predict(
                     strainᵗ_12[el]          += state.ϵ̲̲[1, 2]
                     strainᵗ_13[el]          += state.ϵ̲̲[1, 3]
                     strainᵗ_21[el]          += state.ϵ̲̲[2, 1]
-                    strainᵖ_vonMises[el]    += vonMises(state.ϵ̲̲⁽ᴾ⁾)
-                    strainᵖ_11[el]          += state.ϵ̲̲ᵖ[1, 1]
-                    strainᵖ_22[el]          += state.ϵ̲̲ᵖ[2, 2]
-                    strainᵖ_33[el]          += state.ϵ̲̲ᵖ[3, 3]
-                    strainᵖ_12[el]          += state.ϵ̲̲ᵖ[1, 2]
-                    strainᵖ_13[el]          += state.ϵ̲̲ᵖ[1, 3]
-                    strainᵖ_21[el]          += state.ϵ̲̲ᵖ[2, 1]
-                    strainᵉ_vonMises[el]    += (vonMises(state.ϵ̲̲) - vonMises(state.ϵ̲̲⁽ᴾ⁾))
-                    strainᵉ_11[el]          += (state.ϵ̲̲[1, 1] - state.ϵ̲̲⁽ᴾ⁾[1, 1])
-                    strainᵉ_22[el]          += (state.ϵ̲̲[2, 2] - state.ϵ̲̲⁽ᴾ⁾[2, 2])
-                    strainᵉ_33[el]          += (state.ϵ̲̲[3, 3] - state.ϵ̲̲⁽ᴾ⁾[3, 3])
-                    strainᵉ_12[el]          += (state.ϵ̲̲[1, 2] - state.ϵ̲̲⁽ᴾ⁾[1, 2])
-                    strainᵉ_13[el]          += (state.ϵ̲̲[1, 3] - state.ϵ̲̲⁽ᴾ⁾[1, 3])
-                    strainᵉ_21[el]          += (state.ϵ̲̲[2, 1] - state.ϵ̲̲⁽ᴾ⁾[2, 1])
+                    strainᵖ_vonMises[el]    += vonMises(state.ϵ̲̲⁽ᵖ⁾)
+                    strainᵖ_11[el]          += state.ϵ̲̲⁽ᵖ⁾[1, 1]
+                    strainᵖ_22[el]          += state.ϵ̲̲⁽ᵖ⁾[2, 2]
+                    strainᵖ_33[el]          += state.ϵ̲̲⁽ᵖ⁾[3, 3]
+                    strainᵖ_12[el]          += state.ϵ̲̲⁽ᵖ⁾[1, 2]
+                    strainᵖ_13[el]          += state.ϵ̲̲⁽ᵖ⁾[1, 3]
+                    strainᵖ_21[el]          += state.ϵ̲̲⁽ᵖ⁾[2, 1]
+                    strainᵉ_vonMises[el]    += (vonMises(state.ϵ̲̲) - vonMises(state.ϵ̲̲⁽ᵖ⁾))
+                    strainᵉ_11[el]          += (state.ϵ̲̲[1, 1] - state.ϵ̲̲⁽ᵖ⁾[1, 1])
+                    strainᵉ_22[el]          += (state.ϵ̲̲[2, 2] - state.ϵ̲̲⁽ᵖ⁾[2, 2])
+                    strainᵉ_33[el]          += (state.ϵ̲̲[3, 3] - state.ϵ̲̲⁽ᵖ⁾[3, 3])
+                    strainᵉ_12[el]          += (state.ϵ̲̲[1, 2] - state.ϵ̲̲⁽ᵖ⁾[1, 2])
+                    strainᵉ_13[el]          += (state.ϵ̲̲[1, 3] - state.ϵ̲̲⁽ᵖ⁾[1, 3])
+                    strainᵉ_21[el]          += (state.ϵ̲̲[2, 1] - state.ϵ̲̲⁽ᵖ⁾[2, 1])
                     strainrateᵗ_vonMises[el]+= (vonMises(state.ϵ̲̲) - vonMises(state_old.ϵ̲̲)) / ψ.Δt # (dN * ψ.Δt)
                     strainrateᵗ_11[el]      += (state.ϵ̲̲[1, 1] - state_old.ϵ̲̲[1, 1]) / ψ.Δt # (dN * ψ.Δt)
                     strainrateᵗ_22[el]      += (state.ϵ̲̲[2, 2] - state_old.ϵ̲̲[2, 2]) / ψ.Δt # (dN * ψ.Δt)
@@ -1818,27 +1909,39 @@ function ContinuumMechanicsBase.predict(
                     strainrateᵗ_12[el]      += (state.ϵ̲̲[1, 2] - state_old.ϵ̲̲[1, 2]) / ψ.Δt # (dN * ψ.Δt)
                     strainrateᵗ_13[el]      += (state.ϵ̲̲[1, 3] - state_old.ϵ̲̲[1, 3]) / ψ.Δt # (dN * ψ.Δt)
                     strainrateᵗ_21[el]      += (state.ϵ̲̲[2, 1] - state_old.ϵ̲̲[2, 1]) / ψ.Δt # (dN * ψ.Δt)
-                    strainrateᵖ_vonMises[el]+= (vonMises(state.ϵ̲̲⁽ᴾ⁾) - vonMises(state_old.ϵ̲̲⁽ᴾ⁾)) / ψ.Δt # (dN * ψ.Δt)
-                    strainrateᵖ_11[el]      += (state.ϵ̲̲ᵖ[1, 1] - state_old.ϵ̲̲[1, 1]) / ψ.Δt # (dN * ψ.Δt)
-                    strainrateᵖ_22[el]      += (state.ϵ̲̲ᵖ[2, 2] - state_old.ϵ̲̲[2, 2]) / ψ.Δt # (dN * ψ.Δt)
-                    strainrateᵖ_33[el]      += (state.ϵ̲̲ᵖ[3, 3] - state_old.ϵ̲̲[3, 3]) / ψ.Δt # (dN * ψ.Δt)
-                    strainrateᵖ_12[el]      += (state.ϵ̲̲ᵖ[1, 2] - state_old.ϵ̲̲[1, 2]) / ψ.Δt # (dN * ψ.Δt)
-                    strainrateᵖ_13[el]      += (state.ϵ̲̲ᵖ[1, 3] - state_old.ϵ̲̲[1, 3]) / ψ.Δt # (dN * ψ.Δt)
-                    strainrateᵖ_21[el]      += (state.ϵ̲̲ᵖ[2, 1] - state_old.ϵ̲̲[2, 1]) / ψ.Δt # (dN * ψ.Δt)
-                    strainrateᵉ_vonMises[el]+= ((vonMises(state.ϵ̲̲) - vonMises(state.ϵ̲̲⁽ᴾ⁾)) - (vonMises(state_old.ϵ̲̲) - vonMises(state_old.ϵ̲̲⁽ᴾ⁾))) / ψ.Δt # (dN * ψ.Δt)
-                    strainrateᵉ_11[el]      += ((state.ϵ̲̲[1, 1] - state.ϵ̲̲⁽ᴾ⁾[1, 1]) - (state_old.ϵ̲̲[1, 1] - state_old.ϵ̲̲⁽ᴾ⁾[1, 1])) / ψ.Δt # (dN * ψ.Δt)
-                    strainrateᵉ_22[el]      += ((state.ϵ̲̲[2, 2] - state.ϵ̲̲⁽ᴾ⁾[2, 2]) - (state_old.ϵ̲̲[2, 2] - state_old.ϵ̲̲⁽ᴾ⁾[2, 2])) / ψ.Δt # (dN * ψ.Δt)
-                    strainrateᵉ_33[el]      += ((state.ϵ̲̲[3, 3] - state.ϵ̲̲⁽ᴾ⁾[3, 3]) - (state_old.ϵ̲̲[3, 3] - state_old.ϵ̲̲⁽ᴾ⁾[3, 3])) / ψ.Δt # (dN * ψ.Δt)
-                    strainrateᵉ_12[el]      += ((state.ϵ̲̲[1, 2] - state.ϵ̲̲⁽ᴾ⁾[1, 2]) - (state_old.ϵ̲̲[1, 2] - state_old.ϵ̲̲⁽ᴾ⁾[1, 2])) / ψ.Δt # (dN * ψ.Δt)
-                    strainrateᵉ_13[el]      += ((state.ϵ̲̲[1, 3] - state.ϵ̲̲⁽ᴾ⁾[1, 3]) - (state_old.ϵ̲̲[1, 3] - state_old.ϵ̲̲⁽ᴾ⁾[1, 3])) / ψ.Δt # (dN * ψ.Δt)
-                    strainrateᵉ_21[el]      += ((state.ϵ̲̲[2, 1] - state.ϵ̲̲⁽ᴾ⁾[2, 1]) - (state_old.ϵ̲̲[2, 1] - state_old.ϵ̲̲⁽ᴾ⁾[2, 1])) / ψ.Δt # (dN * ψ.Δt)
-                    sigma_vonMises[el]      += vonMises(state.σ)
+                    strainrateᵖ_vonMises[el]+= (vonMises(state.ϵ̲̲⁽ᵖ⁾) - vonMises(state_old.ϵ̲̲⁽ᵖ⁾)) / ψ.Δt # (dN * ψ.Δt)
+                    strainrateᵖ_11[el]      += (state.ϵ̲̲⁽ᵖ⁾[1, 1] - state_old.ϵ̲̲[1, 1]) / ψ.Δt # (dN * ψ.Δt)
+                    strainrateᵖ_22[el]      += (state.ϵ̲̲⁽ᵖ⁾[2, 2] - state_old.ϵ̲̲[2, 2]) / ψ.Δt # (dN * ψ.Δt)
+                    strainrateᵖ_33[el]      += (state.ϵ̲̲⁽ᵖ⁾[3, 3] - state_old.ϵ̲̲[3, 3]) / ψ.Δt # (dN * ψ.Δt)
+                    strainrateᵖ_12[el]      += (state.ϵ̲̲⁽ᵖ⁾[1, 2] - state_old.ϵ̲̲[1, 2]) / ψ.Δt # (dN * ψ.Δt)
+                    strainrateᵖ_13[el]      += (state.ϵ̲̲⁽ᵖ⁾[1, 3] - state_old.ϵ̲̲[1, 3]) / ψ.Δt # (dN * ψ.Δt)
+                    strainrateᵖ_21[el]      += (state.ϵ̲̲⁽ᵖ⁾[2, 1] - state_old.ϵ̲̲[2, 1]) / ψ.Δt # (dN * ψ.Δt)
+                    strainrateᵉ_vonMises[el]+= ((vonMises(state.ϵ̲̲) - vonMises(state.ϵ̲̲⁽ᵖ⁾)) - (vonMises(state_old.ϵ̲̲) - vonMises(state_old.ϵ̲̲⁽ᵖ⁾))) / ψ.Δt # (dN * ψ.Δt)
+                    strainrateᵉ_11[el]      += ((state.ϵ̲̲[1, 1] - state.ϵ̲̲⁽ᵖ⁾[1, 1]) - (state_old.ϵ̲̲[1, 1] - state_old.ϵ̲̲⁽ᵖ⁾[1, 1])) / ψ.Δt # (dN * ψ.Δt)
+                    strainrateᵉ_22[el]      += ((state.ϵ̲̲[2, 2] - state.ϵ̲̲⁽ᵖ⁾[2, 2]) - (state_old.ϵ̲̲[2, 2] - state_old.ϵ̲̲⁽ᵖ⁾[2, 2])) / ψ.Δt # (dN * ψ.Δt)
+                    strainrateᵉ_33[el]      += ((state.ϵ̲̲[3, 3] - state.ϵ̲̲⁽ᵖ⁾[3, 3]) - (state_old.ϵ̲̲[3, 3] - state_old.ϵ̲̲⁽ᵖ⁾[3, 3])) / ψ.Δt # (dN * ψ.Δt)
+                    strainrateᵉ_12[el]      += ((state.ϵ̲̲[1, 2] - state.ϵ̲̲⁽ᵖ⁾[1, 2]) - (state_old.ϵ̲̲[1, 2] - state_old.ϵ̲̲⁽ᵖ⁾[1, 2])) / ψ.Δt # (dN * ψ.Δt)
+                    strainrateᵉ_13[el]      += ((state.ϵ̲̲[1, 3] - state.ϵ̲̲⁽ᵖ⁾[1, 3]) - (state_old.ϵ̲̲[1, 3] - state_old.ϵ̲̲⁽ᵖ⁾[1, 3])) / ψ.Δt # (dN * ψ.Δt)
+                    strainrateᵉ_21[el]      += ((state.ϵ̲̲[2, 1] - state.ϵ̲̲⁽ᵖ⁾[2, 1]) - (state_old.ϵ̲̲[2, 1] - state_old.ϵ̲̲⁽ᵖ⁾[2, 1])) / ψ.Δt # (dN * ψ.Δt)
+                    # @show state.σ̲̲
+                    sigma_vonMises[el]      += vonMises(state.σ̲̲)
                     sigma_11[el]            += state.σ̲̲[1, 1]
                     sigma_22[el]            += state.σ̲̲[2, 2]
                     sigma_33[el]            += state.σ̲̲[3, 3]
                     sigma_12[el]            += state.σ̲̲[1, 2]
                     sigma_13[el]            += state.σ̲̲[1, 3]
                     sigma_21[el]            += state.σ̲̲[2, 1]
+                    alpha_vonMises[el]      += vonMises(state.α̲̲)
+                    alpha_11[el]            += state.α̲̲[1, 1]
+                    alpha_22[el]            += state.α̲̲[2, 2]
+                    alpha_33[el]            += state.α̲̲[3, 3]
+                    alpha_12[el]            += state.α̲̲[1, 2]
+                    alpha_13[el]            += state.α̲̲[1, 3]
+                    alpha_21[el]            += state.α̲̲[2, 1]
+                    kappa[el]               += state.κ
+                    phi[el]                 += state.ϕ
+                    X[el]                   += state.X
+                    d[el]                   += state.d
                     # κ_values[el] += state.k*material_endplate.H
                 end
                 # velocity[el] /= length(cell_states)
@@ -1891,11 +1994,27 @@ function ContinuumMechanicsBase.predict(
                 sigma_12[el]            /= length(state_cells)
                 sigma_13[el]            /= length(state_cells)
                 sigma_21[el]            /= length(state_cells)
+                alpha_vonMises[el]      /= length(state_cells)
+                alpha_11[el]            /= length(state_cells)
+                alpha_22[el]            /= length(state_cells)
+                alpha_33[el]            /= length(state_cells)
+                alpha_12[el]            /= length(state_cells)
+                alpha_13[el]            /= length(state_cells)
+                alpha_21[el]            /= length(state_cells)
+                kappa[el]               /= length(state_cells)
+                phi[el]                 /= length(state_cells)
+                X[el]                   /= length(state_cells)
+                d[el]                   /= length(state_cells)
                 # κ_values[el] /= length(state_cells)
             end
             strain_max[i] = maximum(abs, strainᵗ_vonMises) # maximum displacement in current timestep
             strainrate_max[i] = maximum(abs, strainrateᵗ_vonMises) # maximum displacement in current timestep
             stress_max[i] = maximum(abs, sigma_vonMises) # maximum displacement in current timestep
+            α_max[i]        = maximum(abs, alpha_vonMises) # hcat(α⃗...)
+            κ_max[i]        = maximum(abs, kappa) # hcat(κ_vec...)
+            ϕ_max[i]        = maximum(abs, phi) # hcat(ϕ⃗...)
+            X_max[i]        = maximum(abs, X) # hcat(X⃗...)
+            d_max[i]        = maximum(abs, d) # hcat(d⃗...)
             # strain_max[timestep] = maximum(abs, strainᵗ_22) # maximum displacement in current timestep
             # stress_max[timestep] = maximum(abs, sigma_22) # maximum displacement in current timestep
             Vₐ = try
@@ -1910,22 +2029,15 @@ function ContinuumMechanicsBase.predict(
             end
             velocity_applied = zeros((3, gridnnodes))
             velocity_actual = zeros((3, gridnnodes))
-            if do_verify
-                for i in getnodeset(grid, "front_xz")
-                    velocity_applied[:, i] = V .* [1.0, 1.0, 0.0]
-                    velocity_actual[:, i] = Vₐ .* [1.0, 1.0, 0.0]
-                end
-            else
-                for i in getnodeset(grid, "indenter_tip")
-                    velocity_applied[:, i] = V .* [0., 0., 1.]
-                    velocity_actual[:, i] = Vₐ .* [0., 0., 1.]
-                end
+            for i in getnodeset(grid, "front_xz")
+                velocity_applied[:, i] = V .* [1.0, 1.0, 0.0]
+                velocity_actual[:, i] = Vₐ .* [1.0, 1.0, 0.0]
             end
             # velocity = zeros(n_dofs)
             # for i in getnodeset(grid, "indenter_tip")
             #     velocity[vectorstrafe_i(i)] .= V .* [0., 0., 1.]
             # end
-            VTKGridFile(filename * "-t$i", dh) do vtk
+            VTKGridFile("rve" * "-t$i", dh) do vtk
                 # vtk["TimeValue"] = float(timestep)
                 write_solution(vtk, dh, u) # displacement field
                 # // DONE [20250110] (JMA3): figure out how to edit output vectors for visualization
@@ -2016,7 +2128,7 @@ function ContinuumMechanicsBase.predict(
         u_max[i] = maximum(abs, u) # maximum displacement in current timestep
         ###########################################################
         # # println("")
-        # # @show i, t, ψ.θ, ψ.Δt, d
+        # # # @show i, t, ψ.θ, ψ.Δt, d
         # σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d = update(ψ, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, damirr, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, p; kwargs...)
         # push!(ϵ⃗, ϵ̲̲)
         # push!(σ⃗, σ̲̲)
@@ -2035,6 +2147,11 @@ function ContinuumMechanicsBase.predict(
     return (data=(
         ϵ=hcat(strain_max...),
         σ=hcat(stress_max...),
+        α=hcat(α_max...), # hcat(α⃗...)
+        κ=hcat(κ_max...), # hcat(κ_vec...)
+        ϕ=hcat(ϕ_max...), # hcat(ϕ⃗...)
+        X=hcat(X_max...), # hcat(X⃗...)
+        d=hcat(d_max...), # hcat(d⃗...)
         # α=hcat(α⃗...), κ=hcat(κ_vec...),
         # ϕ=hcat(ϕ⃗...), X=hcat(X⃗...),
         # d=hcat(d⃗...),
@@ -2075,7 +2192,7 @@ end
 Constants for temperature equations from [Bammann et. al. (1993)](@cite bammannFailureDuctileMaterials1993).
 Note: though not explicitly listed in paper, temperature equations `h = C₁₅ * exp(-C₁₆ / θ)` and `H = C₁₇ * exp(-C₁₈ / θ)` are included (and their constants renumbered) from (c. f. [Horstemeyer (1994)](@cite horstemeyerPredictingFormingLimit1994)).
 """
-ContinuumMechanicsBase.parameters(::Cho2019UnifiedStaticDynamic) = (
+ContinuumMechanicsBase.parameters(::Cho2019UnifiedStaticDynamicTensor) = (
     # BCJ-plasticity
     ## yield surface
     # base, exponent
