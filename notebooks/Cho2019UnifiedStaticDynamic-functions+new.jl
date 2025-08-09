@@ -693,7 +693,9 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
                     dxx = -F / dF
                     xx  = max(1e-6, min(0.9999999, xx + dxx))
 
-                    pX0 =  Cxd  +  Cxs
+                    pX0 = Cxd  +  Cxs
+                    dXd = Cxd  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )
+                    dXs = Cxs  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )
                     dXR = pX0  *  ( xx ^ Cxa )  *  ( (1.0-xx) ^ Cxb )
                     dXH =  Ch  *  ( xx ^ Cxc )
 
@@ -1408,26 +1410,26 @@ function update(ψ::Cho2019UnifiedStaticDynamic, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ
         #     vMₛₐₜ = Be + Y + Yₚ + α̲̲ₛₐₜ_mag + κₛₐₜ
         #     vMₛₐₜ = κₛₐₜ + Be
     end
-    @show t
-    @show ϕ₁⁽ᵗʳ⁾
-    @show twoμ
-    @show Δγ
-    @show n̂′
-    @show σ̲̲
-    @show deviatoric(σ̲̲)
-    @show vM
-    @show ϵ̲̲
-    @show deviatoric(ϵ̲̲)
-    @show ϵ̲̲⁽ᵖ⁾
-    # @show @show ϵ̲̲⁽ᵖ⁾[1] + (sqrt_twothirds*Δγ)
-    @show @show norm_symvec(ϵ̲̲⁽ᵖ⁾)
-    @show α̲̲
-    @show κ
-    @show ϕ
-    @show η
-    @show νᵥ
-    @show ϕ̇
-    @show d
+    # @show t
+    # @show ϕ₁⁽ᵗʳ⁾
+    # @show twoμ
+    # @show Δγ
+    # @show n̂′
+    # @show σ̲̲
+    # @show deviatoric(σ̲̲)
+    # @show vM
+    # @show ϵ̲̲
+    # @show deviatoric(ϵ̲̲)
+    # @show ϵ̲̲⁽ᵖ⁾
+    # @show ϵ̲̲⁽ᵖ⁾[1] + (sqrt_twothirds*Δγ)
+    # @show # @show norm_symvec(ϵ̲̲⁽ᵖ⁾)
+    # @show α̲̲
+    # @show κ
+    # @show ϕ
+    # @show η
+    # @show νᵥ
+    # @show ϕ̇
+    # @show d
     # # error("Just checking...")
     # if t > 50Δt
     #     error("Just checking...")
@@ -1492,8 +1494,8 @@ function ContinuumMechanicsBase.predict(
     # for i ∈ range(2, 3)
         t += ψ.Δt
         ϵ̲̲ += ψ.Δϵ̲̲
-        println("")
-        @show i, t, ψ.θ, ψ.Δt, d
+        # println("")
+        # @show i, t, ψ.θ, ψ.Δt, d
         σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, ϕ, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d = update(ψ, t, σ̲̲, ϵ̲̲, ϵ̲̲⁽ᵖ⁾, α̲̲, κ, κₛ, Si, ϕ, damirr, η, νᵥ, ϕ̇, X, XR, XH, Xd, Xs, d, p; kwargs...)
         push!(ϵ⃗, ϵ̲̲)
         push!(σ⃗, σ̲̲)

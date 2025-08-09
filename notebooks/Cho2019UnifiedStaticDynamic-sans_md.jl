@@ -157,8 +157,8 @@ begin
 	default(fontfamily="Computer Modern", linewidth=1, framestyle=:box)
 
 	# ╔═╡ 5cc1d59a-8722-4bb9-b64b-47a62dfcdeb1
-	# include("Cho2019UnifiedStaticDynamic-functions+new.jl")
-	include("Cho2019UnifiedStaticDynamic-functions.jl")
+	include("Cho2019UnifiedStaticDynamic-functions+new.jl")
+	# include("Cho2019UnifiedStaticDynamic-functions.jl")
 end
 @time begin
 	# ╔═╡ 398fa1e3-1d11-4285-ad23-b11a4d8628c5
@@ -289,10 +289,10 @@ end
 	# ╔═╡ 53926f5c-e18c-4cb6-b062-bb965ec41769
 	slider_ui = @bind p parameters_sliders(String.(parameters(first(models)[2])), p0);
 
-	plt = plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:best, widen=1.06)
-	plt_α = deepcopy(plt)
-	plt_d = deepcopy(plt)
-	plt_X = deepcopy(plt)
+	plt_σ = plot(xlims=(0, 1), ylims=(0, Inf), legendposition=:best, widen=1.06)
+	plt_α = deepcopy(plt_σ)
+	plt_d = deepcopy(plt_σ)
+	plt_X = deepcopy(plt_σ)
 	# @sync @distributed for (i, (θ, ψ)) in collect(enumerate(models))
 	for (i, (θ, ψ)) in collect(enumerate(models))
 		test = tests[θ]
@@ -308,11 +308,11 @@ end
 			# plt_α = deepcopy(plt)
 			# plt_d = deepcopy(plt)
 			# plt_X = deepcopy(plt)
-			scatter!(plt, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
+			scatter!(plt_σ, [first(x) for x in test.data.ϵ], [first(x) for x in test.data.σ] ./ 1e6,
 					markercolor=i,
 					label="$(θ)K:Exp",
 				)
-			plot!(plt, [first(x) for x in eachcol(prediction.data.ϵ)], [vonMises(x) for x in eachcol(prediction.data.σ)],
+			plot!(plt_σ, [first(x) for x in eachcol(prediction.data.ϵ)], [vonMises(x) for x in eachcol(prediction.data.σ)],
 					linecolor=i,
 					label="$(θ)K:Model",
 				)
@@ -354,10 +354,10 @@ end
 				)
 		end
 	end
-	plot(plt, plt_α, plt_d, plt_X; layout=(2, 2), legend=false)
+	plt = plot(plt_σ, plt_α, plt_d, plt_X; layout=(2, 2), legend=false)
 	# plot(plt, legend=false)
 end
-plot(plt, legendposition=:outerright)
+plot(plt_σ, xlabel="Compressive Strain (ϵ) [mm/mm]", ylabel="von Mises Stress (σ) [MPa]", framestyle=:box, legendposition=:outerright)
 # plot(plt, plt_α, plt_d, plt_X; layout=(2, 2), legend=false)
 # # prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=2, iREXmethod=3, iGSmethod=1)
 # # prediction = ContinuumMechanicsBase.predict(ψ, test, p; imat=1, iYS=0, iREXmethod=3, iGSmethod=4)

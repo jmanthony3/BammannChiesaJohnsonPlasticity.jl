@@ -38,6 +38,7 @@ begin
 	Pkg.add("PlutoUI")
 	Pkg.add("Printf")
 	Pkg.add("HypertextLiteral")
+	Pkg.add("Distributed")
 
 
 
