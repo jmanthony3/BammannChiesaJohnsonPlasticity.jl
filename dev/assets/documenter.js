@@ -110,7 +110,7 @@ $(document).on(
         .prop("title", articleToggleTitle);
       parent.siblings("section").slideToggle();
     });
-  }
+  },
 );
 
 $(document).on("click", ".docs-article-toggle-button", function (event) {
@@ -332,7 +332,7 @@ update_search
 
 function worker_function(documenterSearchIndex, documenterBaseURL, filters) {
   importScripts(
-    "https://cdn.jsdelivr.net/npm/minisearch@6.1.0/dist/umd/index.min.js"
+    "https://cdn.jsdelivr.net/npm/minisearch@6.1.0/dist/umd/index.min.js",
   );
 
   let data = documenterSearchIndex.map((x, key) => {
@@ -543,8 +543,8 @@ function worker_function(documenterSearchIndex, documenterBaseURL, filters) {
             Math.max(textindex.index - 100, 0),
             Math.min(
               textindex.index + querystring.length + 100,
-              result.text.length
-            )
+              result.text.length,
+            ),
           )
         : ""; // cut-off text before and after from the match
 
@@ -554,7 +554,7 @@ function worker_function(documenterSearchIndex, documenterBaseURL, filters) {
       ? "..." +
         text.replace(
           new RegExp(`${escape(searchstring)}`, "i"), // For first occurrence
-          '<span class="search-result-highlight py-1">$&</span>'
+          '<span class="search-result-highlight py-1">$&</span>',
         ) +
         "..."
       : ""; // highlights the match
@@ -567,7 +567,7 @@ function worker_function(documenterSearchIndex, documenterBaseURL, filters) {
     // We encode the full url to escape some special characters which can lead to broken links
     let result_div = `
         <a href="${encodeURI(
-          documenterBaseURL + "/" + result.location
+          documenterBaseURL + "/" + result.location,
         )}" class="search-result-link w-100 is-flex is-flex-direction-column gap-2 px-4 py-2">
           <div class="w-100 is-flex is-flex-wrap-wrap is-justify-content-space-between is-align-items-flex-start">
             <div class="search-result-title has-text-weight-bold ${
@@ -728,6 +728,9 @@ function runSearchMainCode() {
   };
 
   $(document).on("click", ".search-filter", function () {
+    let search_input = $(".documenter-search-input");
+    let cursor_position = search_input[0].selectionStart;
+
     if ($(this).hasClass("search-filter-selected")) {
       selected_filter = "";
     } else {
@@ -736,6 +739,9 @@ function runSearchMainCode() {
 
     // This updates search results and toggles classes for UI:
     update_search();
+
+    search_input.focus();
+    search_input.setSelectionRange(cursor_position, cursor_position);
   });
 
   /**
@@ -944,7 +950,7 @@ $(document).ready(function () {
           ${search_modal_footer}
         </div>
       </div>
-    `
+    `,
   );
 
   function checkURLForSearch() {
@@ -1156,7 +1162,7 @@ $(document).ready(function () {
     var option = $(
       "<option value='#' selected='selected'>" +
         DOCUMENTER_CURRENT_VERSION +
-        "</option>"
+        "</option>",
     );
     version_selector_select.append(option);
   }
@@ -1173,7 +1179,7 @@ $(document).ready(function () {
       // otherwise update the old option with the URL and enable it
       if (existing_id == -1) {
         var option = $(
-          "<option value='" + version_url + "'>" + each + "</option>"
+          "<option value='" + version_url + "'>" + each + "</option>",
         );
         version_selector_select.append(option);
       } else {
